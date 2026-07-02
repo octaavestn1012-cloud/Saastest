@@ -11,7 +11,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <MigrationProvider>
       <AppShell>
-        <header className="flex justify-between items-center mb-8">
+        <header className="hidden md:flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Bonjour {userName} 👋</h1>
             <p className="text-muted-foreground mt-1 text-sm">Prêt à répartir tes revenus ?</p>
