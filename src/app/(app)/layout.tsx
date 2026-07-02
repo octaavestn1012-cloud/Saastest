@@ -3,6 +3,7 @@ import { PageTransition } from "@/components/shared/PageTransition";
 import { MigrationProvider } from "@/components/providers/MigrationProvider";
 import { ReactNode } from "react";
 import { Bell, ChevronDown } from "lucide-react";
+import { UserDropdown } from "@/components/shared/UserDropdown";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   // TODO: Remplacer par les vraies données utilisateur
@@ -23,12 +24,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <span className="absolute top-2 right-2 w-2 h-2 bg-danger rounded-full" />
             </button>
             
-            <div className="hidden sm:flex items-center gap-2 p-1 pr-3 bg-muted/50 rounded-full cursor-pointer hover:bg-muted transition-colors">
-              <div className="w-8 h-8 rounded-full bg-money-out text-white flex items-center justify-center font-bold text-sm shrink-0">
-                {userName[0]}
-              </div>
-              <span className="text-sm font-medium">{userName}</span>
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            <div className="hidden sm:block">
+              <UserDropdown userName={userName} isMobile={false} />
             </div>
           </div>
         </header>
