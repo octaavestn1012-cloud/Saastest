@@ -1,0 +1,98 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 240 5% 96%; /* #F5F5F7 Apple-like gray */
+    --foreground: 240 10% 10%;
+
+    --card: 0 0% 100%; /* Pure white */
+    --card-foreground: 240 10% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 10%;
+
+    --primary: 220 90% 56%; /* Playful Blue */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 10% 10%;
+
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 5% 45%;
+
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 10% 10%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5% 90%;
+    --input: 240 5% 90%;
+    --ring: 220 90% 56%;
+
+    --radius: 2rem;
+
+    --money-in: 142 70% 45%; /* Clean Green */
+    --money-out: 220 90% 56%; /* Clean Blue */
+    --money-out-subtle: 220 90% 95%;
+    --danger: 0 84% 60%;
+    --commission: 35 100% 55%; /* Warm Orange */
+    --accent-decorative: 280 80% 60%; /* Soft Purple */
+  }
+
+  .dark {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 10% 6%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 6%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 270 100% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 10% 12%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 10% 12%;
+    --muted-foreground: 240 5% 65%;
+
+    --accent: 240 10% 16%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 100% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 10% 15%;
+    --input: 240 10% 15%;
+    --ring: 270 100% 60%;
+
+    --money-in: 150 100% 50%; /* Neon Green */
+    --money-out: 270 100% 60%; /* Neon Purple */
+    --money-out-subtle: 270 100% 15%;
+    --danger: 0 100% 60%; /* Neon Red */
+    --commission: 190 100% 50%; /* Neon Cyan */
+    --accent-decorative: 30 100% 60%; /* Neon Orange */
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

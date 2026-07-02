@@ -1,0 +1,109 @@
+{
+  "user": {
+    "id": "usr_123",
+    "fullName": "Octave Dupont",
+    "phone": "+22900000000",
+    "commissionPhone": "+22999999999",
+    "language": "fr",
+    "onboardingStep": 4
+  },
+  "plan": {
+    "id": "starter",
+    "name": "Starter",
+    "monthlyPriceFcfa": 0,
+    "commissionRateBps": 100,
+    "monthlyCapFcfa": null,
+    "enforcesCap": false
+  },
+  "rules": [
+    {
+      "id": "r1",
+      "userId": "usr_123",
+      "connectionId": "conn_1",
+      "name": "Épargne & Loyer",
+      "type": "percentage",
+      "status": "active",
+      "triggerType": "monthly",
+      "triggerConfig": {},
+      "condition": null,
+      "remainderTargetId": "t3",
+      "priority": 1,
+      "autoExecuteAuthorized": false,
+      "targets": [
+        {
+          "id": "t1",
+          "ruleId": "r1",
+          "label": "Propriétaire (Moov)",
+          "mode": "fixed_amount",
+          "value": 60000,
+          "momoMethod": "moov",
+          "phoneNumber": "+22960000000",
+          "isRemainder": false,
+          "position": 1
+        },
+        {
+          "id": "t2",
+          "ruleId": "r1",
+          "label": "Épargne (MTN)",
+          "mode": "percentage",
+          "value": 15,
+          "momoMethod": "mtn",
+          "phoneNumber": "+22990000000",
+          "isRemainder": false,
+          "position": 2
+        },
+        {
+          "id": "t3",
+          "ruleId": "r1",
+          "label": "Compte Principal",
+          "mode": "percentage",
+          "value": 0,
+          "momoMethod": "mtn",
+          "phoneNumber": "+22900000000",
+          "isRemainder": true,
+          "position": 3
+        }
+      ]
+    }
+  ],
+  "executions": [
+    {
+      "id": "exec_1",
+      "userId": "usr_123",
+      "ruleId": "r1",
+      "triggerSource": "manual",
+      "status": "completed",
+      "idempotencyKey": "usr_123-r1-manual_1",
+      "sourceEntryIds": [],
+      "totalAmountFcfa": 150000,
+      "commissionAmountFcfa": 1500,
+      "commissionRateBpsSnapshot": 100,
+      "planIdSnapshot": "starter",
+      "confirmedAt": "2024-02-02T10:00:00Z",
+      "confirmedBy": "usr_123"
+    },
+    {
+      "id": "exec_1782993295745",
+      "userId": "usr_123",
+      "ruleId": "r1",
+      "triggerSource": "manual",
+      "status": "partially_failed",
+      "idempotencyKey": "usr_123-r1-",
+      "sourceEntryIds": [],
+      "totalAmountFcfa": 150000,
+      "commissionAmountFcfa": 1500,
+      "commissionRateBpsSnapshot": 100,
+      "planIdSnapshot": "starter",
+      "confirmedAt": "2026-07-02T11:54:55.745Z",
+      "confirmedBy": "usr_123"
+    }
+  ],
+  "connections": [
+    {
+      "id": "conn_1",
+      "name": "Kkiapay Principal",
+      "provider": "kkiapay",
+      "status": "active"
+    }
+  ]
+}
