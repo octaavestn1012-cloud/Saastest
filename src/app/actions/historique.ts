@@ -15,9 +15,11 @@ export async function getHistorique() {
         *,
         regles ( nom ),
         execution_lignes (
+          id,
           destinataire_libelle,
           montant,
-          statut
+          statut,
+          est_commission
         )
       `)
       .eq("user_id", user.id)

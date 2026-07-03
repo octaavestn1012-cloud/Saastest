@@ -14,7 +14,7 @@ const leftTabs = [
 ];
 
 const rightTabs = [
-  { name: "Historique", href: "/historique", icon: History },
+  { name: "Mes numéros", href: "/destinataires", icon: Users },
   { name: "Menu", href: "/menu", icon: Menu },
 ];
 
@@ -93,7 +93,7 @@ export function BottomTabs() {
             {[
               { name: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
               { name: "Règles", href: "/rules", icon: SlidersHorizontal },
-              { name: "Destinataires", href: "/destinataires", icon: Users },
+              { name: "Mes numéros", href: "/destinataires", icon: Users },
               { name: "Historique", href: "/historique", icon: History },
               { name: "Rapports", href: "/rapports", icon: PieChart },
               { name: "Connexions", href: "/connections", icon: Link2 },

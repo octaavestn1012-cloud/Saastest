@@ -10,7 +10,7 @@ const navItems = [
   { name: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
   { name: "Répartir", action: "modal", icon: Zap },
   { name: "Règles", href: "/rules", icon: SlidersHorizontal },
-  { name: "Destinataires", href: "/destinataires", icon: Users },
+  { name: "Mes numéros", href: "/destinataires", icon: Users },
   { name: "Historique", href: "/historique", icon: History },
   { name: "Rapports", href: "/rapports", icon: PieChart },
   { name: "Connexions", href: "/connections", icon: Link2 },

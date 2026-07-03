@@ -95,21 +95,25 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
   useEffect(() => {
     // Transform DB data to TransactionHistory format
     const formattedData = initialData.map((exec: any) => {
-      const details = exec.execution_lignes?.map((ligne: any) => ({
+      const allDetails = exec.execution_lignes?.map((ligne: any) => ({
         id: ligne.id,
         name: ligne.destinataire_libelle,
-        network: "Mobile Money",
-        phone: "Masqué",
+        network: ligne.est_commission ? "Frais" : "Mobile Money",
+        phone: ligne.est_commission ? "Réparto" : "Masqué",
         amount: Number(ligne.montant),
         status: ligne.statut === "reussi" ? "SUCCESS" : "FAILED",
+        isCommission: ligne.est_commission
       })) || [];
+
+      const commissionLigne = allDetails.find((d: any) => d.isCommission);
+      const details = allDetails.filter((d: any) => !d.isCommission);
 
       return {
         id: exec.id,
         date: exec.date_execution,
         ruleName: exec.regles?.nom || "Règle supprimée",
         totalAvailable: Number(exec.montant_total),
-        commissionAmount: 0, // Optionnel
+        commissionAmount: commissionLigne ? commissionLigne.amount : 0,
         totalAmount: details.reduce((acc: number, d: any) => acc + d.amount, 0),
         recipientCount: details.length,
         status: exec.statut === "reussi" ? "SUCCESS" : (exec.statut === "partiel" ? "PARTIAL" : "FAILED"),
