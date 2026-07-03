@@ -7,7 +7,7 @@ export interface UserProfile {
   onboardingStep: number;
 }
 
-export type PlanId = "starter" | "boss" | "empire";
+export type PlanId = "gratuit" | "pro" | "business";
 
 export interface Plan {
   id: PlanId;

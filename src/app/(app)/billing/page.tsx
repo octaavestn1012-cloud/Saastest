@@ -3,9 +3,15 @@
 import { useState } from "react";
 import { CreditCard, CheckCircle2, Receipt, Plus, Download, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@/context/UserContext";
 
 export default function BillingPage() {
-  const [currentPlan] = useState("Gratuit");
+  const { plan: currentPlanRaw } = useUser();
+  // Transforme la première lettre en majuscule pour l'affichage ("gratuit" -> "Gratuit")
+  const currentPlan = currentPlanRaw.charAt(0).toUpperCase() + currentPlanRaw.slice(1);
+  
+  // Constantes basées sur le plan
+  const commissionText = currentPlanRaw === 'pro' ? '0,8%' : currentPlanRaw === 'business' ? '0,4%' : '1,9%';
 
   return (
     <div className="max-w-5xl mx-auto pb-24">
@@ -32,7 +38,7 @@ export default function BillingPage() {
             </p>
             <div className="flex items-center gap-2 text-sm font-medium bg-[#F5F5F7] px-4 py-2 rounded-xl inline-flex text-black">
               <CheckCircle2 className="w-4 h-4 text-primary" />
-              Commission actuelle : 1,9% par répartition
+              Commission actuelle : {commissionText} par répartition
             </div>
           </div>
           <div className="shrink-0">

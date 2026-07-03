@@ -6,10 +6,12 @@ import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import { useUser } from "@/context/UserContext";
 
 export default function SettingsPage() {
   const supabase = createClient();
   const router = useRouter();
+  const { user, refreshProfile } = useUser();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,7 +44,7 @@ export default function SettingsPage() {
     setSaving(true);
     setSuccessMsg("");
     
-    const { error } = await supabase.auth.updateUser({
+    const { error: authError } = await supabase.auth.updateUser({
       data: { 
         full_name: fullName,
         phone: phone,
@@ -50,9 +52,17 @@ export default function SettingsPage() {
       }
     });
 
+    if (user && !authError) {
+      await supabase
+        .from('profiles')
+        .update({ nom: fullName })
+        .eq('id', user.id);
+    }
+
     setSaving(false);
-    if (!error) {
+    if (!authError) {
       setSuccessMsg("Modifications enregistrées avec succès");
+      await refreshProfile();
       router.refresh(); 
       setTimeout(() => setSuccessMsg(""), 3000);
     }

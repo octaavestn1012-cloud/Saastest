@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle2, XCircle, Loader2, Edit2, RotateCcw, Plus, Trash2, Zap, SlidersHorizontal, BookOpen, Info } from "lucide-react";
 import { Amount } from "@/components/shared/Amount";
+import { useUser } from "@/context/UserContext";
 import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import { PreviewRule } from "@/context/RepartitionContext";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -13,9 +14,6 @@ type Step = "PREVIEW" | "EXECUTING" | "RESULT";
 type ModalMode = "rule" | "quick";
 
 const TOTAL_AVAILABLE = 150000;
-const USER_PLAN = "Boss";
-const COMMISSION_RATE = USER_PLAN === "Boss" ? 0.008 : USER_PLAN === "Empire" ? 0.004 : 0.019;
-const COMMISSION_TEXT = USER_PLAN === "Boss" ? "0,8%" : USER_PLAN === "Empire" ? "0,4%" : "1,9%";
 
 export function RepartitionModal({ onClose, customData }: { onClose: () => void, customData?: PreviewRule }) {
   const [step, setStep] = useState<Step>("PREVIEW");
@@ -38,6 +36,11 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [saveRuleTrigger, setSaveRuleTrigger] = useState("manual");
   const [ruleSaved, setRuleSaved] = useState(false);
   const [showCommissionDetails, setShowCommissionDetails] = useState(false);
+  const { plan } = useUser();
+
+  const COMMISSION_RATE = plan === "pro" ? 0.008 : plan === "business" ? 0.004 : 0.019;
+  const COMMISSION_TEXT = plan === "pro" ? "0,8%" : plan === "business" ? "0,4%" : "1,9%";
+  const RESTANT_TEXT = plan === "pro" ? "99,2%" : plan === "business" ? "99,6%" : "98,1%";
 
   useEffect(() => {
     if (customData) {
@@ -352,7 +355,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                         </span>
                       </div>
                       <p className="text-left text-[12px] font-medium text-muted-foreground pt-1 leading-relaxed">
-                        Réparto prélève {COMMISSION_TEXT}. Tu répartis les {USER_PLAN === "Boss" ? "99,2%" : USER_PLAN === "Empire" ? "99,6%" : "98,1%"} restants comme tu veux.
+                        Réparto prélève {COMMISSION_TEXT}. Tu répartis les {RESTANT_TEXT} restants comme tu veux.
                       </p>
                     </div>
                   </motion.div>

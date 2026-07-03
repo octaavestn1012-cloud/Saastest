@@ -3,9 +3,7 @@
 import { Lock, TrendingUp, Download } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import { Amount } from "@/components/shared/Amount";
-
-// CHANGER CETTE VARIABLE POUR TESTER LES DEUX ÉTATS
-const isPremium = false;
+import { useUser } from "@/context/UserContext";
 
 const evolutionData = [
   { month: 'Jan', entrees: 400000, repartitions: 240000 },
@@ -18,6 +16,9 @@ const evolutionData = [
 ];
 
 export function AdvancedReports() {
+  const { plan } = useUser();
+  const isPremium = plan === "business";
+
   return (
     <div className="relative mt-12">
       <h2 className="text-2xl font-black mb-6">Rapports avancés</h2>
@@ -29,7 +30,7 @@ export function AdvancedReports() {
             <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
               <Lock className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-black mb-2">Réservé au plan Empire</h3>
+            <h3 className="text-xl font-black mb-2">Réservé au plan Business</h3>
             <p className="text-sm font-medium text-muted-foreground mb-6">
               Débloquez l'historique complet, les courbes d'évolution et les exports comptables détaillés.
             </p>

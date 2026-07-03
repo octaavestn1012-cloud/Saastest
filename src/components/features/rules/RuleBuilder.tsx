@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRepartition, PreviewRule } from "@/context/RepartitionContext";
 import { useRouter } from "next/navigation";
+import { useUser } from "@/context/UserContext";
 import { RecipientModal, Recipient as Contact } from "@/components/features/destinataires/RecipientModal";
 
 type RecipientRow = {
@@ -52,7 +53,11 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
 
   // Options Avancées
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
-  const isPremium = true; 
+  const { plan } = useUser();
+  const isPremium = plan === 'pro' || plan === 'business';
+  
+  const COMMISSION_RATE = plan === "pro" ? 0.008 : plan === "business" ? 0.004 : 0.019;
+  const COMMISSION_TEXT = plan === "pro" ? "0,8%" : plan === "business" ? "0,4%" : "1,9%";
 
   const [advancedConditionEnabled, setAdvancedConditionEnabled] = useState(false);
   const [advancedConditionAmount, setAdvancedConditionAmount] = useState("");
@@ -145,7 +150,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
     const previewData: PreviewRule = {
       name: ruleName || "Nouvelle Règle",
       totalAvailable: simulatedBalance,
-      commission: simulatedBalance * 0.008,
+      commission: simulatedBalance * COMMISSION_RATE,
       targets: recipients.map((r, i) => {
         let amount = mode === "percentage" ? (simulatedBalance * (Number(r.value) || 0)) / 100 : (Number(r.value) || 0);
         return {
@@ -437,7 +442,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
         <div>
           <h4 className="font-bold text-purple-900 text-lg mb-1">Commission Réparto</h4>
           <p className="text-purple-700/80 text-sm leading-relaxed font-medium">
-            Une commission fixe de <strong className="text-purple-600">0,8%</strong> est appliquée sur chaque répartition exécutée. Elle est prélevée automatiquement sur le compte source et ne vient pas amputer les montants de vos destinataires.
+            Une commission fixe de <strong className="text-purple-600">{COMMISSION_TEXT}</strong> est appliquée sur chaque répartition exécutée. Elle est prélevée automatiquement sur le compte source et ne vient pas amputer les montants de vos destinataires.
           </p>
         </div>
       </section>
@@ -460,7 +465,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
             </div>
             {!isPremium ? (
               <p className="text-[#B9811C] text-sm font-medium">
-                Réservé aux plans Boss et Empire. <span className="underline cursor-pointer">Débloquer</span>
+                Réservé aux plans Pro et Business. <span className="underline cursor-pointer">Débloquer</span>
               </p>
             ) : (
               <p className="text-[#B9811C] text-sm font-medium">
@@ -491,7 +496,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                         <Lock className="w-8 h-8" />
                       </div>
                       <h3 className="font-bold text-xl mb-2 text-black">Options verrouillées</h3>
-                      <p className="text-muted-foreground text-sm mb-6">Passe au plan Boss ou Empire pour définir des conditions, gérer les priorités et plus encore.</p>
+                      <p className="text-muted-foreground text-sm mb-6">Passe au plan Pro ou Business pour définir des conditions, gérer les priorités et plus encore.</p>
                       <Button className="w-full h-12 bg-black hover:bg-black/80 text-white rounded-xl font-bold">
                         Voir les plans
                       </Button>

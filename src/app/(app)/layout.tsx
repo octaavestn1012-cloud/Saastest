@@ -1,6 +1,8 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { MigrationProvider } from "@/components/providers/MigrationProvider";
+import { UserProvider } from "@/context/UserContext";
+import { RepartitionProvider } from "@/context/RepartitionContext";
 import { ReactNode } from "react";
 import { Bell } from "lucide-react";
 import { UserDropdown } from "@/components/shared/UserDropdown";
@@ -33,30 +35,34 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const formattedName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
 
   return (
-    <MigrationProvider>
-      <AppShell userName={formattedName} userEmail={userEmail}>
-        <header className="hidden md:flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Bonjour {formattedName} 👋</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Prêt à répartir tes revenus ?</p>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <button className="p-2 relative text-muted-foreground hover:bg-muted rounded-full transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-danger rounded-full" />
-            </button>
-            
-            <div className="hidden sm:block">
-              <UserDropdown userName={formattedName} userEmail={userEmail} isMobile={false} />
-            </div>
-          </div>
-        </header>
+    <UserProvider>
+      <RepartitionProvider>
+        <MigrationProvider>
+          <AppShell userName={formattedName} userEmail={userEmail}>
+            <header className="hidden md:flex justify-between items-center mb-8">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Bonjour {formattedName} 👋</h1>
+                <p className="text-muted-foreground mt-1 text-sm">Prêt à répartir tes revenus ?</p>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <button className="p-2 relative text-muted-foreground hover:bg-muted rounded-full transition-colors">
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-danger rounded-full" />
+                </button>
+                
+                <div className="hidden sm:block">
+                  <UserDropdown userName={formattedName} userEmail={userEmail} isMobile={false} />
+                </div>
+              </div>
+            </header>
 
-        <PageTransition>
-          {children}
-        </PageTransition>
-      </AppShell>
-    </MigrationProvider>
+            <PageTransition>
+              {children}
+            </PageTransition>
+          </AppShell>
+        </MigrationProvider>
+      </RepartitionProvider>
+    </UserProvider>
   );
 }

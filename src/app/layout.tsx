@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
-import { RepartitionProvider } from "@/context/RepartitionContext";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -19,9 +18,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className={cn("font-sans", inter.variable)}>
       <body className="antialiased min-h-screen bg-[#F5F5F7] text-foreground">
-        <RepartitionProvider>
-          {children}
-        </RepartitionProvider>
+        {children}
       </body>
     </html>
   );
