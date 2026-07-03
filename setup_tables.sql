@@ -1,7 +1,23 @@
 -- ÉTAPE 2 : Création des tables de données et configuration de la sécurité (RLS)
 
 -- ==========================================
--- 1. CRÉATION DES TABLES
+-- 0. NETTOYAGE DES ANCIENNES TABLES
+-- ==========================================
+-- (Cette étape supprime vos anciennes tables de test en anglais et nettoie le terrain)
+DROP TABLE IF EXISTS public.transactions CASCADE;
+DROP TABLE IF EXISTS public.transaction_splits CASCADE;
+DROP TABLE IF EXISTS public.rules CASCADE;
+DROP TABLE IF EXISTS public.recipients CASCADE;
+
+DROP TABLE IF EXISTS public.execution_lignes CASCADE;
+DROP TABLE IF EXISTS public.executions CASCADE;
+DROP TABLE IF EXISTS public.distributions CASCADE;
+DROP TABLE IF EXISTS public.regles CASCADE;
+DROP TABLE IF EXISTS public.connexions CASCADE;
+DROP TABLE IF EXISTS public.destinataires CASCADE;
+
+-- ==========================================
+-- 1. CRÉATION DES NOUVELLES TABLES
 -- ==========================================
 
 -- a) Table : destinataires

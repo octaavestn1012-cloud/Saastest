@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, SlidersHorizontal, History, Menu, Zap, Users, PieChart, Link2 } from "lucide-react";
+import { LayoutDashboard, SlidersHorizontal, History, Menu, Zap, Users, PieChart, Link2, CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRepartition } from "@/context/RepartitionContext";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -97,6 +97,7 @@ export function BottomTabs() {
               { name: "Historique", href: "/historique", icon: History },
               { name: "Rapports", href: "/rapports", icon: PieChart },
               { name: "Connexions", href: "/connections", icon: Link2 },
+              { name: "Facturation", href: "/billing", icon: CreditCard },
             ].map((item) => (
               <Link 
                 key={item.name} 
