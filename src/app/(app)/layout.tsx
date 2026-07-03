@@ -29,8 +29,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   const userEmail = user.email || "";
-  const userName = userEmail.split("@")[0]; // On affiche la partie avant le @ pour faire plus "amical"
-  const formattedName = userName.charAt(0).toUpperCase() + userName.slice(1);
+  const baseName = user.user_metadata?.full_name || userEmail.split("@")[0];
+  const formattedName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
 
   return (
     <MigrationProvider>
