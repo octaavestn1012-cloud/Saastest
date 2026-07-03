@@ -1,5 +1,29 @@
-import { redirect } from "next/navigation";
+import { PublicHeader } from "@/components/features/landing/PublicHeader";
+import { HeroSection } from "@/components/features/landing/HeroSection";
+import { ProblemSolutionSection } from "@/components/features/landing/ProblemSolutionSection";
+import { BenefitsSection } from "@/components/features/landing/BenefitsSection";
+import { TrustSection } from "@/components/features/landing/TrustSection";
+import { PricingSection } from "@/components/features/landing/PricingSection";
+import { FAQSection } from "@/components/features/landing/FAQSection";
+import { CTASection } from "@/components/features/landing/CTASection";
+import { PublicFooter } from "@/components/features/landing/PublicFooter";
 
 export default function Home() {
-  redirect("/dashboard");
+  return (
+    <div className="min-h-screen bg-[#F5F5F7] font-sans selection:bg-primary/20 selection:text-primary">
+      <PublicHeader />
+      
+      <main>
+        <HeroSection />
+        <ProblemSolutionSection />
+        <BenefitsSection />
+        <TrustSection />
+        <PricingSection />
+        <FAQSection />
+        <CTASection />
+      </main>
+
+      <PublicFooter />
+    </div>
+  );
 }
