@@ -20,7 +20,7 @@ export function AppShell({ children, userName, userEmail }: AppShellProps) {
         {/* Mobile Header */}
         <header className="md:hidden flex justify-between items-center px-4 py-3 bg-white border-b border-black/[0.05] sticky top-0 z-40">
           <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-xl bg-black flex items-center justify-center text-white font-bold text-sm shadow-sm">
+            <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-sm shadow-sm">
               R
             </div>
             <span className="text-lg font-bold tracking-tight text-black">Réparto</span>

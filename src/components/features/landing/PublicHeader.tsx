@@ -29,7 +29,7 @@ export function PublicHeader() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2" onClick={closeMenu}>
-            <div className="w-8 h-8 rounded-xl bg-black flex items-center justify-center text-white font-bold text-sm shadow-sm">
+            <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-sm shadow-sm">
               R
             </div>
             <span className="text-xl font-bold tracking-tight text-black">Réparto</span>

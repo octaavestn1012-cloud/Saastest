@@ -30,7 +30,7 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex w-64 flex-col border-r border-black/[0.05] bg-white px-4 py-6 z-10 relative">
       <Link href="/dashboard" className="flex items-center gap-3 mb-12 px-2 hover:opacity-80 transition-opacity">
-        <div className="w-10 h-10 rounded-[1.2rem] bg-black flex items-center justify-center text-white font-bold shadow-md">
+        <div className="w-10 h-10 rounded-[1.2rem] bg-primary flex items-center justify-center text-white font-bold shadow-md">
           R
         </div>
         <span className="text-2xl font-bold tracking-tight text-black">Réparto</span>
