@@ -8,9 +8,11 @@ import { UserDropdown } from "@/components/shared/UserDropdown";
 
 interface AppShellProps {
   children: ReactNode;
+  userName: string;
+  userEmail: string;
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, userName, userEmail }: AppShellProps) {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
@@ -29,7 +31,7 @@ export function AppShell({ children }: AppShellProps) {
                <Bell className="w-5 h-5" />
                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-danger border-2 border-white rounded-full" />
              </button>
-             <UserDropdown userName="Octave" isMobile={true} />
+             <UserDropdown userName={userName} userEmail={userEmail} isMobile={true} />
           </div>
         </header>
 

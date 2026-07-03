@@ -53,7 +53,7 @@ export function PublicHeader() {
             <Link href="/login" className="text-sm font-bold text-black hover:opacity-70 transition-opacity">
               Se connecter
             </Link>
-            <Link href="/login">
+            <Link href="/signup">
               <Button className="bg-black hover:bg-black/80 text-white rounded-full px-6 font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
                 Commencer gratuitement
               </Button>
@@ -89,7 +89,7 @@ export function PublicHeader() {
                 Se connecter
               </Button>
             </Link>
-            <Link href="/login" onClick={closeMenu} className="w-full">
+            <Link href="/signup" onClick={closeMenu} className="w-full">
               <Button className="w-full bg-black hover:bg-black/80 text-white rounded-xl py-6 text-base font-bold shadow-md">
                 Commencer gratuitement
               </Button>

@@ -115,7 +115,7 @@ export function PricingSection() {
                 ))}
               </div>
 
-              <Link href="/login" className="w-full">
+              <Link href="/signup" className="w-full">
                 <Button 
                   className={`w-full py-6 rounded-2xl font-bold text-lg transition-all ${
                     plan.highlighted 

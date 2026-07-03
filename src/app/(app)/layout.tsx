@@ -2,19 +2,42 @@ import { AppShell } from "@/components/layout/AppShell";
 import { PageTransition } from "@/components/shared/PageTransition";
 import { MigrationProvider } from "@/components/providers/MigrationProvider";
 import { ReactNode } from "react";
-import { Bell, ChevronDown } from "lucide-react";
+import { Bell } from "lucide-react";
 import { UserDropdown } from "@/components/shared/UserDropdown";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-export default function AppLayout({ children }: { children: ReactNode }) {
-  // TODO: Remplacer par les vraies données utilisateur
-  const userName = "Octave";
+export default async function AppLayout({ children }: { children: ReactNode }) {
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+      },
+    }
+  );
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    redirect("/login");
+  }
+
+  const userEmail = user.email || "";
+  const userName = userEmail.split("@")[0]; // On affiche la partie avant le @ pour faire plus "amical"
+  const formattedName = userName.charAt(0).toUpperCase() + userName.slice(1);
 
   return (
     <MigrationProvider>
-      <AppShell>
+      <AppShell userName={formattedName} userEmail={userEmail}>
         <header className="hidden md:flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Bonjour {userName} 👋</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Bonjour {formattedName} 👋</h1>
             <p className="text-muted-foreground mt-1 text-sm">Prêt à répartir tes revenus ?</p>
           </div>
           
@@ -25,7 +48,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </button>
             
             <div className="hidden sm:block">
-              <UserDropdown userName={userName} isMobile={false} />
+              <UserDropdown userName={formattedName} userEmail={userEmail} isMobile={false} />
             </div>
           </div>
         </header>
