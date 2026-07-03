@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { LogOut, User as UserIcon } from "lucide-react";
-import { ChevronDown } from "lucide-react";
+import { LogOut, User as UserIcon, Settings, HelpCircle, ChevronDown } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -73,6 +72,26 @@ export function UserDropdown({ userName, userEmail, isMobile = false }: UserDrop
             <UserIcon className="w-4 h-4" />
             Mon compte
           </button>
+          
+          {isMobile && (
+            <>
+              <button 
+                onClick={() => { setIsOpen(false); router.push("/settings") }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-black hover:bg-black/5 transition-colors font-medium"
+              >
+                <Settings className="w-4 h-4" />
+                Paramètres
+              </button>
+
+              <button 
+                onClick={() => { setIsOpen(false); router.push("/support") }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-black hover:bg-black/5 transition-colors font-medium"
+              >
+                <HelpCircle className="w-4 h-4" />
+                Support
+              </button>
+            </>
+          )}
           
           <button 
             onClick={handleSignOut}
