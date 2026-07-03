@@ -9,15 +9,18 @@ import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import { PreviewRule } from "@/context/RepartitionContext";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import Link from "next/link";
+import { getDashboardMetrics } from "@/app/actions/dashboard";
+import { getRegles } from "@/app/actions/regles";
+import { executeRepartitionAction } from "@/app/actions/repartir";
 
 type Step = "PREVIEW" | "EXECUTING" | "RESULT";
 type ModalMode = "rule" | "quick";
 
-const TOTAL_AVAILABLE = 150000;
-
 export function RepartitionModal({ onClose, customData }: { onClose: () => void, customData?: PreviewRule }) {
   const [step, setStep] = useState<Step>("PREVIEW");
   const [results, setResults] = useState<Record<string, "PENDING" | "SUCCESS" | "FAILED">>({});
+  const [totalAvailable, setTotalAvailable] = useState<number>(0);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   
   const [rules, setRules] = useState<any[]>([]);
   const [selectedRuleId, setSelectedRuleId] = useState<string>("");
@@ -43,18 +46,48 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const RESTANT_TEXT = plan === "pro" ? "99,2%" : plan === "business" ? "99,6%" : "98,1%";
 
   useEffect(() => {
-    if (customData) {
-      setModalMode("rule");
-      return;
-    }
+    const fetchData = async () => {
+      setIsLoadingData(true);
+      try {
+        const { data: metrics } = await getDashboardMetrics();
+        if (metrics) {
+          setTotalAvailable(metrics.balance || 0);
+        }
 
-    const savedRules = JSON.parse(localStorage.getItem('reparto_rules') || '[]');
-    const activeRules = savedRules.filter((r: any) => r.active);
-    setRules(activeRules);
+        if (!customData) {
+          const { data: rulesData } = await getRegles();
+          if (rulesData) {
+            // Transformer les règles pour correspondre au format attendu par la modale
+            const formattedRules = rulesData.filter((r:any) => r.actif).map((r: any) => ({
+              id: r.id,
+              name: r.nom,
+              active: r.actif,
+              mode: r.mode,
+              recipients: r.distributions?.map((d: any) => ({
+                id: d.id,
+                name: d.libelle,
+                value: d.valeur,
+                network: d.destinataires?.methode_mobile_money || "Mobile Money",
+                phone: d.destinataires?.numero || ""
+              })) || []
+            }));
+            setRules(formattedRules);
+            
+            if (formattedRules.length > 0) {
+              setSelectedRuleId(formattedRules[0].id);
+            }
+          }
+        } else {
+          setModalMode("rule");
+        }
+      } catch (e) {
+        console.error("Erreur lors du chargement des données", e);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
     
-    if (activeRules.length > 0) {
-      setSelectedRuleId(activeRules[0].id);
-    }
+    fetchData();
   }, [customData]);
 
   const activeRuleSource = useMemo(() => {
@@ -66,13 +99,13 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     if (customData) return customData;
     if (!activeRuleSource) return null;
 
-    const commissionAmount = TOTAL_AVAILABLE * COMMISSION_RATE;
-    const toDistribute = TOTAL_AVAILABLE - commissionAmount;
+    const commissionAmount = totalAvailable * COMMISSION_RATE;
+    const toDistribute = totalAvailable - commissionAmount;
     const mode = activeRuleSource.mode || "percentage";
     
     return {
       name: activeRuleSource.name,
-      totalAvailable: TOTAL_AVAILABLE,
+      totalAvailable: totalAvailable,
       commission: commissionAmount,
       toDistribute: toDistribute,
       targets: (activeRuleSource.recipients || []).map((r: any, index: number) => {
@@ -99,11 +132,11 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   }, [currentPreviewData, modalMode]);
 
   const quickPreviewData = useMemo(() => {
-    const commissionAmount = TOTAL_AVAILABLE * COMMISSION_RATE;
-    const toDistribute = TOTAL_AVAILABLE - commissionAmount;
+    const commissionAmount = totalAvailable * COMMISSION_RATE;
+    const toDistribute = totalAvailable - commissionAmount;
     return {
       name: "Répartition rapide",
-      totalAvailable: TOTAL_AVAILABLE,
+      totalAvailable: totalAvailable,
       commission: commissionAmount,
       toDistribute: toDistribute,
       targets: quickTargets.map((r: any, index: number) => {
@@ -129,7 +162,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     ? currentTargets.some(t => t.percent !== undefined)
     : quickMode === "percentage";
 
-  const toDistribute = TOTAL_AVAILABLE - (TOTAL_AVAILABLE * COMMISSION_RATE);
+  const toDistribute = totalAvailable - (totalAvailable * COMMISSION_RATE);
   const totalDistributedTargets = currentTargets.reduce((acc, t) => acc + (isPercentageMode ? (toDistribute * (Number(t.percent) || 0)) / 100 : Number(t.amount) || 0), 0);
   const totalDistributed = totalDistributedTargets + (activeData?.commission || 0);
   
@@ -138,7 +171,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
 
   const formatAmount = (val: number) => new Intl.NumberFormat('fr-FR').format(val);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!isExact) return;
     setStep("EXECUTING");
     
@@ -146,69 +179,31 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     currentTargets.forEach(t => initialResults[t.id] = "PENDING");
     setResults(initialResults);
 
-    // Keep track of the final results to save to history
-    const finalResultsToSave: Record<string, "SUCCESS" | "FAILED"> = {};
+    try {
+      // Exécuter via le vrai moteur FedaPay !
+      const res = await executeRepartitionAction(totalAvailable);
+      
+      const finalStatus = res.status === 'completed' ? "SUCCESS" : "FAILED";
+      
+      // Mettre à jour l'UI avec le statut
+      const finalResultsToSave: Record<string, "SUCCESS" | "FAILED"> = {};
+      currentTargets.forEach(t => {
+        finalResultsToSave[t.id] = finalStatus;
+      });
+      setResults(finalResultsToSave);
+      setStep("RESULT");
 
-    currentTargets.forEach((target, index) => {
-      setTimeout(() => {
-        const isSuccess = target.id !== "3" && target.id !== "d_5"; // Mock failures for certain ids
-        const finalStatus = isSuccess ? "SUCCESS" : "FAILED";
-        
-        finalResultsToSave[target.id] = finalStatus;
-
-        setResults(prev => ({
-          ...prev,
-          [target.id]: finalStatus
-        }));
-
-        if (index === currentTargets.length - 1) {
-          setTimeout(() => {
-            // Save to history
-            const details = currentTargets.map((t: any) => ({
-              id: Math.random().toString(),
-              name: t.label,
-              network: t.method,
-              phone: t.number || "00 00 00 00",
-              amount: t.amount,
-              status: finalResultsToSave[t.id],
-              errorReason: finalResultsToSave[t.id] === "FAILED" ? "Solde mobile money insuffisant" : undefined,
-              reference: finalResultsToSave[t.id] === "SUCCESS" ? `REF-${Math.floor(Math.random()*10000)}` : undefined
-            }));
-            
-            const totalFailed = details.filter(d => d.status === "FAILED").length;
-            let finalOverallStatus = "SUCCESS";
-            if (totalFailed === details.length) finalOverallStatus = "FAILED";
-            else if (totalFailed > 0) finalOverallStatus = "PARTIAL";
-
-            const historyEntry = {
-              id: `tx_${Date.now()}`,
-              date: new Date().toISOString(),
-              ruleName: activeData?.name || "Répartition rapide",
-              totalAvailable: TOTAL_AVAILABLE,
-              commissionAmount: activeData?.commission || 0,
-              totalAmount: totalDistributedTargets,
-              recipientCount: currentTargets.length,
-              status: finalOverallStatus,
-              details
-            };
-
-            const existingHistory = JSON.parse(localStorage.getItem('reparto_history') || 'null');
-            // If it's null, we just let it be, but the History dashboard initializes it. We just append.
-            if (existingHistory) {
-              localStorage.setItem('reparto_history', JSON.stringify([historyEntry, ...existingHistory]));
-            } else {
-              localStorage.setItem('reparto_history', JSON.stringify([historyEntry]));
-            }
-
-            setStep("RESULT");
-          }, 1000);
-        }
-      }, 1500 * (index + 1));
-    });
+    } catch (e: any) {
+      console.error(e);
+      const finalResultsToSave: Record<string, "SUCCESS" | "FAILED"> = {};
+      currentTargets.forEach(t => finalResultsToSave[t.id] = "FAILED");
+      setResults(finalResultsToSave);
+      setStep("RESULT");
+    }
   };
 
   const updateAdjustedTarget = (id: string, value: string) => {
-    const toDistribute = TOTAL_AVAILABLE - (TOTAL_AVAILABLE * COMMISSION_RATE);
+    const toDistribute = totalAvailable - (totalAvailable * COMMISSION_RATE);
     setAdjustedTargets(adjustedTargets.map(t => {
       if (t.id === id) {
         if (isPercentageMode) {
@@ -254,6 +249,20 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     localStorage.setItem('reparto_rules', JSON.stringify([...savedRules, ruleToSave]));
     setRuleSaved(true);
   };
+
+  if (isLoadingData) {
+    return (
+      <AnimatePresence>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative bg-white p-8 rounded-3xl flex flex-col items-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+            <p className="font-bold text-muted-foreground">Chargement des données...</p>
+          </motion.div>
+        </div>
+      </AnimatePresence>
+    );
+  }
 
   if (!activeData && rules.length === 0 && modalMode === "rule") {
     setModalMode("quick");

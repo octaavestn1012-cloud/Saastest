@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, MoreVertical, Edit2, Trash2, Loader2 } from "lucide-react";
+import { Plus, Users, MoreVertical, Edit2, Trash2, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RecipientModal, Recipient } from "@/components/features/destinataires/RecipientModal";
 import { getDestinataires, saveDestinataire, deleteDestinataire } from "@/app/actions/destinataires";
@@ -16,6 +16,12 @@ export default function DestinatairesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecipient, setEditingRecipient] = useState<Recipient | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
+  const [toast, setToast] = useState<{message: string, type: 'success'|'error'} | null>(null);
+
+  const showToast = (message: string, type: 'success'|'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const fetchRecipients = async () => {
     setIsLoading(true);
@@ -50,9 +56,10 @@ export default function DestinatairesPage() {
       await fetchRecipients();
       setIsModalOpen(false);
       setEditingRecipient(undefined);
+      showToast("Destinataire enregistré avec succès", "success");
     } else {
       console.error(res.error);
-      alert("Erreur lors de l'enregistrement");
+      showToast(res.error || "Erreur lors de l'enregistrement", "error");
     }
     setIsSaving(false);
   };
@@ -76,7 +83,27 @@ export default function DestinatairesPage() {
   };
 
   return (
-    <div className="space-y-8 pb-20 sm:pb-8">
+    <div className="space-y-8 pb-20 sm:pb-8 relative">
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: -20, x: "-50%" }}
+            className={`fixed top-4 left-1/2 z-[150] px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 font-semibold text-sm ${
+              toast.type === 'success' ? 'bg-black text-white' : 'bg-danger text-white'
+            }`}
+          >
+            {toast.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 text-[#C4F042]" />
+            ) : (
+              <AlertCircle className="w-5 h-5" />
+            )}
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {dropdownOpen && (
         <div 
           className="fixed inset-0 z-40" 

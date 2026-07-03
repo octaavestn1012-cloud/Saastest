@@ -25,7 +25,7 @@ export function RecipientModal({ recipient, onClose, onSave }: RecipientModalPro
     if (!name || !phone) return;
 
     onSave({
-      id: recipient?.id || Date.now().toString(),
+      id: recipient?.id || "",
       name,
       network,
       phone

@@ -86,21 +86,38 @@ const formatDate = (isoString: string) => {
   return `${day} ${month} ${year} à ${hours}:${minutes}`;
 };
 
-export function HistoryDashboard() {
+export function HistoryDashboard({ initialData }: { initialData: any[] }) {
   const [filterPeriod, setFilterPeriod] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTx, setSelectedTx] = useState<TransactionHistory | null>(null);
   const [historyData, setHistoryData] = useState<TransactionHistory[]>([]);
 
   useEffect(() => {
-    const existingHistory = JSON.parse(localStorage.getItem('reparto_history') || 'null');
-    if (!existingHistory) {
-      localStorage.setItem('reparto_history', JSON.stringify(MOCK_DATA));
-      setHistoryData(MOCK_DATA);
-    } else {
-      setHistoryData(existingHistory);
-    }
-  }, []);
+    // Transform DB data to TransactionHistory format
+    const formattedData = initialData.map((exec: any) => {
+      const details = exec.execution_lignes?.map((ligne: any) => ({
+        id: ligne.id,
+        name: ligne.destinataire_libelle,
+        network: "Mobile Money",
+        phone: "Masqué",
+        amount: Number(ligne.montant),
+        status: ligne.statut === "reussi" ? "SUCCESS" : "FAILED",
+      })) || [];
+
+      return {
+        id: exec.id,
+        date: exec.date_execution,
+        ruleName: exec.regles?.nom || "Règle supprimée",
+        totalAvailable: Number(exec.montant_total),
+        commissionAmount: 0, // Optionnel
+        totalAmount: details.reduce((acc: number, d: any) => acc + d.amount, 0),
+        recipientCount: details.length,
+        status: exec.statut === "reussi" ? "SUCCESS" : (exec.statut === "partiel" ? "PARTIAL" : "FAILED"),
+        details
+      };
+    });
+    setHistoryData(formattedData);
+  }, [initialData]);
 
   const filteredData = historyData.filter(tx => {
     if (filterStatus !== "all" && tx.status !== filterStatus.toUpperCase()) return false;
