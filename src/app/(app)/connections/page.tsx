@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Link2, Plus, AlertCircle, CheckCircle2, ShieldCheck, X } from "lucide-react";
+import { Link2, Plus, AlertCircle, CheckCircle2, ShieldCheck, X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createClient } from "@/utils/supabase/client";
+import { connectFedaPay } from "@/app/actions/connections";
 
 const AVAILABLE_GATEWAYS = [
   { name: "Kkiapay", desc: "Passerelle locale très populaire au Bénin.", color: "bg-blue-500" },
@@ -28,10 +30,65 @@ const AVAILABLE_GATEWAYS = [
 export default function ConnectionsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedGateway, setSelectedGateway] = useState<string | null>(null);
+  
+  // États de données
+  const [connections, setConnections] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // États du formulaire
+  const [nom, setNom] = useState("");
+  const [secretKey, setSecretKey] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const supabase = createClient();
+
+  const loadConnections = async () => {
+    setIsLoading(true);
+    const { data } = await supabase
+      .from("connexions")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (data) setConnections(data);
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadConnections();
+  }, []);
 
   const openModal = (gatewayName?: string) => {
     setSelectedGateway(gatewayName || null);
+    setNom("");
+    setSecretKey("");
+    setError(null);
     setIsModalOpen(true);
+  };
+
+  const handleConnect = async () => {
+    if (selectedGateway !== "FedaPay") {
+      setError("Cette passerelle n'est pas encore supportée dans cette version.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+    
+    const formData = new FormData();
+    formData.append("nom", nom);
+    formData.append("secretKey", secretKey);
+
+    const result = await connectFedaPay(formData);
+
+    if (result.error) {
+      setError(result.error);
+      setIsSubmitting(false);
+    } else {
+      setIsModalOpen(false);
+      loadConnections();
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -54,73 +111,77 @@ export default function ConnectionsPage() {
       {/* ZONE 1 : Passerelles connectées */}
       <div className="space-y-4">
         <h3 className="text-lg font-bold tracking-tight">Passerelles connectées</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Kkiapay Connecté */}
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0 }}
-            className="p-5 rounded-2xl bg-white shadow-sm border border-black/[0.05] relative overflow-hidden flex flex-col group hover:shadow-md transition-all"
-          >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-money-in/5 rounded-bl-full blur-xl" />
-            
-            <div className="relative z-10 flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-money-in/10 rounded-xl flex items-center justify-center text-money-in">
-                  <Link2 className="w-5 h-5" />
+        
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
+          </div>
+        ) : connections.length === 0 ? (
+          <div className="text-center py-12 bg-black/[0.02] border border-black/5 rounded-2xl">
+            <Link2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+            <h4 className="font-semibold text-lg text-foreground mb-1">Aucune connexion</h4>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+              Vous n'avez pas encore connecté de passerelle de paiement. Sélectionnez-en une ci-dessous pour commencer.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {connections.map((conn, index) => (
+              <motion.div 
+                key={conn.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className={`p-5 rounded-2xl shadow-sm border relative overflow-hidden flex flex-col group hover:shadow-md transition-all ${
+                  conn.statut === "actif" ? "bg-white border-black/[0.05]" : "bg-danger/5 border-danger/20"
+                }`}
+              >
+                <div className={`absolute top-0 right-0 w-24 h-24 rounded-bl-full blur-xl ${
+                  conn.statut === "actif" ? "bg-money-in/5" : "bg-danger/10"
+                }`} />
+                
+                <div className="relative z-10 flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      conn.statut === "actif" ? "bg-money-in/10 text-money-in" : "bg-danger/10 text-danger"
+                    }`}>
+                      <Link2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-[15px] leading-none mb-1 capitalize">{conn.nom}</h3>
+                      <p className="text-xs text-muted-foreground capitalize">{conn.passerelle}</p>
+                    </div>
+                  </div>
+                  <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
+                    conn.statut === "actif" ? "text-money-in bg-money-in/10" : "text-danger bg-danger/10"
+                  }`}>
+                    {conn.statut === "actif" ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                    {conn.statut}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-[15px] leading-none mb-1">Kkiapay Principal</h3>
-                  <p className="text-xs text-muted-foreground font-mono">sk_live_...a7b2</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 text-money-in bg-money-in/10 px-2 py-1 rounded-md text-[10px] font-bold uppercase">
-                <CheckCircle2 className="w-3 h-3" />
-                Actif
-              </div>
-            </div>
-            
-            <div className="relative z-10 mt-auto pt-4 border-t border-black/[0.05] flex justify-between items-center">
-              <span className="text-[10px] font-medium text-muted-foreground uppercase">Il y a 5 min</span>
-              <Button variant="outline" className="rounded-lg h-8 px-4 text-xs hover:bg-black/[0.02]">Gérer</Button>
-            </div>
-          </motion.div>
+                
+                {conn.statut === "erreur" && (
+                  <div className="relative z-10 text-xs font-medium text-danger mb-4 bg-danger/10 p-3 rounded-xl border border-danger/20 leading-snug">
+                    La clé API semble invalide ou expirée. Vérifiez vos accès.
+                  </div>
+                )}
 
-          {/* FedaPay Erreur */}
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="p-5 rounded-2xl bg-danger/5 shadow-sm border border-danger/20 relative overflow-hidden flex flex-col group hover:shadow-md transition-all"
-          >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-danger/10 rounded-bl-full blur-xl" />
-
-            <div className="relative z-10 flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-danger/10 rounded-xl flex items-center justify-center text-danger">
-                  <Link2 className="w-5 h-5" />
+                <div className={`relative z-10 mt-auto pt-4 border-t flex justify-between items-center ${
+                  conn.statut === "actif" ? "border-black/[0.05]" : "border-danger/10"
+                }`}>
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase">
+                    Ajouté le {new Date(conn.created_at).toLocaleDateString()}
+                  </span>
+                  <Button variant="outline" className={`rounded-lg h-8 px-4 text-xs ${
+                    conn.statut === "erreur" ? "bg-white text-danger border-danger/30 hover:bg-danger/10" : "hover:bg-black/[0.02]"
+                  }`}>
+                    Gérer
+                  </Button>
                 </div>
-                <div>
-                  <h3 className="font-bold text-[15px] leading-none mb-1 text-foreground">FedaPay Secondaire</h3>
-                  <p className="text-xs text-muted-foreground font-mono">sk_live_...9f4e</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 text-danger bg-danger/10 px-2 py-1 rounded-md text-[10px] font-bold uppercase">
-                <AlertCircle className="w-3 h-3" />
-                Erreur
-              </div>
-            </div>
-            
-            <div className="relative z-10 text-xs font-medium text-danger mb-4 bg-danger/10 p-3 rounded-xl border border-danger/20 leading-snug">
-              La clé API semble invalide ou expirée. Vérifiez vos accès.
-            </div>
-
-            <div className="relative z-10 mt-auto pt-4 border-t border-danger/10 flex justify-between items-center">
-              <span className="text-[10px] font-medium text-muted-foreground uppercase">Hier</span>
-              <Button variant="outline" className="bg-white rounded-lg h-8 px-4 text-xs text-danger border-danger/30 hover:text-danger hover:bg-danger/10">Reconnecter</Button>
-            </div>
-          </motion.div>
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ZONE 2 : Passerelles disponibles */}
@@ -165,7 +226,7 @@ export default function ConnectionsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => !isSubmitting && setIsModalOpen(false)}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -174,8 +235,9 @@ export default function ConnectionsPage() {
               className="bg-white rounded-[2rem] p-6 sm:p-8 w-full max-w-md shadow-2xl relative z-10"
             >
               <button 
-                onClick={() => setIsModalOpen(false)} 
-                className="absolute top-6 right-6 p-2 text-muted-foreground hover:bg-black/5 rounded-full transition-colors"
+                onClick={() => !isSubmitting && setIsModalOpen(false)} 
+                className="absolute top-6 right-6 p-2 text-muted-foreground hover:bg-black/5 rounded-full transition-colors disabled:opacity-50"
+                disabled={isSubmitting}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -185,21 +247,22 @@ export default function ConnectionsPage() {
               </h3>
               
               <div className="space-y-5">
+                {error && (
+                  <div className="p-4 bg-danger/10 text-danger rounded-xl text-sm font-medium flex gap-3 items-start">
+                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                    <p>{error}</p>
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <label className="block text-sm font-semibold text-foreground ml-1">Nom du compte / Libellé</label>
                   <input 
                     type="text" 
+                    value={nom}
+                    onChange={(e) => setNom(e.target.value)}
                     placeholder={`Ex: ${selectedGateway || "Ma passerelle"} Principal`} 
-                    className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium" 
-                  />
-                </div>
-                
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-foreground ml-1">Clé Publique (Public Key)</label>
-                  <input 
-                    type="text" 
-                    placeholder="pk_live_..." 
-                    className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium tracking-widest" 
+                    disabled={isSubmitting}
+                    className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium disabled:opacity-50" 
                   />
                 </div>
 
@@ -207,21 +270,35 @@ export default function ConnectionsPage() {
                   <label className="block text-sm font-semibold text-foreground ml-1">Clé Secrète (Secret Key)</label>
                   <input 
                     type="password" 
-                    placeholder="sk_live_..." 
-                    className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium tracking-widest" 
+                    value={secretKey}
+                    onChange={(e) => setSecretKey(e.target.value)}
+                    placeholder={selectedGateway === "FedaPay" ? "sk_live_... ou sk_sandbox_..." : "Clé secrète"} 
+                    disabled={isSubmitting}
+                    className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium tracking-widest disabled:opacity-50" 
                   />
+                  <p className="text-xs text-muted-foreground ml-1 mt-1">
+                    La clé publique n'est pas requise pour l'intégration sécurisée côté serveur.
+                  </p>
                 </div>
                 
                 <div className="bg-primary/10 text-primary p-4 rounded-2xl flex gap-3 text-sm font-medium items-start mt-2">
                   <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
-                  <p className="leading-snug">Réparto n'accède qu'à tes flux avec ta clé. Ton argent ne passe jamais par nous.</p>
+                  <p className="leading-snug">Réparto n'accède qu'à vos flux via cette clé. Elle sera chiffrée avec un niveau de sécurité militaire (AES-256).</p>
                 </div>
                 
                 <Button 
-                  className="w-full h-14 rounded-xl mt-4 bg-black hover:bg-black/80 text-white font-bold text-base shadow-lg shadow-black/10 transition-transform active:scale-95" 
-                  onClick={() => setIsModalOpen(false)}
+                  className="w-full h-14 rounded-xl mt-4 bg-black hover:bg-black/80 text-white font-bold text-base shadow-lg shadow-black/10 transition-transform active:scale-95 disabled:opacity-70" 
+                  onClick={handleConnect}
+                  disabled={isSubmitting || !nom || !secretKey}
                 >
-                  Connecter
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Vérification & Connexion...
+                    </>
+                  ) : (
+                    "Connecter"
+                  )}
                 </Button>
               </div>
             </motion.div>

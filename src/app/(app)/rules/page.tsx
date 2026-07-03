@@ -2,84 +2,53 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, SlidersHorizontal, MoreVertical, Edit2, Trash2 } from "lucide-react";
+import { Plus, SlidersHorizontal, MoreVertical, Edit2, Trash2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Switch } from "@/components/ui/switch";
-
-// Fausse donnée pour commencer si rien dans le localstorage
-const INITIAL_RULES = [
-  {
-    id: "1",
-    name: "Répartition mensuelle",
-    trigger: "Mensuel — le 30 à 08:00",
-    recipientsCount: 3,
-    active: true,
-    mode: "percentage",
-    recipients: [
-      { id: "1", name: "Dépenses Fixes", value: 50, network: "Wave", phone: "07 00 00 00" },
-      { id: "2", name: "Épargne Urgence", value: 40, network: "MTN", phone: "97 00 00 00" },
-      { id: "3", name: "Plaisir", value: 10, network: "Moov", phone: "60 00 00 00" },
-    ]
-  },
-  {
-    id: "2",
-    name: "Cagnotte Vacances",
-    trigger: "À chaque entrée",
-    recipientsCount: 2,
-    active: false,
-    mode: "percentage",
-    recipients: [
-      { id: "1", name: "Épargne", value: 80, network: "MTN", phone: "97 00 00 00" },
-      { id: "2", name: "Dépenses", value: 20, network: "Moov", phone: "60 00 00 00" }
-    ]
-  }
-];
+import { getRegles, toggleRegle, deleteRegle } from "@/app/actions/regles";
 
 export default function RulesPage() {
   const [rules, setRules] = useState<any[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
 
-  useEffect(() => {
-    const savedRules = localStorage.getItem('reparto_rules');
-    if (savedRules) {
-      let parsed = JSON.parse(savedRules);
-      // Migration: si les anciennes fausses données n'avaient pas de destinataires, on les écrase
-      if (parsed.length > 0 && !parsed[0].recipients) {
-        parsed = INITIAL_RULES;
-        localStorage.setItem('reparto_rules', JSON.stringify(INITIAL_RULES));
-      }
-      setRules(parsed);
-    } else {
-      setRules(INITIAL_RULES);
-      localStorage.setItem('reparto_rules', JSON.stringify(INITIAL_RULES));
+  const fetchRules = async () => {
+    setIsLoading(true);
+    const { data } = await getRegles();
+    if (data) {
+      setRules(data.map((r: any) => ({
+        id: r.id,
+        name: r.nom,
+        trigger: r.declencheur === "manuel" ? "Manuel" : 
+                 r.declencheur === "a_chaque_entree" ? "À chaque entrée" : 
+                 r.declencheur === "quotidien" ? `Quotidien à ${r.declencheur_config?.time}` : 
+                 r.declencheur === "hebdo" ? `Hebdomadaire (Jour ${r.declencheur_config?.dayOfWeek})` : 
+                 `Mensuel (Le ${r.declencheur_config?.dayOfMonth})`,
+        recipientsCount: r.distributions?.length || 0,
+        active: r.actif,
+        mode: r.mode,
+      })));
     }
-    setIsLoaded(true);
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    fetchRules();
   }, []);
 
-  const toggleRule = (id: string) => {
-    const updatedRules = rules.map(rule => 
-      rule.id === id ? { ...rule, active: !rule.active } : rule
-    );
-    setRules(updatedRules);
-    localStorage.setItem('reparto_rules', JSON.stringify(updatedRules));
+  const handleToggleRule = async (id: string, currentActive: boolean) => {
+    const updated = rules.map(rule => rule.id === id ? { ...rule, active: !currentActive } : rule);
+    setRules(updated);
+    await toggleRegle(id, !currentActive);
   };
 
-  const deleteRule = (id: string) => {
-    const updatedRules = rules.filter(r => r.id !== id);
-    setRules(updatedRules);
-    localStorage.setItem('reparto_rules', JSON.stringify(updatedRules));
+  const handleDeleteRule = async (id: string) => {
+    if (confirm("Voulez-vous vraiment supprimer cette règle ?")) {
+      await deleteRegle(id);
+      await fetchRules();
+    }
   };
-
-  const duplicateRule = (rule: any) => {
-    const newRule = { ...rule, id: Date.now().toString(), name: `${rule.name} (Copie)` };
-    const updatedRules = [...rules, newRule];
-    setRules(updatedRules);
-    localStorage.setItem('reparto_rules', JSON.stringify(updatedRules));
-  };
-
-  if (!isLoaded) return null;
 
   return (
     <div className="space-y-8 pb-20 sm:pb-8">
@@ -103,7 +72,11 @@ export default function RulesPage() {
         </Link>
       </div>
 
-      {rules.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
+        </div>
+      ) : rules.length === 0 ? (
         <div className="bg-white rounded-[2rem] border border-black/[0.05] p-12 flex flex-col items-center justify-center text-center shadow-sm">
           <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center text-primary mb-6">
             <SlidersHorizontal className="w-10 h-10" />
@@ -144,7 +117,7 @@ export default function RulesPage() {
                     </span>
                     <Switch 
                       checked={rule.active} 
-                      onCheckedChange={() => toggleRule(rule.id)}
+                      onCheckedChange={() => handleToggleRule(rule.id, rule.active)}
                     />
                   </div>
                   <div className="relative">
@@ -165,13 +138,7 @@ export default function RulesPage() {
                           exit={{ opacity: 0, scale: 0.95, y: 5 }}
                           className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-black/5 py-2 z-50 overflow-hidden"
                         >
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); duplicateRule(rule); }}
-                            className="w-full text-left px-4 py-2 text-sm font-medium hover:bg-black/5 transition-colors"
-                          >
-                            Dupliquer la règle
-                          </button>
-                          <Link href="/historique">
+                          <Link href={`/historique?regle=${rule.id}`}>
                             <button className="w-full text-left px-4 py-2 text-sm font-medium hover:bg-black/5 transition-colors text-muted-foreground">
                               Voir l'historique
                             </button>
@@ -190,7 +157,7 @@ export default function RulesPage() {
                   </Button>
                 </Link>
                 <Button 
-                  onClick={() => deleteRule(rule.id)}
+                  onClick={() => handleDeleteRule(rule.id)}
                   variant="outline" 
                   className="h-10 px-4 rounded-xl text-danger hover:text-danger hover:bg-danger/10 border-transparent"
                 >

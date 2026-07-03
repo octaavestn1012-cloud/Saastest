@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getRegleById } from "@/app/actions/regles";
 
 export default function EditRulePage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -13,19 +14,14 @@ export default function EditRulePage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedRules = localStorage.getItem('reparto_rules');
-    if (savedRules) {
-      const rules = JSON.parse(savedRules);
-      const rule = rules.find((r: any) => r.id === params.id || r.id === Number(params.id));
-      if (rule) {
-        setRuleData(rule);
+    getRegleById(params.id).then(({ data, error }) => {
+      if (data) {
+        setRuleData(data);
       } else {
         router.push('/rules');
       }
-    } else {
-      router.push('/rules');
-    }
-    setLoading(false);
+      setLoading(false);
+    });
   }, [params.id, router]);
 
   if (loading) {

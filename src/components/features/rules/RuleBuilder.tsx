@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, AlertCircle, Play, ChevronDown, Lock } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, AlertCircle, Play, ChevronDown, Lock, Loader2 } from "lucide-react";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,6 +10,8 @@ import { useRepartition, PreviewRule } from "@/context/RepartitionContext";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
 import { RecipientModal, Recipient as Contact } from "@/components/features/destinataires/RecipientModal";
+import { saveRegle } from "@/app/actions/regles";
+import { getDestinataires } from "@/app/actions/destinataires";
 
 type RecipientRow = {
   id: string;
@@ -31,25 +33,41 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetRowToUpdate, setTargetRowToUpdate] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('reparto_recipients');
-    if (saved) {
-      setContacts(JSON.parse(saved));
-    }
+    // Charger les contacts pour potentiellement l'auto-complétion (si on l'ajoute)
+    getDestinataires().then(({data}) => {
+      if (data) {
+        setContacts(data.map(d => ({
+          id: d.id,
+          name: d.libelle,
+          network: d.methode_mobile_money,
+          phone: d.numero
+        })));
+      }
+    });
   }, []);
 
   // State de base
-  const [ruleName, setRuleName] = useState(initialData?.name || "");
-  const [trigger, setTrigger] = useState(initialData?.triggerType || "manual");
-  const [triggerTime, setTriggerTime] = useState(initialData?.triggerTime || "08:00");
-  const [triggerDayOfWeek, setTriggerDayOfWeek] = useState(initialData?.triggerDayOfWeek || "1");
-  const [triggerDayOfMonth, setTriggerDayOfMonth] = useState(initialData?.triggerDayOfMonth || "1");
-  const [mode, setMode] = useState<"percentage" | "fixed">(initialData?.mode || "percentage");
+  const [ruleName, setRuleName] = useState(initialData?.nom || "");
+  const [trigger, setTrigger] = useState(initialData?.declencheur || "a_chaque_entree");
+  const [triggerTime, setTriggerTime] = useState(initialData?.declencheur_config?.time || "08:00");
+  const [triggerDayOfWeek, setTriggerDayOfWeek] = useState(initialData?.declencheur_config?.dayOfWeek || "1");
+  const [triggerDayOfMonth, setTriggerDayOfMonth] = useState(initialData?.declencheur_config?.dayOfMonth || "1");
+  const [mode, setMode] = useState<"pourcentage" | "montant_fixe">(initialData?.mode || "pourcentage");
   
-  const [recipients, setRecipients] = useState<RecipientRow[]>(initialData?.recipients || [
-    { id: "1", name: "", value: 0, network: "MTN", phone: "" }
-  ]);
+  const [recipients, setRecipients] = useState<RecipientRow[]>(
+    initialData?.distributions?.map((d: any) => ({
+      id: d.id,
+      name: d.libelle,
+      value: d.valeur,
+      network: d.destinataires?.methode_mobile_money || "MTN",
+      phone: d.destinataires?.numero || ""
+    })) || [
+      { id: "temp_1", name: "", value: 0, network: "MTN", phone: "" }
+    ]
+  );
 
   // Options Avancées
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -59,26 +77,16 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
   const COMMISSION_RATE = plan === "pro" ? 0.008 : plan === "business" ? 0.004 : 0.019;
   const COMMISSION_TEXT = plan === "pro" ? "0,8%" : plan === "business" ? "0,4%" : "1,9%";
 
-  const [advancedConditionEnabled, setAdvancedConditionEnabled] = useState(false);
-  const [advancedConditionAmount, setAdvancedConditionAmount] = useState("");
-  const [advancedPriorityEnabled, setAdvancedPriorityEnabled] = useState(false);
-  const [advancedRestEnabled, setAdvancedRestEnabled] = useState(false);
-  const [advancedRestName, setAdvancedRestName] = useState("");
-  const [advancedRestNetwork, setAdvancedRestNetwork] = useState("MTN");
-  const [advancedRestPhone, setAdvancedRestPhone] = useState("");
-  const [advancedNotifEmail, setAdvancedNotifEmail] = useState(false);
-  const [advancedNotifSms, setAdvancedNotifSms] = useState(false);
-
-  const handleModeChange = (newMode: "percentage" | "fixed") => {
+  const handleModeChange = (newMode: "pourcentage" | "montant_fixe") => {
     if (newMode === mode) return;
     
     // Conversion intelligente
-    if (newMode === "fixed" && mode === "percentage") {
+    if (newMode === "montant_fixe" && mode === "pourcentage") {
       setRecipients(recipients.map(r => ({
         ...r,
         value: Math.round((r.value / 100) * 150000)
       })));
-    } else if (newMode === "percentage" && mode === "fixed") {
+    } else if (newMode === "pourcentage" && mode === "montant_fixe") {
       const currentTotal = recipients.reduce((acc, curr) => acc + (curr.value || 0), 0);
       if (currentTotal > 0) {
         setRecipients(recipients.map(r => ({
@@ -92,22 +100,22 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
 
   // Derived State
   const totalPercentage = useMemo(() => {
-    if (mode === "fixed") return 0;
+    if (mode === "montant_fixe") return 0;
     return recipients.reduce((sum, r) => sum + (Number(r.value) || 0), 0);
   }, [recipients, mode]);
 
   const totalFixed = useMemo(() => {
-    if (mode === "percentage") return 0;
+    if (mode === "pourcentage") return 0;
     return recipients.reduce((sum, r) => sum + (Number(r.value) || 0), 0);
   }, [recipients, mode]);
 
-  const isPercentageValid = mode === "percentage" && totalPercentage === 100;
-  const canSave = ruleName.trim().length > 0 && recipients.length > 0 && recipients.every(r => r.name.trim() !== "" && r.phone.trim() !== "") && (mode === "fixed" || isPercentageValid);
+  const isPercentageValid = mode === "pourcentage" && totalPercentage === 100;
+  const canSave = ruleName.trim().length > 0 && recipients.length > 0 && recipients.every(r => r.name.trim() !== "" && r.phone.trim() !== "") && (mode === "montant_fixe" || isPercentageValid);
 
   // Actions
   const addRecipient = () => {
     setRecipients([...recipients, { 
-      id: Math.random().toString(), 
+      id: "temp_" + Math.random().toString(), 
       name: "", 
       value: 0,
       network: "MTN",
@@ -128,38 +136,22 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
     setRecipients(recipients.filter(r => r.id !== id));
   };
 
-  const handleContactSaved = (contact: Contact) => {
-    const updatedContacts = [...contacts, contact];
-    setContacts(updatedContacts);
-    localStorage.setItem('reparto_recipients', JSON.stringify(updatedContacts));
-    setIsModalOpen(false);
-    
-    if (targetRowToUpdate) {
-      if (targetRowToUpdate === "ADVANCED_REST") {
-        setAdvancedRestRecipientId(contact.id);
-      } else {
-        setRecipients(recipients.map(r => r.id === targetRowToUpdate ? { ...r, recipientId: contact.id } : r));
-      }
-      setTargetRowToUpdate(null);
-    }
-  };
-
   const handlePreview = () => {
-    const simulatedBalance = mode === "percentage" ? 100000 : totalFixed * 1.5;
+    const simulatedBalance = mode === "pourcentage" ? 100000 : totalFixed * 1.5;
     
     const previewData: PreviewRule = {
       name: ruleName || "Nouvelle Règle",
       totalAvailable: simulatedBalance,
       commission: simulatedBalance * COMMISSION_RATE,
       targets: recipients.map((r, i) => {
-        let amount = mode === "percentage" ? (simulatedBalance * (Number(r.value) || 0)) / 100 : (Number(r.value) || 0);
+        let amount = mode === "pourcentage" ? (simulatedBalance * (Number(r.value) || 0)) / 100 : (Number(r.value) || 0);
         return {
           id: r.id,
           label: r.name || `Destinataire ${i + 1}`,
           method: r.network || "MTN",
           number: r.phone || "00 00 00 00",
           amount: amount,
-          percent: mode === "percentage" ? Number(r.value) : undefined
+          percent: mode === "pourcentage" ? Number(r.value) : undefined
         };
       })
     };
@@ -167,42 +159,32 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
     openModal(previewData);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!canSave) return;
+    setIsSaving(true);
     
-    const ruleToSave = {
-      id: initialData?.id || Date.now().toString(),
-      name: ruleName,
-      triggerType: trigger,
-      triggerTime,
-      triggerDayOfWeek,
-      triggerDayOfMonth,
-      mode,
-      recipients,
-      advancedRestEnabled,
-      advancedRestName: advancedRestEnabled ? advancedRestName : null,
-      advancedRestNetwork: advancedRestEnabled ? advancedRestNetwork : null,
-      advancedRestPhone: advancedRestEnabled ? advancedRestPhone : null,
-      active: initialData?.active ?? true,
-      recipientsCount: recipients.length,
-      trigger: trigger === "manual" ? "Manuel" : 
-               trigger === "entry" ? "À chaque entrée" : 
-               trigger === "daily" ? `Quotidien à ${triggerTime}` : 
-               trigger === "weekly" ? `Hebdomadaire (Jour ${triggerDayOfWeek})` : 
-               `Mensuel (Le ${triggerDayOfMonth})`
+    const payload = {
+      id: initialData?.id,
+      nom: ruleName,
+      actif: initialData?.actif ?? true,
+      declencheur: trigger,
+      declencheur_config: trigger !== "manuel" && trigger !== "a_chaque_entree" ? {
+        time: triggerTime,
+        dayOfWeek: triggerDayOfWeek,
+        dayOfMonth: triggerDayOfMonth
+      } : null,
+      mode: mode,
+      recipients: recipients
     };
 
-    const existingRules = JSON.parse(localStorage.getItem('reparto_rules') || '[]');
-    let newRules;
+    const res = await saveRegle(payload);
     
-    if (initialData?.id) {
-      newRules = existingRules.map((r: any) => r.id === initialData.id ? ruleToSave : r);
+    if (res.error) {
+      alert("Erreur: " + res.error);
+      setIsSaving(false);
     } else {
-      newRules = [...existingRules, ruleToSave];
+      router.push('/rules');
     }
-    
-    localStorage.setItem('reparto_rules', JSON.stringify(newRules));
-    router.push('/rules');
   };
 
   return (
@@ -232,23 +214,23 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
             onChange={(e) => setTrigger(e.target.value)}
             className="w-full bg-[#F5F5F7] border-transparent rounded-2xl px-6 py-4 text-lg font-medium outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer"
           >
-            <option value="manual">Manuel (Je lance moi-même)</option>
-            <option value="entry">Automatique : À chaque entrée d'argent</option>
-            <option value="daily">Automatique : Quotidien</option>
-            <option value="weekly">Automatique : Hebdomadaire</option>
-            <option value="monthly">Automatique : Mensuel</option>
+            <option value="manuel">Manuel (Je lance moi-même)</option>
+            <option value="a_chaque_entree">Automatique : À chaque entrée d'argent</option>
+            <option value="quotidien">Automatique : Quotidien</option>
+            <option value="hebdo">Automatique : Hebdomadaire</option>
+            <option value="mensuel">Automatique : Mensuel</option>
           </select>
 
           {/* Champs conditionnels */}
           <AnimatePresence mode="popLayout">
-            {(trigger === "daily" || trigger === "weekly" || trigger === "monthly") && (
+            {(trigger === "quotidien" || trigger === "hebdo" || trigger === "mensuel") && (
               <motion.div 
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 className="flex flex-wrap gap-4 pt-2"
               >
-                {trigger === "weekly" && (
+                {trigger === "hebdo" && (
                   <div className="flex-1 min-w-[200px]">
                     <label className="block text-xs font-semibold mb-2 ml-1">Jour de la semaine</label>
                     <select 
@@ -267,7 +249,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                   </div>
                 )}
                 
-                {trigger === "monthly" && (
+                {trigger === "mensuel" && (
                   <div className="flex-1 min-w-[200px]">
                     <label className="block text-xs font-semibold mb-2 ml-1">Jour du mois</label>
                     <select 
@@ -306,14 +288,14 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
           </label>
           <div className="flex bg-[#F5F5F7] p-1.5 rounded-full">
             <button 
-              onClick={() => handleModeChange("percentage")}
-              className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${mode === "percentage" ? "bg-white shadow-sm text-black" : "text-muted-foreground hover:text-black"}`}
+              onClick={() => handleModeChange("pourcentage")}
+              className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${mode === "pourcentage" ? "bg-white shadow-sm text-black" : "text-muted-foreground hover:text-black"}`}
             >
               Pourcentage (%)
             </button>
             <button 
-              onClick={() => handleModeChange("fixed")}
-              className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${mode === "fixed" ? "bg-white shadow-sm text-black" : "text-muted-foreground hover:text-black"}`}
+              onClick={() => handleModeChange("montant_fixe")}
+              className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${mode === "montant_fixe" ? "bg-white shadow-sm text-black" : "text-muted-foreground hover:text-black"}`}
             >
               Montant Fixe
             </button>
@@ -321,7 +303,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
         </div>
 
         {/* Validation Bar for Percentage */}
-        {mode === "percentage" && (
+        {mode === "pourcentage" && (
           <div className="mb-8 bg-[#F5F5F7] rounded-2xl p-5 border border-black/5">
             <div className="flex justify-between items-end mb-3">
               <div>
@@ -339,23 +321,6 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
               colorClass={totalPercentage === 100 ? "bg-primary" : totalPercentage > 100 ? "bg-danger" : "bg-black"} 
               className="h-4"
             />
-          </div>
-        )}
-
-        {/* Validation for Fixed */}
-        {mode === "fixed" && (
-          <div className="mb-8 bg-[#F5F5F7] rounded-2xl p-5 border border-black/5 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Total réparti par exécution</p>
-              <div className="text-2xl font-black">{totalFixed.toLocaleString('fr-FR')} FCFA</div>
-            </div>
-            
-            <div className="flex flex-col items-start sm:items-end">
-              <p className="text-xs text-muted-foreground font-medium mb-1">Si le solde est supérieur :</p>
-              <div className="text-[13px] font-bold bg-white px-5 py-2 rounded-full shadow-sm border border-black/5">
-                Il restera sur le compte source
-              </div>
-            </div>
           </div>
         )}
 
@@ -391,7 +356,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                     className="w-full bg-[#F5F5F7] border-transparent rounded-[12px] pl-4 pr-10 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm font-bold font-mono text-center"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
-                    {mode === "percentage" ? "%" : "F"}
+                    {mode === "pourcentage" ? "%" : "F"}
                   </span>
                 </div>
 
@@ -442,175 +407,9 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
         <div>
           <h4 className="font-bold text-purple-900 text-lg mb-1">Commission Réparto</h4>
           <p className="text-purple-700/80 text-sm leading-relaxed font-medium">
-            Une commission fixe de <strong className="text-purple-600">{COMMISSION_TEXT}</strong> est appliquée sur chaque répartition exécutée. Elle est prélevée automatiquement sur le compte source et ne vient pas amputer les montants de vos destinataires.
+            Une commission fixe de <strong className="text-purple-600">{COMMISSION_TEXT}</strong> est appliquée sur chaque répartition exécutée.
           </p>
         </div>
-      </section>
-
-      {/* SECTION 5 : OPTIONS AVANCÉES */}
-      <section className="bg-[#FFF9EE] border border-[#FBECC8] rounded-[2rem] shadow-sm overflow-hidden transition-all duration-300">
-        <div 
-          onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
-          className="p-6 sm:p-8 cursor-pointer flex justify-between items-center hover:bg-[#FFF4DD] transition-colors"
-        >
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h4 className="font-bold text-[#A87211] text-lg">Options avancées</h4>
-              {!isPremium && (
-                <div className="flex items-center gap-1.5 bg-[#FCE5B5] text-[#8C5D0B] px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider">
-                  <Lock className="w-3 h-3" />
-                  Premium
-                </div>
-              )}
-            </div>
-            {!isPremium ? (
-              <p className="text-[#B9811C] text-sm font-medium">
-                Réservé aux plans Pro et Business. <span className="underline cursor-pointer">Débloquer</span>
-              </p>
-            ) : (
-              <p className="text-[#B9811C] text-sm font-medium">
-                Conditions, priorité, reste et notifications.
-              </p>
-            )}
-          </div>
-          <div className="w-10 h-10 rounded-full bg-[#FCE5B5] flex items-center justify-center text-[#8C5D0B]">
-            <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${isAdvancedOpen ? 'rotate-180' : ''}`} />
-          </div>
-        </div>
-
-        <AnimatePresence>
-          {isAdvancedOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="border-t border-[#FBECC8]"
-            >
-              <div className="relative p-6 sm:p-8 space-y-8">
-                
-                {/* Overlay pour Non-Abonnés */}
-                {!isPremium && (
-                  <div className="absolute inset-0 bg-[#FFF9EE]/70 backdrop-blur-[2px] z-10 flex items-center justify-center p-6">
-                    <div className="bg-white p-8 rounded-[2rem] shadow-xl border border-[#FBECC8] text-center max-w-sm w-full">
-                      <div className="w-16 h-16 bg-[#FFF9EE] rounded-full flex items-center justify-center mx-auto mb-4 text-[#A87211]">
-                        <Lock className="w-8 h-8" />
-                      </div>
-                      <h3 className="font-bold text-xl mb-2 text-black">Options verrouillées</h3>
-                      <p className="text-muted-foreground text-sm mb-6">Passe au plan Pro ou Business pour définir des conditions, gérer les priorités et plus encore.</p>
-                      <Button className="w-full h-12 bg-black hover:bg-black/80 text-white rounded-xl font-bold">
-                        Voir les plans
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* 1. CONDITION SI */}
-                <div className={`space-y-4 ${!isPremium ? 'opacity-40 pointer-events-none select-none' : ''}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h5 className="font-bold text-black">1. Condition de déclenchement (SI...)</h5>
-                      <p className="text-sm text-muted-foreground mt-0.5">La règle ne s'exécute que si le solde est suffisant.</p>
-                    </div>
-                    <Switch checked={advancedConditionEnabled} onCheckedChange={setAdvancedConditionEnabled} />
-                  </div>
-                  {advancedConditionEnabled && (
-                    <div className="bg-white p-4 rounded-2xl border border-black/5 flex items-center gap-3">
-                      <span className="text-sm font-medium">Exécuter SEULEMENT SI le solde dépasse</span>
-                      <div className="relative w-40">
-                        <input 
-                          type="number" 
-                          value={advancedConditionAmount}
-                          onChange={(e) => setAdvancedConditionAmount(e.target.value)}
-                          placeholder="Ex: 50000"
-                          className="w-full bg-[#F5F5F7] border-transparent rounded-xl pl-4 pr-10 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm font-bold font-mono"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-xs">FCFA</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* 2. PRIORITÉ */}
-                <AnimatePresence>
-                  {mode === 'fixed' && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className={`space-y-4 pt-2 pb-2 ${!isPremium ? 'opacity-40 pointer-events-none select-none' : ''}`}>
-                        <div className="flex items-start sm:items-center justify-between gap-4">
-                          <div>
-                            <h5 className="font-bold text-black">2. Ordre de priorité</h5>
-                            <p className="text-sm text-muted-foreground mt-0.5">En cas de solde insuffisant, payer les premiers d'abord.</p>
-                          </div>
-                          <Switch checked={advancedPriorityEnabled} onCheckedChange={setAdvancedPriorityEnabled} />
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* 3. LIGNE RESTE */}
-                <AnimatePresence>
-                  {mode === 'fixed' && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className={`space-y-4 pt-2 pb-2 ${!isPremium ? 'opacity-40 pointer-events-none select-none' : ''}`}>
-                        <div className="flex items-start sm:items-center justify-between gap-4">
-                          <div>
-                            <h5 className="font-bold text-black">3. Envoyer le reste (Le Reliquat)</h5>
-                            <p className="text-sm text-muted-foreground mt-0.5">Tout l'argent non réparti ira à ce destinataire.</p>
-                          </div>
-                          <Switch checked={advancedRestEnabled} onCheckedChange={setAdvancedRestEnabled} />
-                        </div>
-                        {advancedRestEnabled && (
-                          <div className="bg-white p-4 rounded-2xl border border-black/5 flex flex-col sm:flex-row items-center gap-3">
-                            <span className="text-sm font-medium whitespace-nowrap">Envoyer à :</span>
-                            <input type="text" value={advancedRestName} onChange={(e) => setAdvancedRestName(e.target.value)} placeholder="Nom" className="flex-1 w-full bg-[#F5F5F7] border-transparent rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm font-medium" />
-                            <select value={advancedRestNetwork} onChange={(e) => setAdvancedRestNetwork(e.target.value)} className="w-full sm:w-auto bg-[#F5F5F7] border-transparent rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm font-medium appearance-none">
-                              <option value="MTN">MTN BJ</option>
-                              <option value="Moov">Moov BJ</option>
-                              <option value="Celtiis">Celtiis BJ</option>
-                              <option value="Wave">Wave CI</option>
-                            </select>
-                            <input type="tel" value={advancedRestPhone} onChange={(e) => setAdvancedRestPhone(e.target.value)} placeholder="Numéro" className="flex-1 w-full bg-[#F5F5F7] border-transparent rounded-xl px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm font-mono font-medium" />
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* 4. NOTIFICATIONS */}
-                <div className={`space-y-4 ${!isPremium ? 'opacity-40 pointer-events-none select-none' : ''}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h5 className="font-bold text-black">4. Notifications personnalisées</h5>
-                      <p className="text-sm text-muted-foreground mt-0.5">Recevez une alerte quand cette règle s'exécute.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6 bg-white p-4 rounded-2xl border border-black/5">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={advancedNotifEmail} onChange={(e) => setAdvancedNotifEmail(e.target.checked)} className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" />
-                      <span className="text-sm font-medium">Par Email</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={advancedNotifSms} onChange={(e) => setAdvancedNotifSms(e.target.checked)} className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" />
-                      <span className="text-sm font-medium">Par SMS</span>
-                    </label>
-                  </div>
-                </div>
-
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </section>
 
       {/* FOOTER ACTIONS */}
@@ -620,6 +419,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
             variant="outline" 
             onClick={() => router.push('/rules')}
             className="h-14 px-8 rounded-2xl font-bold text-lg border-black/10 hover:bg-black/5"
+            disabled={isSaving}
           >
             Annuler
           </Button>
@@ -627,26 +427,20 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
             variant="secondary"
             onClick={handlePreview}
             className="h-14 px-8 rounded-2xl font-bold text-lg bg-[#F5F5F7] hover:bg-[#E5E5E7] text-black"
+            disabled={isSaving}
           >
             <Play className="w-5 h-5 mr-2" />
             Tester en aperçu
           </Button>
           <Button 
-            disabled={!canSave}
+            disabled={!canSave || isSaving}
             onClick={handleSave}
-            className="h-14 px-10 rounded-2xl font-bold text-lg bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 disabled:opacity-50 disabled:shadow-none"
+            className="h-14 px-10 rounded-2xl font-bold text-lg bg-black hover:bg-black/80 text-white shadow-lg shadow-black/20 disabled:opacity-50 disabled:shadow-none transition-transform active:scale-95"
           >
-            Enregistrer la règle
+            {isSaving ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : "Enregistrer la règle"}
           </Button>
         </div>
       </div>
-
-      {isModalOpen && (
-        <RecipientModal 
-          onClose={() => setIsModalOpen(false)} 
-          onSave={handleContactSaved} 
-        />
-      )}
     </div>
   );
 }

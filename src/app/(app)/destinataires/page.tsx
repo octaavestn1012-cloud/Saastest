@@ -2,55 +2,66 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, MoreVertical, Edit2, Trash2 } from "lucide-react";
+import { Plus, Users, MoreVertical, Edit2, Trash2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RecipientModal, Recipient } from "@/components/features/destinataires/RecipientModal";
-
-const INITIAL_RECIPIENTS: Recipient[] = [
-  { id: "1", name: "Maman", network: "MTN", phone: "97 00 00 00" },
-  { id: "2", name: "Épargne Urgence", network: "MTN", phone: "97 00 00 01" },
-  { id: "3", name: "Salaire Closer", network: "Moov", phone: "60 00 00 00" },
-];
+import { getDestinataires, saveDestinataire, deleteDestinataire } from "@/app/actions/destinataires";
 
 export default function DestinatairesPage() {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecipient, setEditingRecipient] = useState<Recipient | undefined>(undefined);
+  const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('reparto_recipients');
-    if (saved) {
-      setRecipients(JSON.parse(saved));
-    } else {
-      setRecipients(INITIAL_RECIPIENTS);
-      localStorage.setItem('reparto_recipients', JSON.stringify(INITIAL_RECIPIENTS));
+  const fetchRecipients = async () => {
+    setIsLoading(true);
+    const { data, error } = await getDestinataires();
+    if (data) {
+      setRecipients(data.map(d => ({
+        id: d.id,
+        name: d.libelle,
+        network: d.methode_mobile_money,
+        phone: d.numero
+      })));
     }
-    setIsLoaded(true);
-  }, []);
-
-  const saveRecipient = (recipient: Recipient) => {
-    let updated: Recipient[];
-    if (recipients.find(r => r.id === recipient.id)) {
-      // Update
-      updated = recipients.map(r => r.id === recipient.id ? recipient : r);
-    } else {
-      // Add
-      updated = [...recipients, recipient];
-    }
-    setRecipients(updated);
-    localStorage.setItem('reparto_recipients', JSON.stringify(updated));
-    setIsModalOpen(false);
-    setEditingRecipient(undefined);
+    setIsLoading(false);
   };
 
-  const deleteRecipient = (id: string) => {
-    const updated = recipients.filter(r => r.id !== id);
-    setRecipients(updated);
-    localStorage.setItem('reparto_recipients', JSON.stringify(updated));
+  useEffect(() => {
+    fetchRecipients();
+  }, []);
+
+  const handleSaveRecipient = async (recipient: Recipient) => {
+    setIsSaving(true);
+    const formData = new FormData();
+    if (recipient.id && !recipient.id.startsWith("temp_")) {
+      formData.append("id", recipient.id);
+    }
+    formData.append("libelle", recipient.name);
+    formData.append("reseau", recipient.network);
+    formData.append("numero", recipient.phone);
+
+    const res = await saveDestinataire(formData);
+    if (!res.error) {
+      await fetchRecipients();
+      setIsModalOpen(false);
+      setEditingRecipient(undefined);
+    } else {
+      console.error(res.error);
+      alert("Erreur lors de l'enregistrement");
+    }
+    setIsSaving(false);
+  };
+
+  const handleDeleteRecipient = async (id: string) => {
+    if (confirm("Voulez-vous vraiment supprimer ce destinataire ?")) {
+      await deleteDestinataire(id);
+      await fetchRecipients();
+    }
   };
 
   const openEdit = (recipient: Recipient) => {
@@ -63,8 +74,6 @@ export default function DestinatairesPage() {
     setEditingRecipient(undefined);
     setIsModalOpen(true);
   };
-
-  if (!isLoaded) return null;
 
   return (
     <div className="space-y-8 pb-20 sm:pb-8">
@@ -86,7 +95,11 @@ export default function DestinatairesPage() {
         </Button>
       </div>
 
-      {recipients.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
+        </div>
+      ) : recipients.length === 0 ? (
         <div className="bg-white rounded-[2rem] border border-black/[0.05] p-12 flex flex-col items-center justify-center text-center shadow-sm">
           <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center text-primary mb-6">
             <Users className="w-10 h-10" />
@@ -107,7 +120,7 @@ export default function DestinatairesPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-[1.5rem] p-5 border border-black/[0.05] shadow-sm flex items-center gap-4 relative group"
+              className="bg-white rounded-[1.5rem] p-5 border border-black/[0.05] shadow-sm flex items-center gap-4 relative group hover:border-black/10 transition-colors"
             >
               <div className="w-12 h-12 rounded-full bg-[#F5F5F7] text-primary flex items-center justify-center font-bold text-lg shrink-0">
                 {recipient.name.charAt(0).toUpperCase()}
@@ -147,7 +160,7 @@ export default function DestinatairesPage() {
                         <Edit2 className="w-4 h-4" /> Modifier
                       </button>
                       <button 
-                        onClick={(e) => { e.stopPropagation(); deleteRecipient(recipient.id); }}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteRecipient(recipient.id); }}
                         className="w-full flex items-center gap-2 px-4 py-2.5 text-[14px] font-semibold text-danger hover:bg-danger/10 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" /> Supprimer
@@ -162,11 +175,13 @@ export default function DestinatairesPage() {
       )}
 
       {isModalOpen && (
-        <RecipientModal 
-          recipient={editingRecipient} 
-          onClose={() => setIsModalOpen(false)} 
-          onSave={saveRecipient} 
-        />
+        <div className="relative z-[60]">
+          <RecipientModal 
+            recipient={editingRecipient} 
+            onClose={() => !isSaving && setIsModalOpen(false)} 
+            onSave={handleSaveRecipient} 
+          />
+        </div>
       )}
     </div>
   );
