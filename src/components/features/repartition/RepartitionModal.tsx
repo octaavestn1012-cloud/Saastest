@@ -11,7 +11,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import Link from "next/link";
 import { getDashboardMetrics } from "@/app/actions/dashboard";
 import { getRegles } from "@/app/actions/regles";
-import { executeRepartitionAction } from "@/app/actions/repartir";
+import { executeRepartitionAction, executeQuickRepartitionAction } from "@/app/actions/repartir";
 
 type Step = "PREVIEW" | "EXECUTING" | "RESULT";
 type ModalMode = "rule" | "quick";
@@ -101,7 +101,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
 
     const commissionAmount = totalAvailable * COMMISSION_RATE;
     const toDistribute = totalAvailable - commissionAmount;
-    const mode = activeRuleSource.mode || "percentage";
+    const mode = (activeRuleSource.mode === "pourcentage" || activeRuleSource.mode === "percentage") ? "percentage" : "fixed";
     
     return {
       name: activeRuleSource.name,
@@ -120,7 +120,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
         };
       })
     };
-  }, [activeRuleSource, customData]);
+  }, [activeRuleSource, customData, totalAvailable, COMMISSION_RATE]);
 
   const currentPreviewData = customData || generatedPreviewData;
 
@@ -181,7 +181,14 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
 
     try {
       // Exécuter via le vrai moteur FedaPay !
-      const res = await executeRepartitionAction(totalAvailable);
+      let res;
+      if (modalMode === "quick" || (modalMode === "rule" && isAdjusting)) {
+        // Mode rapide ou règle ajustée à la volée : on envoie les targets calculés manuellement
+        res = await executeQuickRepartitionAction(totalAvailable, currentTargets, isPercentageMode ? "percentage" : "fixed");
+      } else {
+        // Mode règle stricte : on utilise le Rule ID de la BDD pour qu'il le re-calcule de façon sécurisée
+        res = await executeRepartitionAction(totalAvailable, activeRuleSource?.id);
+      }
       
       const finalStatus = res.status === 'completed' ? "SUCCESS" : "FAILED";
       
@@ -514,11 +521,8 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                       {step === "PREVIEW" && (!isAdjusting || modalMode === "quick") && (
                         <div className="flex flex-col items-end text-right">
                           <div className="font-bold tabular-nums text-primary text-[17px]">
-                            <Amount value={target.amount} />
+                            {target.percent !== undefined ? `${target.percent}%` : <Amount value={target.amount} />}
                           </div>
-                          {target.percent !== undefined && (
-                            <span className="text-xs text-muted-foreground font-bold bg-black/5 px-2 py-0.5 rounded-md mt-1">{target.percent}%</span>
-                          )}
                         </div>
                       )}
 
