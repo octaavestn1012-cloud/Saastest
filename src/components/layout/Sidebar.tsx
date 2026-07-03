@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, SlidersHorizontal, History, Link2, Settings, LifeBuoy, PieChart, Zap, Users } from "lucide-react";
+import { LayoutDashboard, SlidersHorizontal, History, Link2, Settings, LifeBuoy, PieChart, Zap, Users, CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRepartition } from "@/context/RepartitionContext";
 
@@ -14,6 +14,7 @@ const navItems = [
   { name: "Historique", href: "/historique", icon: History },
   { name: "Rapports", href: "/rapports", icon: PieChart },
   { name: "Connexions", href: "/connections", icon: Link2 },
+  { name: "Facturation", href: "/billing", icon: CreditCard },
 ];
 
 export function Sidebar() {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, CreditCard, Shield, Trash2, Loader2, CheckCircle2, X } from "lucide-react";
+import { User, Shield, Trash2, Loader2, CheckCircle2, Wallet, Bell, Globe, Phone, Smartphone, AlertTriangle } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,9 +15,13 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [payoutNumber, setPayoutNumber] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [notifSuccess, setNotifSuccess] = useState(true);
+  const [notifError, setNotifError] = useState(true);
+  const [notifTrigger, setNotifTrigger] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -25,6 +29,8 @@ export default function SettingsPage() {
       if (user) {
         setUserEmail(user.email || "");
         setFullName(user.user_metadata?.full_name || "");
+        setPhone(user.user_metadata?.phone || "");
+        setPayoutNumber(user.user_metadata?.payout_number || "");
       }
       setLoading(false);
     }
@@ -36,22 +42,25 @@ export default function SettingsPage() {
     setSaving(true);
     setSuccessMsg("");
     
-    // Mettre à jour les métadonnées de l'utilisateur dans Supabase
     const { error } = await supabase.auth.updateUser({
-      data: { full_name: fullName }
+      data: { 
+        full_name: fullName,
+        phone: phone,
+        payout_number: payoutNumber
+      }
     });
 
     setSaving(false);
     if (!error) {
-      setSuccessMsg("Profil mis à jour avec succès");
-      router.refresh(); // Force Next.js à recharger layout.tsx avec le nouveau nom
+      setSuccessMsg("Modifications enregistrées avec succès");
+      router.refresh(); 
       setTimeout(() => setSuccessMsg(""), 3000);
     }
   };
 
   const handleResetPassword = async () => {
     if (!userEmail) return;
-    alert("Un lien de réinitialisation vous sera envoyé. (Simulation)");
+    alert("Un lien de réinitialisation vous sera envoyé par email.");
   };
 
   if (loading) {
@@ -63,17 +72,17 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto pb-24 relative">
-      {/* Header */}
+    <div className="max-w-4xl mx-auto pb-24">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-black mb-2">Mon compte</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-black mb-2">Paramètres du compte</h1>
         <p className="text-muted-foreground font-medium">
-          Gérez vos informations personnelles et vos paramètres de sécurité.
+          Gérez vos informations personnelles, votre sécurité et vos préférences.
         </p>
       </div>
 
       <div className="space-y-8">
-        {/* Profil Section */}
+        
+        {/* Section 1 : Profil */}
         <div className="bg-white rounded-3xl border border-black/5 overflow-hidden shadow-sm">
           <div className="px-6 py-5 border-b border-black/5 flex items-center gap-3 bg-[#F5F5F7]/50">
             <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -81,14 +90,14 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-black">Profil public</h2>
-              <p className="text-sm text-muted-foreground">Ces informations seront affichées sur votre compte.</p>
+              <p className="text-sm text-muted-foreground">Vos informations d'identité de base.</p>
             </div>
           </div>
           
           <form onSubmit={handleUpdateProfile} className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-black">Nom complet</label>
+                <label className="text-sm font-semibold text-black">Nom complet / Entreprise</label>
                 <Input 
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -103,9 +112,18 @@ export default function SettingsPage() {
                   disabled
                   className="bg-[#F5F5F7]/50 border-transparent text-muted-foreground h-12"
                 />
-                <p className="text-[12px] text-muted-foreground mt-1">
-                  L'email ne peut pas être modifié pour des raisons de sécurité.
-                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-black">Numéro de téléphone</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+229 ..." 
+                    className="bg-[#F5F5F7] border-transparent focus-visible:ring-primary/20 h-12 pl-10"
+                  />
+                </div>
               </div>
             </div>
 
@@ -123,35 +141,41 @@ export default function SettingsPage() {
           </form>
         </div>
 
-        {/* Plan & Facturation */}
+        {/* Section 2 : Coordonnées de réception */}
         <div className="bg-white rounded-3xl border border-black/5 overflow-hidden shadow-sm">
           <div className="px-6 py-5 border-b border-black/5 flex items-center gap-3 bg-[#F5F5F7]/50">
-            <div className="w-10 h-10 rounded-xl bg-[#25D366]/10 text-[#25D366] flex items-center justify-center">
-              <CreditCard className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-money-in/10 text-money-in flex items-center justify-center">
+              <Wallet className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-black">Abonnement actuel</h2>
-              <p className="text-sm text-muted-foreground">Gérez votre plan et vos limites.</p>
+              <h2 className="text-lg font-bold text-black">Coordonnées de réception</h2>
+              <p className="text-sm text-muted-foreground">Numéro par défaut pour recevoir vos propres revenus.</p>
             </div>
           </div>
           
           <div className="p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl border border-black/5 bg-[#F5F5F7]/30">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h3 className="font-bold text-black text-lg">Plan Gratuit</h3>
-                  <span className="bg-black text-white text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full">Actif</span>
-                </div>
-                <p className="text-sm text-muted-foreground">Commission fixe de 1,9% par transaction.</p>
+            <div className="max-w-md space-y-2 mb-4">
+              <label className="text-sm font-semibold text-black">Numéro Mobile Money (Optionnel)</label>
+              <div className="relative">
+                <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input 
+                  value={payoutNumber}
+                  onChange={(e) => setPayoutNumber(e.target.value)}
+                  placeholder="Ex: 90 00 00 00" 
+                  className="bg-[#F5F5F7] border-transparent focus-visible:ring-primary/20 h-12 pl-10"
+                />
               </div>
-              <Button onClick={() => setShowUpgradeModal(true)} variant="outline" className="rounded-xl font-bold h-11 border-black/10 hover:bg-[#F5F5F7]">
-                Mettre à niveau
-              </Button>
+              <p className="text-[12px] text-muted-foreground mt-2">
+                Ce numéro sera utilisé si vous créez une règle de répartition vers "Moi-même".
+              </p>
             </div>
+            <Button onClick={handleUpdateProfile} disabled={saving} className="bg-black hover:bg-black/80 text-white rounded-xl h-11 px-6 font-bold">
+              Sauvegarder le numéro
+            </Button>
           </div>
         </div>
 
-        {/* Sécurité */}
+        {/* Section 3 : Sécurité */}
         <div className="bg-white rounded-3xl border border-black/5 overflow-hidden shadow-sm">
           <div className="px-6 py-5 border-b border-black/5 flex items-center gap-3 bg-[#F5F5F7]/50">
             <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
@@ -159,26 +183,120 @@ export default function SettingsPage() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-black">Sécurité</h2>
-              <p className="text-sm text-muted-foreground">Sécurisez l'accès à votre compte.</p>
+              <p className="text-sm text-muted-foreground">Protégez l'accès à votre compte.</p>
             </div>
           </div>
           
-          <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="font-bold text-black mb-1">Mot de passe</h3>
-              <p className="text-sm text-muted-foreground">Il est conseillé de changer votre mot de passe régulièrement.</p>
+          <div className="p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-black mb-1">Mot de passe</h3>
+                <p className="text-sm text-muted-foreground">Il est conseillé de changer votre mot de passe régulièrement.</p>
+              </div>
+              <Button onClick={handleResetPassword} variant="outline" className="rounded-xl font-bold h-11 border-black/10 hover:bg-[#F5F5F7]">
+                Changer le mot de passe
+              </Button>
             </div>
-            <Button onClick={handleResetPassword} variant="outline" className="rounded-xl font-bold h-11 border-black/10 hover:bg-[#F5F5F7]">
-              Modifier le mot de passe
-            </Button>
+
+            <div className="h-px bg-black/5 w-full"></div>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-bold text-black">Authentification à deux facteurs (2FA)</h3>
+                  <span className="bg-primary/10 text-primary text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">Bientôt</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Ajoutez une couche de sécurité supplémentaire (SMS/App).</p>
+              </div>
+              <Button disabled variant="outline" className="rounded-xl font-bold h-11 border-black/10 opacity-50">
+                Activer la 2FA
+              </Button>
+            </div>
+
+            <div className="h-px bg-black/5 w-full"></div>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-black mb-1">Appareils connectés</h3>
+                <p className="text-sm text-muted-foreground">Déconnectez votre compte de tous vos autres appareils.</p>
+              </div>
+              <Button variant="outline" className="rounded-xl font-bold h-11 border-black/10 text-black hover:bg-black/5">
+                Tout déconnecter
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Zone dangereuse */}
+        {/* Section 4 : Préférences */}
+        <div className="bg-white rounded-3xl border border-black/5 overflow-hidden shadow-sm">
+          <div className="px-6 py-5 border-b border-black/5 flex items-center gap-3 bg-[#F5F5F7]/50">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+              <Globe className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-black">Préférences & Notifications</h2>
+              <p className="text-sm text-muted-foreground">Personnalisez votre expérience.</p>
+            </div>
+          </div>
+          
+          <div className="p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-black mb-1">Langue de l'interface</h3>
+                <p className="text-sm text-muted-foreground">Choisissez la langue d'affichage.</p>
+              </div>
+              <div className="px-4 py-2 bg-[#F5F5F7] rounded-xl font-bold text-sm text-black border border-black/5">
+                Français (Défaut)
+              </div>
+            </div>
+
+            <div className="h-px bg-black/5 w-full"></div>
+
+            <div>
+              <h3 className="font-bold text-black mb-4 flex items-center gap-2">
+                <Bell className="w-4 h-4" />
+                Notifications par Email
+              </h3>
+              <div className="space-y-4">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <p className="font-medium text-black text-sm">Répartition exécutée avec succès</p>
+                    <p className="text-xs text-muted-foreground">Recevoir un email quand l'argent est envoyé.</p>
+                  </div>
+                  <div className={`w-12 h-6 rounded-full transition-colors relative ${notifSuccess ? 'bg-[#25D366]' : 'bg-black/10'}`} onClick={() => setNotifSuccess(!notifSuccess)}>
+                    <div className={`absolute top-1 bg-white w-4 h-4 rounded-full transition-all ${notifSuccess ? 'left-7' : 'left-1'}`}></div>
+                  </div>
+                </label>
+                
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <p className="font-medium text-black text-sm">Échec d'une transaction</p>
+                    <p className="text-xs text-muted-foreground">Être alerté immédiatement si un envoi échoue.</p>
+                  </div>
+                  <div className={`w-12 h-6 rounded-full transition-colors relative ${notifError ? 'bg-[#25D366]' : 'bg-black/10'}`} onClick={() => setNotifError(!notifError)}>
+                    <div className={`absolute top-1 bg-white w-4 h-4 rounded-full transition-all ${notifError ? 'left-7' : 'left-1'}`}></div>
+                  </div>
+                </label>
+
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <p className="font-medium text-black text-sm">Nouvelle règle déclenchée</p>
+                    <p className="text-xs text-muted-foreground">Notification à chaque fois qu'une règle s'active.</p>
+                  </div>
+                  <div className={`w-12 h-6 rounded-full transition-colors relative ${notifTrigger ? 'bg-[#25D366]' : 'bg-black/10'}`} onClick={() => setNotifTrigger(!notifTrigger)}>
+                    <div className={`absolute top-1 bg-white w-4 h-4 rounded-full transition-all ${notifTrigger ? 'left-7' : 'left-1'}`}></div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 5 : Zone dangereuse */}
         <div className="bg-white rounded-3xl border border-danger/20 overflow-hidden shadow-sm">
           <div className="px-6 py-5 border-b border-danger/10 flex items-center gap-3 bg-danger/5">
             <div className="w-10 h-10 rounded-xl bg-danger/10 text-danger flex items-center justify-center">
-              <Trash2 className="w-5 h-5" />
+              <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-danger">Zone de danger</h2>
@@ -188,102 +306,16 @@ export default function SettingsPage() {
           
           <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h3 className="font-bold text-black mb-1">Supprimer le compte</h3>
-              <p className="text-sm text-muted-foreground">Toutes vos données et règles seront définitivement effacées.</p>
+              <h3 className="font-bold text-black mb-1">Supprimer mon compte</h3>
+              <p className="text-sm text-muted-foreground">Cette action supprimera définitivement vos règles et votre historique.</p>
             </div>
             <Button variant="outline" className="rounded-xl font-bold h-11 border-danger/20 text-danger hover:bg-danger hover:text-white transition-colors">
               Supprimer mon compte
             </Button>
           </div>
         </div>
+
       </div>
-
-      {/* Modal Mettre à niveau */}
-      {showUpgradeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-[2rem] w-full max-w-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-6 border-b border-black/5">
-              <h2 className="text-2xl font-bold text-black">Mettre à niveau votre plan</h2>
-              <button 
-                onClick={() => setShowUpgradeModal(false)}
-                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#F5F5F7] transition-colors"
-              >
-                <X className="w-5 h-5 text-muted-foreground" />
-              </button>
-            </div>
-            
-            <div className="p-6 bg-[#F5F5F7]/30">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Gratuit */}
-                <div className="bg-white border border-black/10 rounded-3xl p-6 shadow-sm flex flex-col">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-bold text-black mb-1">Gratuit</h3>
-                    <p className="text-sm text-muted-foreground h-10">Parfait pour commencer et tester.</p>
-                  </div>
-                  <div className="mb-6">
-                    <span className="text-3xl font-bold text-black">0 FCFA</span>
-                    <span className="text-muted-foreground text-sm">/mois</span>
-                  </div>
-                  <ul className="space-y-3 mb-8 flex-1">
-                    <li className="flex items-center gap-2 text-sm text-black font-medium">
-                      <CheckCircle2 className="w-4 h-4 text-primary" />
-                      1,9% de commission
-                    </li>
-                  </ul>
-                  <Button className="w-full bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
-                    Plan Actuel
-                  </Button>
-                </div>
-
-                {/* Pro */}
-                <div className="bg-white border-2 border-primary rounded-3xl p-6 shadow-md relative flex flex-col scale-105 z-10">
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
-                    Populaire
-                  </div>
-                  <div className="mb-4 mt-2">
-                    <h3 className="text-lg font-bold text-black mb-1">Pro</h3>
-                    <p className="text-sm text-muted-foreground h-10">Pour les business en croissance.</p>
-                  </div>
-                  <div className="mb-6">
-                    <span className="text-3xl font-bold text-black">5 000 FCFA</span>
-                    <span className="text-muted-foreground text-sm">/mois</span>
-                  </div>
-                  <ul className="space-y-3 mb-8 flex-1">
-                    <li className="flex items-center gap-2 text-sm text-black font-medium">
-                      <CheckCircle2 className="w-4 h-4 text-primary" />
-                      0,8% de commission
-                    </li>
-                  </ul>
-                  <Button className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl font-bold shadow-sm">
-                    Choisir ce plan
-                  </Button>
-                </div>
-
-                {/* Business */}
-                <div className="bg-white border border-black/10 rounded-3xl p-6 shadow-sm flex flex-col">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-bold text-black mb-1">Business</h3>
-                    <p className="text-sm text-muted-foreground h-10">Pour les grands volumes.</p>
-                  </div>
-                  <div className="mb-6">
-                    <span className="text-3xl font-bold text-black">15 000 FCFA</span>
-                    <span className="text-muted-foreground text-sm">/mois</span>
-                  </div>
-                  <ul className="space-y-3 mb-8 flex-1">
-                    <li className="flex items-center gap-2 text-sm text-black font-medium">
-                      <CheckCircle2 className="w-4 h-4 text-primary" />
-                      0,4% de commission
-                    </li>
-                  </ul>
-                  <Button className="w-full bg-black hover:bg-black/80 text-white rounded-xl font-bold shadow-sm">
-                    Choisir ce plan
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
