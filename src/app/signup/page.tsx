@@ -62,7 +62,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen bg-[#F5F5F7] flex flex-col justify-center items-center p-4">
       <Link href="/" className="flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity">
-        <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-sm shadow-sm">
+        <div className="w-8 h-8 rounded-xl bg-black flex items-center justify-center text-white font-bold text-sm shadow-sm">
           R
         </div>
         <span className="text-xl font-bold tracking-tight text-black">Réparto</span>
