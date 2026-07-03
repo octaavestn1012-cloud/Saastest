@@ -69,8 +69,8 @@ export function RecipientModal({ recipient, onClose, onSave }: RecipientModalPro
             />
           </div>
 
-          <div className="flex gap-3">
-            <div className="w-1/3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="w-full sm:w-1/3">
               <label className="block text-sm font-semibold text-muted-foreground mb-1.5 ml-1">Réseau</label>
               <select 
                 value={network} 
@@ -84,7 +84,7 @@ export function RecipientModal({ recipient, onClose, onSave }: RecipientModalPro
               </select>
             </div>
             
-            <div className="flex-1">
+            <div className="flex-1 w-full">
               <label className="block text-sm font-semibold text-muted-foreground mb-1.5 ml-1">Numéro de téléphone</label>
               <input 
                 type="tel" 
