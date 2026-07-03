@@ -1,17 +1,44 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard, CheckCircle2, Receipt, Plus, Download, AlertCircle } from "lucide-react";
+import { CreditCard, CheckCircle2, Receipt, Plus, Download, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/context/UserContext";
+import { createClient } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function BillingPage() {
-  const { plan: currentPlanRaw } = useUser();
+  const { user, plan: currentPlanRaw, refreshProfile } = useUser();
+  const router = useRouter();
+  const supabase = createClient();
+  
+  const [updatingPlan, setUpdatingPlan] = useState<string | null>(null);
+
   // Transforme la première lettre en majuscule pour l'affichage ("gratuit" -> "Gratuit")
   const currentPlan = currentPlanRaw.charAt(0).toUpperCase() + currentPlanRaw.slice(1);
   
   // Constantes basées sur le plan
   const commissionText = currentPlanRaw === 'pro' ? '0,8%' : currentPlanRaw === 'business' ? '0,4%' : '1,9%';
+
+  const handlePlanChange = async (newPlan: 'gratuit' | 'pro' | 'business') => {
+    if (!user) return;
+    setUpdatingPlan(newPlan);
+    
+    // Note interne : Paiement réel à venir. Pour l'instant, on met juste à jour la base.
+    const { error } = await supabase
+      .from('profiles')
+      .update({ plan: newPlan })
+      .eq('id', user.id);
+      
+    if (!error) {
+      await refreshProfile();
+      router.refresh();
+    } else {
+      alert("Erreur lors de la mise à jour du plan.");
+    }
+    
+    setUpdatingPlan(null);
+  };
 
   return (
     <div className="max-w-5xl mx-auto pb-24">
@@ -78,12 +105,19 @@ export default function BillingPage() {
                 </li>
               </ul>
               {currentPlan === 'Gratuit' ? (
-                <Button className="w-full bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
-                  Plan Actuel
-                </Button>
-              ) : (
-                <Button variant="outline" className="w-full rounded-xl font-bold">Rétrograder</Button>
-              )}
+               <Button disabled className="w-full bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
+                 Plan Actuel
+               </Button>
+             ) : (
+               <Button 
+                 onClick={() => handlePlanChange('gratuit')} 
+                 disabled={updatingPlan !== null}
+                 variant="outline" 
+                 className="w-full rounded-xl font-bold"
+               >
+                 {updatingPlan === 'gratuit' ? <Loader2 className="w-5 h-5 animate-spin" /> : "Rétrograder"}
+               </Button>
+             )}
             </div>
 
             {/* Pro */}
@@ -114,12 +148,16 @@ export default function BillingPage() {
                 </li>
               </ul>
               {currentPlan === 'Pro' ? (
-                <Button className="w-full bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
+                <Button disabled className="w-full bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
                   Plan Actuel
                 </Button>
               ) : (
-                <Button className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl font-bold shadow-sm">
-                  Passer à ce plan
+                <Button 
+                  onClick={() => handlePlanChange('pro')} 
+                  disabled={updatingPlan !== null}
+                  className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl font-bold shadow-sm"
+                >
+                  {updatingPlan === 'pro' ? <Loader2 className="w-5 h-5 animate-spin" /> : "Passer à ce plan"}
                 </Button>
               )}
             </div>
@@ -149,12 +187,16 @@ export default function BillingPage() {
                 </li>
               </ul>
               {currentPlan === 'Business' ? (
-                <Button className="w-full bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
+                <Button disabled className="w-full bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
                   Plan Actuel
                 </Button>
               ) : (
-                <Button className="w-full bg-black hover:bg-black/80 text-white rounded-xl font-bold shadow-sm">
-                  Passer à ce plan
+                <Button 
+                  onClick={() => handlePlanChange('business')} 
+                  disabled={updatingPlan !== null}
+                  className="w-full bg-black hover:bg-black/80 text-white rounded-xl font-bold shadow-sm"
+                >
+                  {updatingPlan === 'business' ? <Loader2 className="w-5 h-5 animate-spin" /> : "Passer à ce plan"}
                 </Button>
               )}
             </div>
@@ -181,7 +223,7 @@ export default function BillingPage() {
               </div>
               <h3 className="text-black font-bold mb-2">Aucun moyen de paiement</h3>
               <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-                Ajoutez un moyen de paiement (Mobile Money ou carte) pour pouvoir souscrire à un plan supérieur.
+                Ajoutez un moyen de paiement (Mobile Money ou carte) pour pouvoir souscrire à un plan supérieur de manière automatique (Paiement réel à venir).
               </p>
               <Button className="bg-black hover:bg-black/80 text-white rounded-xl font-bold px-6">
                 <Plus className="w-4 h-4 mr-2" />
@@ -205,34 +247,9 @@ export default function BillingPage() {
             <div className="p-6 flex-1 flex flex-col justify-center items-center text-center">
               <Receipt className="w-12 h-12 text-black/10 mb-4" />
               <p className="text-sm text-muted-foreground">
-                Vous n'avez pas encore de factures. Elles apparaîtront ici après votre premier paiement.
+                Vous n'avez pas encore de factures. Elles apparaîtront ici après votre premier paiement réel.
               </p>
             </div>
-            
-            {/* Exemple visuel de tableau si données présentes (masqué pour l'instant via classe hidden) :
-            <div className="hidden overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-[#F5F5F7]/50 text-muted-foreground">
-                  <tr>
-                    <th className="px-6 py-3 font-medium">Date</th>
-                    <th className="px-6 py-3 font-medium">Montant</th>
-                    <th className="px-6 py-3 font-medium">Statut</th>
-                    <th className="px-6 py-3 font-medium text-right">Reçu</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-black/5">
-                  <tr className="hover:bg-black/[0.02]">
-                    <td className="px-6 py-4 text-black">30 Juin 2026</td>
-                    <td className="px-6 py-4 text-black font-medium">5 000 FCFA</td>
-                    <td className="px-6 py-4"><span className="text-[#25D366] bg-[#25D366]/10 px-2 py-1 rounded-md text-xs font-bold">Payé</span></td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="text-primary hover:underline flex items-center justify-end gap-1"><Download className="w-4 h-4"/> PDF</button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            */}
           </div>
         </div>
 

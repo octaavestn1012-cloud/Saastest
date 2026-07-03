@@ -285,7 +285,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
           transition={{ type: "spring", damping: 28, stiffness: 300 }}
-          className="relative w-full h-[95vh] sm:h-auto sm:max-h-[90vh] sm:max-w-[34rem] bg-[#FAFAFA] sm:rounded-[2.5rem] rounded-t-[2rem] shadow-2xl flex flex-col overflow-hidden"
+          className="relative w-full h-[92dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-[34rem] bg-[#FAFAFA] sm:rounded-[2.5rem] rounded-t-[2rem] shadow-2xl flex flex-col overflow-hidden"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 bg-white z-20 shrink-0 shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
@@ -458,21 +458,21 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                         <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-black/[0.03] group-hover:bg-primary/50 transition-colors" />
                         
                         <div className="flex w-full gap-3 mb-3 pl-2 items-center">
-                          <input type="text" value={target.name} onChange={(e) => updateQuickTarget(target.id, "name", e.target.value)} placeholder={`Destinataire ${idx + 1}`} className="flex-1 bg-transparent text-lg font-bold outline-none placeholder:text-black/20" />
-                          <div className="relative w-28 bg-[#F5F5F7] rounded-[1rem] flex items-center pr-3 group-hover:bg-[#EEEEF0] transition-colors">
+                          <input type="text" value={target.name} onChange={(e) => updateQuickTarget(target.id, "name", e.target.value)} placeholder={`Destinataire ${idx + 1}`} className="flex-1 min-w-[80px] bg-transparent text-lg font-bold outline-none placeholder:text-black/20" />
+                          <div className="relative w-24 shrink-0 bg-[#F5F5F7] rounded-[1rem] flex items-center pr-3 group-hover:bg-[#EEEEF0] transition-colors">
                             <input type="number" value={target.value || ''} onChange={(e) => updateQuickTarget(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-2.5 px-3" />
                             <span className="text-muted-foreground font-bold text-sm">{isPercentageMode ? "%" : "F"}</span>
                           </div>
                         </div>
                         <div className="flex w-full gap-2 pl-2">
-                          <select value={target.network} onChange={(e) => updateQuickTarget(target.id, "network", e.target.value)} className="flex-1 bg-[#F5F5F7] rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary text-sm font-semibold appearance-none">
+                          <select value={target.network} onChange={(e) => updateQuickTarget(target.id, "network", e.target.value)} className="flex-1 min-w-[70px] bg-[#F5F5F7] rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary text-sm font-semibold appearance-none">
                             <option value="MTN">MTN BJ</option>
                             <option value="Moov">Moov BJ</option>
                             <option value="Celtiis">Celtiis BJ</option>
                             <option value="Wave">Wave CI</option>
                           </select>
-                          <input type="tel" value={target.phone} onChange={(e) => updateQuickTarget(target.id, "phone", e.target.value)} placeholder="00 00 00 00" className="flex-[1.5] bg-[#F5F5F7] rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary text-sm font-mono font-medium tracking-wide" />
-                          <button onClick={() => removeQuickTarget(target.id)} className="w-11 flex items-center justify-center text-muted-foreground hover:text-danger bg-[#F5F5F7] hover:bg-danger/10 rounded-xl transition-colors">
+                          <input type="tel" value={target.phone} onChange={(e) => updateQuickTarget(target.id, "phone", e.target.value)} placeholder="00 00 00 00" className="flex-[1.5] min-w-[100px] bg-[#F5F5F7] rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary text-sm font-mono font-medium tracking-wide" />
+                          <button onClick={() => removeQuickTarget(target.id)} className="w-11 shrink-0 flex items-center justify-center text-muted-foreground hover:text-danger bg-[#F5F5F7] hover:bg-danger/10 rounded-xl transition-colors">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -523,7 +523,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                       )}
 
                       {step === "PREVIEW" && isAdjusting && modalMode === "rule" && (
-                        <div className="relative w-28">
+                        <div className="relative w-24">
                           <input 
                             type="number" 
                             value={isPercentageMode ? target.percent : target.amount}
@@ -598,12 +598,12 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                         value={saveRuleName}
                         onChange={(e) => setSaveRuleName(e.target.value)}
                         placeholder="Ex: Dépenses du mois"
-                        className="flex-1 bg-white border-2 border-white focus:border-[#FDE1A9] rounded-2xl px-4 py-3.5 text-[15px] font-bold outline-none shadow-sm transition-all"
+                        className="flex-1 min-w-0 bg-white border-2 border-white focus:border-[#FDE1A9] rounded-2xl px-4 py-3.5 text-[15px] font-bold outline-none shadow-sm transition-all"
                       />
                       <button 
                         onClick={saveQuickAsRule}
                         disabled={!saveRuleName.trim()}
-                        className="px-6 py-3.5 bg-[#A87211] hover:bg-[#8C5D0B] disabled:opacity-50 text-white text-[15px] font-bold rounded-2xl shadow-lg shadow-[#A87211]/20 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                        className="px-6 py-3.5 shrink-0 bg-[#A87211] hover:bg-[#8C5D0B] disabled:opacity-50 text-white text-[15px] font-bold rounded-2xl shadow-lg shadow-[#A87211]/20 transition-all hover:-translate-y-0.5 active:translate-y-0"
                       >
                         Sauvegarder
                       </button>
@@ -626,7 +626,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           </div>
 
           {/* Footer Actions */}
-          <div className="p-6 bg-white border-t border-black/[0.03] shrink-0 z-20 pb-safe sm:rounded-b-[2.5rem]">
+          <div className="p-6 bg-white border-t border-black/[0.03] shrink-0 z-20 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:rounded-b-[2.5rem]">
             {step === "PREVIEW" && (
               <div className="flex flex-col gap-5">
                 <div className={!isExact && (isPercentageMode || totalDistributed > activeData.totalAvailable) ? "opacity-40 grayscale pointer-events-none transition-all duration-300" : "transition-all duration-300"}>

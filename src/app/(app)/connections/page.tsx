@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Link2, Plus, AlertCircle, CheckCircle2, ShieldCheck, X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
-import { connectFedaPay } from "@/app/actions/connections";
+import { connectFedaPay, deleteConnection } from "@/app/actions/connections";
 
 const AVAILABLE_GATEWAYS = [
   { name: "Kkiapay", desc: "Passerelle locale très populaire au Bénin.", color: "bg-blue-500" },
@@ -47,7 +47,7 @@ export default function ConnectionsPage() {
     setIsLoading(true);
     const { data } = await supabase
       .from("connexions")
-      .select("*")
+      .select("id, nom, passerelle, statut, created_at")
       .order("created_at", { ascending: false });
     
     if (data) setConnections(data);
@@ -172,10 +172,18 @@ export default function ConnectionsPage() {
                   <span className="text-[10px] font-medium text-muted-foreground uppercase">
                     Ajouté le {new Date(conn.created_at).toLocaleDateString()}
                   </span>
-                  <Button variant="outline" className={`rounded-lg h-8 px-4 text-xs ${
-                    conn.statut === "erreur" ? "bg-white text-danger border-danger/30 hover:bg-danger/10" : "hover:bg-black/[0.02]"
-                  }`}>
-                    Gérer
+                  <Button 
+                    variant="outline" 
+                    onClick={async () => {
+                      if (confirm("Voulez-vous vraiment supprimer cette connexion ?")) {
+                        await deleteConnection(conn.id);
+                        loadConnections();
+                      }
+                    }}
+                    className={`rounded-lg h-8 px-4 text-xs ${
+                      conn.statut === "erreur" ? "bg-white text-danger border-danger/30 hover:bg-danger/10" : "hover:bg-danger/10 hover:text-danger hover:border-transparent transition-colors"
+                    }`}>
+                    Supprimer
                   </Button>
                 </div>
               </motion.div>

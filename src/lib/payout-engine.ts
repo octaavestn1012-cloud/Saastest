@@ -13,7 +13,17 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
   // On utilise la clé "Service Role" pour contourner le RLS (puisqu'on n'est pas connecté via le navigateur)
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-  // 1. Récupérer la connexion FedaPay de l'utilisateur
+  // 1. Récupérer le plan de l'utilisateur pour la commission
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("plan")
+    .eq("id", userId)
+    .single();
+
+  const plan = profile?.plan || "gratuit";
+  const commissionRate = plan === "pro" ? 0.008 : plan === "business" ? 0.004 : 0.019;
+
+  // 2. Récupérer la connexion FedaPay de l'utilisateur
   const { data: conn, error: connError } = await supabaseAdmin
     .from("connexions")
     .select("*")
@@ -29,7 +39,7 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
 
   const secretKey = decryptKey(conn.cle_chiffree);
 
-  // 2. Chercher la règle avec le bon déclencheur
+  // 3. Chercher la règle avec le bon déclencheur
   const { data: rules } = await supabaseAdmin
     .from("regles")
     .select(`
@@ -52,12 +62,12 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
     return { success: false, error: `Aucune règle active pour le déclencheur '${triggerType}'` };
   }
 
-  // On prend la première règle "à chaque entrée"
+  // On prend la première règle "à chaque entrée" ou celle demandée
   const rule = rules[0];
 
-  // Déduire la commission Réparto (ex: 1.9%)
-  const commissionRate = 0.019; 
-  const availableAfterCommission = availableAmount * (1 - commissionRate);
+  // Calcul de la commission Réparto
+  const commissionAmount = Math.floor(availableAmount * commissionRate);
+  const availableAfterCommission = availableAmount - commissionAmount;
   
   let remaining = availableAfterCommission;
   const results = [];
@@ -75,6 +85,15 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
     throw new Error("Impossible de créer l'historique d'exécution");
   }
 
+  // Insérer la ligne de commission
+  await supabaseAdmin.from("execution_lignes").insert({
+    execution_id: execution.id,
+    destinataire_libelle: "Commission Réparto",
+    montant: commissionAmount,
+    statut: "reussi",
+    est_commission: true
+  });
+
   for (const dist of rule.distributions) {
     if (!dist.destinataires) continue; // Sécurité
 
@@ -90,11 +109,20 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
     if (amountToSend > remaining || amountToSend < 100) {
       console.warn(`Montant invalide ou solde insuffisant pour ${dist.libelle} (${amountToSend} FCFA)`);
       results.push({ dest: dist.libelle, amount: amountToSend, status: "echoue", error: "Montant insuffisant" });
+      
+      await supabaseAdmin.from("execution_lignes").insert({
+        execution_id: execution.id,
+        destinataire_libelle: dist.libelle,
+        montant: amountToSend,
+        statut: "echoue",
+        est_commission: false
+      });
       continue;
     }
 
     try {
-      // API Payout FedaPay
+      // Simulation pour l'étape 5, on n'appelle pas vraiment FedaPay si on veut juste tester la logique.
+      // Mais vu que la clé sandbox FedaPay est déjà là (Étape 6 faite), on peut faire le call Sandbox, l'argent n'est pas réel.
       const payoutRes = await createAndSendPayout(
         secretKey,
         amountToSend,

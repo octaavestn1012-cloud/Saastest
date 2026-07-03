@@ -339,13 +339,30 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                   <GripVertical className="w-5 h-5" />
                 </div>
                 
-                <input 
-                  type="text" 
-                  value={recipient.name}
-                  onChange={(e) => updateRecipient(recipient.id, "name", e.target.value)}
-                  placeholder="Nom"
-                  className="flex-[1.5] bg-[#F5F5F7] border-transparent rounded-[12px] px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
-                />
+                <div className="flex-[1.5] relative">
+                  <input 
+                    type="text" 
+                    value={recipient.name}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateRecipient(recipient.id, "name", val);
+                      // Auto-fill if it matches a contact exactly
+                      const matchedContact = contacts.find(c => c.name === val);
+                      if (matchedContact) {
+                        updateRecipient(recipient.id, "network", matchedContact.network);
+                        updateRecipient(recipient.id, "phone", matchedContact.phone);
+                      }
+                    }}
+                    list="contacts-list"
+                    placeholder="Nom ou sélectionner..."
+                    className="w-full bg-[#F5F5F7] border-transparent rounded-[12px] px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
+                  />
+                  <datalist id="contacts-list">
+                    {contacts.map(c => (
+                      <option key={c.id} value={c.name}>{c.phone} ({c.network})</option>
+                    ))}
+                  </datalist>
+                </div>
 
                 <div className="relative flex-1 w-full sm:w-auto">
                   <input 

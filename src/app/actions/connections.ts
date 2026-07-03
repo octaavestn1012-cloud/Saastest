@@ -77,3 +77,16 @@ export async function connectFedaPay(formData: FormData) {
     return { error: error.message || "Une erreur inattendue est survenue." };
   }
 }
+export async function deleteConnection(id: string) {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Non autorisé" };
+
+    const { error } = await supabase.from("connexions").delete().eq("id", id).eq("user_id", user.id);
+    if (error) return { error: error.message };
+    return { success: true };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
