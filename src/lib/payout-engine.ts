@@ -47,7 +47,7 @@ export async function processQuickPayouts(userId: string, availableAmount: numbe
   });
 
   for (const t of targets) {
-    let amountToSend = mode === "percentage" ? (availableAfterCommission * Number(t.percent || t.value)) / 100 : Number(t.amount || t.value);
+    let amountToSend = mode === "percentage" ? (availableAfterCommission * Number(t.percent ?? t.value ?? 0)) / 100 : Number(t.amount ?? t.value ?? 0);
     amountToSend = Math.floor(amountToSend);
 
     if (amountToSend > remaining || amountToSend < 100) {

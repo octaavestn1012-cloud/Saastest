@@ -21,7 +21,6 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [step, setStep] = useState<Step>("PREVIEW");
   const [results, setResults] = useState<Record<string, "PENDING" | "SUCCESS" | "FAILED">>({});
   const [totalAvailable, setTotalAvailable] = useState<number>(0);
-  const [maxBalance, setMaxBalance] = useState<number>(0);
   const [isLoadingData, setIsLoadingData] = useState(true);
   
   const [rules, setRules] = useState<any[]>([]);
@@ -79,7 +78,6 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
       try {
         const { data: metrics } = await getDashboardMetrics();
         if (metrics) {
-          setMaxBalance(metrics.balance || 0);
           setTotalAvailable(metrics.balance || 0);
         }
 
@@ -380,7 +378,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
             <div className="flex flex-col items-center justify-center pt-5 pb-5 bg-white rounded-[2rem] shadow-sm border border-black/[0.03]">
               <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Solde disponible" : activeData.name}</span>
               <div className="text-4xl sm:text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-black to-black/70 mb-2">
-                <Amount value={modalMode === "quick" && !customData ? maxBalance : activeData.totalAvailable} />
+                <Amount value={activeData.totalAvailable} />
               </div>
               
               <button 
@@ -392,26 +390,6 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                 <span>frais {COMMISSION_TEXT}</span>
                 <Info className="w-3.5 h-3.5 ml-0.5 text-black/40" />
               </button>
-
-              {!customData && (
-                <div className="mt-5 w-full px-5">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground text-left mb-2 ml-1">Préciser le montant à répartir</label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={totalAvailable || ""}
-                      onChange={(e) => {
-                        let val = Number(e.target.value);
-                        if (val > maxBalance) val = maxBalance;
-                        setTotalAvailable(val);
-                      }}
-                      placeholder="0"
-                      className="w-full bg-[#F5F5F7] hover:bg-[#EAEAEB] transition-colors rounded-2xl px-5 py-3.5 font-bold text-[16px] outline-none focus:ring-2 focus:ring-primary text-black placeholder:text-black/20"
-                    />
-                    <span className="absolute right-5 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">FCFA</span>
-                  </div>
-                </div>
-              )}
 
               <AnimatePresence>
                 {showCommissionDetails && (
@@ -621,7 +599,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                               </AnimatePresence>
                             </div>
 
-                            <div className="relative w-[100px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
+                            <div className="relative w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
                               <input type="number" value={target.value || ''} onChange={(e) => updateQuickTarget(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-3 px-2 text-[16px] text-black placeholder:text-black/30" />
                               <span className="text-black font-black text-[15px]">{isPercentageMode ? "%" : "F"}</span>
                             </div>
@@ -632,7 +610,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                               <div className="flex-1 bg-[#F5F5F7] rounded-xl flex items-center px-4 py-3 border-2 border-transparent focus-within:border-black/10 transition-all">
                                 <input type="text" value={target.name} onChange={(e) => updateQuickTarget(target.id, "name", e.target.value)} placeholder="Nom (ex: Loyer)" className="w-full bg-transparent font-bold outline-none placeholder:text-black/40 text-black text-[15px]" />
                               </div>
-                              <div className="relative w-[100px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
+                              <div className="relative w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
                                 <input type="number" value={target.value || ''} onChange={(e) => updateQuickTarget(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-3 px-2 text-[16px] text-black placeholder:text-black/30" />
                                 <span className="text-black font-black text-[15px]">{isPercentageMode ? "%" : "F"}</span>
                               </div>
@@ -809,7 +787,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           <div className="p-6 bg-white border-t border-black/[0.03] shrink-0 z-20 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:rounded-b-[2.5rem]">
             {step === "PREVIEW" && (
               <div className="flex flex-col gap-5">
-                <div className={!isExact && (isPercentageMode || totalDistributed > activeData.totalAvailable) ? "opacity-40 grayscale pointer-events-none transition-all duration-300" : "transition-all duration-300"}>
+                <div className={totalAvailable === 0 || (!isExact && (isPercentageMode || totalDistributed > activeData.totalAvailable)) ? "opacity-40 grayscale pointer-events-none transition-all duration-300" : "transition-all duration-300"}>
                   <SlideToConfirm 
                     onConfirm={handleConfirm} 
                     text={`Envoyer ${formatAmount(activeData.totalAvailable)} FCFA`}
