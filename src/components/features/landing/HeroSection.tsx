@@ -17,33 +17,33 @@ export function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-sm mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-xs sm:text-sm mb-4 sm:mb-6">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
             Nouveau : Connectez vos passerelles locales
           </div>
           
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tighter text-black leading-[1.1] mb-6">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tighter text-black leading-[1.1] mb-4 sm:mb-6">
             Répartis automatiquement ton argent, <br className="hidden sm:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-600">
               selon TES règles.
             </span>
           </h1>
           
-          <p className="text-lg sm:text-xl text-muted-foreground font-medium mb-8 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground font-medium mb-6 sm:mb-8 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
             Réparto envoie ton argent où tu veux, quand tu veux — sans que tu y penses. 
             Tu arrêtes de tout dépenser, tu construis enfin.
           </p>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4">
             <Link href="/signup" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto bg-black hover:bg-black/80 text-white rounded-full px-8 py-7 text-lg font-bold shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 flex items-center justify-center gap-2">
+              <Button className="w-full sm:w-auto bg-black hover:bg-black/80 text-white rounded-full px-8 py-6 sm:py-7 text-base sm:text-lg font-bold shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 flex items-center justify-center gap-2">
                 Commencer gratuitement
                 <ArrowRight className="w-5 h-5" />
               </Button>
             </Link>
           </div>
           
-          <div className="mt-6 flex items-center justify-center lg:justify-start gap-4 text-sm font-semibold text-muted-foreground">
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-2 sm:gap-4 text-xs sm:text-sm font-semibold text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-money-in" />
               <span>Gratuit pour démarrer</span>
@@ -68,12 +68,12 @@ export function HeroSection() {
           <div className="bg-white rounded-[2.5rem] border border-black/[0.05] shadow-2xl p-6 sm:p-8 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-primary to-purple-500" />
             
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex justify-between items-center mb-6 sm:mb-8">
               <div>
-                <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-1">Entrée (FedaPay)</p>
-                <div className="text-3xl font-black text-black">150 000 F</div>
+                <p className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-wider mb-1">Entrée (FedaPay)</p>
+                <div className="text-2xl sm:text-3xl font-black text-black">150 000 F</div>
               </div>
-              <Wallet className="w-10 h-10 text-black/10" />
+              <Wallet className="w-8 h-8 sm:w-10 sm:h-10 text-black/10" />
             </div>
 
             {/* Animation de flux */}
@@ -87,14 +87,14 @@ export function HeroSection() {
                   initial={{ x: -20, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.5, type: "spring" }}
-                  className="bg-[#F5F5F7] p-4 rounded-2xl flex justify-between items-center ml-8 relative"
+                  className="bg-[#F5F5F7] p-3 sm:p-4 rounded-2xl flex justify-between items-center ml-6 sm:ml-8 relative"
                 >
-                  <div className="absolute top-1/2 -left-8 w-8 h-0.5 bg-black/10" />
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-money-in/20 text-money-in flex items-center justify-center font-bold text-xs">50%</div>
-                    <span className="font-bold">Épargne (MTN)</span>
+                  <div className="absolute top-1/2 -left-6 sm:-left-8 w-6 sm:w-8 h-0.5 bg-black/10" />
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-money-in/20 text-money-in flex items-center justify-center font-bold text-[10px] sm:text-xs">50%</div>
+                    <span className="font-bold text-sm sm:text-base">Épargne (MTN)</span>
                   </div>
-                  <span className="font-black">75 000 F</span>
+                  <span className="font-black text-sm sm:text-base">75 000 F</span>
                 </motion.div>
 
                 {/* Ligne 2 */}
@@ -102,14 +102,14 @@ export function HeroSection() {
                   initial={{ x: -20, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.7, type: "spring" }}
-                  className="bg-[#F5F5F7] p-4 rounded-2xl flex justify-between items-center ml-8 relative"
+                  className="bg-[#F5F5F7] p-3 sm:p-4 rounded-2xl flex justify-between items-center ml-6 sm:ml-8 relative"
                 >
-                  <div className="absolute top-1/2 -left-8 w-8 h-0.5 bg-black/10" />
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">30%</div>
-                    <span className="font-bold">Dépenses (Moov)</span>
+                  <div className="absolute top-1/2 -left-6 sm:-left-8 w-6 sm:w-8 h-0.5 bg-black/10" />
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-[10px] sm:text-xs">30%</div>
+                    <span className="font-bold text-sm sm:text-base">Dépenses (Moov)</span>
                   </div>
-                  <span className="font-black">45 000 F</span>
+                  <span className="font-black text-sm sm:text-base">45 000 F</span>
                 </motion.div>
 
                 {/* Ligne 3 */}
@@ -117,16 +117,16 @@ export function HeroSection() {
                   initial={{ x: -20, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.9, type: "spring" }}
-                  className="bg-[#F5F5F7] p-4 rounded-2xl flex justify-between items-center ml-8 relative"
+                  className="bg-[#F5F5F7] p-3 sm:p-4 rounded-2xl flex justify-between items-center ml-6 sm:ml-8 relative"
                 >
-                  <div className="absolute top-1/2 -left-8 w-8 h-0.5 bg-black/10" />
-                  <div className="absolute -top-16 left-[-32px] w-0.5 h-[90px] bg-black/10" />
+                  <div className="absolute top-1/2 -left-6 sm:-left-8 w-6 sm:w-8 h-0.5 bg-black/10" />
+                  <div className="absolute -top-14 sm:-top-16 left-[-24px] sm:left-[-32px] w-0.5 h-[80px] sm:h-[90px] bg-black/10" />
                   
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-600 flex items-center justify-center font-bold text-xs">20%</div>
-                    <span className="font-bold">Loisirs (MTN)</span>
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-purple-500/20 text-purple-600 flex items-center justify-center font-bold text-[10px] sm:text-xs">20%</div>
+                    <span className="font-bold text-sm sm:text-base">Loisirs (MTN)</span>
                   </div>
-                  <span className="font-black">30 000 F</span>
+                  <span className="font-black text-sm sm:text-base">30 000 F</span>
                 </motion.div>
               </div>
             </div>

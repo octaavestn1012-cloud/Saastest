@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { Loader2, MailCheck } from "lucide-react";
+import { Loader2, MailCheck, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,9 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,7 +63,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] flex flex-col justify-center items-center p-4">
+    <div className="min-h-[100dvh] bg-[#F5F5F7] flex flex-col justify-start sm:justify-center items-center p-4 pt-16 sm:pt-4">
       <Link href="/" className="flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity">
         <div className="w-8 h-8 rounded-xl bg-black flex items-center justify-center text-white font-bold text-sm shadow-sm">
           R
@@ -68,7 +71,7 @@ export default function SignupPage() {
         <span className="text-xl font-bold tracking-tight text-black">Réparto</span>
       </Link>
 
-      <div className="bg-white p-8 sm:p-10 rounded-[2rem] shadow-sm border border-black/5 w-full max-w-md">
+      <div className="bg-white p-6 sm:p-10 rounded-[2rem] shadow-sm border border-black/5 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold tracking-tight mb-2">Créer un compte</h1>
           <p className="text-muted-foreground text-sm font-medium">Commencez à répartir vos revenus intelligemment.</p>
@@ -99,20 +102,38 @@ export default function SignupPage() {
           <form onSubmit={onSubmit} className="space-y-5">
             <div className="space-y-2">
               <label className="text-sm font-bold text-black" htmlFor="email">Email</label>
-              <Input id="email" name="email" placeholder="octave@exemple.com" type="email" required className="rounded-xl" />
+              <Input id="email" name="email" placeholder="octave@exemple.com" type="email" required className="rounded-xl h-14 px-4 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-bold text-black" htmlFor="password">Mot de passe</label>
-              <Input id="password" name="password" placeholder="••••••••" type="password" required className="rounded-xl" />
+              <div className="relative">
+                <Input id="password" name="password" placeholder="••••••••" type={showPassword ? "text" : "password"} required className="rounded-xl h-14 pl-4 pr-12 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-black p-2 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-bold text-black" htmlFor="confirmPassword">Confirmer le mot de passe</label>
-              <Input id="confirmPassword" name="confirmPassword" placeholder="••••••••" type="password" required className="rounded-xl" />
+              <div className="relative">
+                <Input id="confirmPassword" name="confirmPassword" placeholder="••••••••" type={showConfirmPassword ? "text" : "password"} required className="rounded-xl h-14 pl-4 pr-12 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />
+                <button 
+                  type="button" 
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-black p-2 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-6 font-bold text-base" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-6 font-bold text-base mt-2" disabled={isLoading}>
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Créer mon compte"}
             </Button>
           </form>

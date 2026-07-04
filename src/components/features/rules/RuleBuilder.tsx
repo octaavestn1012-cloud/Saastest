@@ -196,7 +196,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
   return (
     <div className="max-w-4xl mx-auto space-y-10 pb-32">
       {/* SECTION 1 : NOM */}
-      <section className="bg-white rounded-[2rem] p-8 border border-black/[0.05] shadow-sm">
+      <section className="bg-white rounded-[2rem] p-4 sm:p-8 border border-black/[0.05] shadow-sm">
         <label className="block text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
           1. Nom de la règle
         </label>
@@ -210,7 +210,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
       </section>
 
       {/* SECTION 2 : DÉCLENCHEUR */}
-      <section className="bg-white rounded-[2rem] p-8 border border-black/[0.05] shadow-sm">
+      <section className="bg-white rounded-[2rem] p-4 sm:p-8 border border-black/[0.05] shadow-sm">
         <label className="block text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4">
           2. Déclencheur — Quand répartir ?
         </label>
@@ -287,7 +287,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
       </section>
 
       {/* SECTION 3 : DESTINATAIRES */}
-      <section className="bg-white rounded-[2rem] p-8 border border-black/[0.05] shadow-sm">
+      <section className="bg-white rounded-[2rem] p-4 sm:p-8 border border-black/[0.05] shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <label className="block text-sm font-bold text-muted-foreground uppercase tracking-wider">
             3. Destinataires — Comment répartir ?
@@ -339,7 +339,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="bg-white p-5 rounded-[1.5rem] border-2 border-[#F5F5F7] relative group hover:border-black/10 transition-all"
+                className="bg-white p-4 sm:p-5 rounded-[1.5rem] border-2 border-[#F5F5F7] relative group hover:border-black/10 transition-all"
               >
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-[17px] font-extrabold text-black">Destinataire {idx + 1}</span>
@@ -349,7 +349,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                 </div>
 
                 {!target.isManual ? (
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
                     {/* Custom Dropdown UI */}
                     <div className="relative flex-1 custom-dropdown-container">
                       <button 
@@ -430,23 +430,23 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                       </AnimatePresence>
                     </div>
 
-                    <div className="relative w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
+                    <div className="relative w-full sm:w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
                       <input type="number" value={target.value || ''} onChange={(e) => updateRecipient(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-3 px-2 text-[16px] text-black placeholder:text-black/30" />
                       <span className="text-black font-black text-[15px]">{mode === "pourcentage" ? "%" : "F"}</span>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                       <div className="flex-1 bg-[#F5F5F7] rounded-xl flex items-center px-4 py-3 border-2 border-transparent focus-within:border-black/10 transition-all">
                         <input type="text" value={target.name} onChange={(e) => updateRecipient(target.id, "name", e.target.value)} placeholder="Nom (ex: Loyer)" className="w-full bg-transparent font-bold outline-none placeholder:text-black/40 text-black text-[15px]" />
                       </div>
-                      <div className="relative w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
+                      <div className="relative w-full sm:w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
                         <input type="number" value={target.value || ''} onChange={(e) => updateRecipient(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-3 px-2 text-[16px] text-black placeholder:text-black/30" />
                         <span className="text-black font-black text-[15px]">{mode === "pourcentage" ? "%" : "F"}</span>
                       </div>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <div className="flex-1 bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
                         <select value={target.network} onChange={(e) => updateRecipient(target.id, "network", e.target.value)} className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]">
                           <option value="MTN">MTN BJ</option>
@@ -479,7 +479,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
       </section>
 
       {/* SECTION 4 : COMMISSION */}
-      <section className="bg-[#FAF5FF] border border-[#E9D5FF] rounded-[2rem] p-6 sm:p-8 flex items-start gap-4 shadow-sm">
+      <section className="bg-[#FAF5FF] border border-[#E9D5FF] rounded-[2rem] p-4 sm:p-8 flex items-start gap-4 shadow-sm">
         <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center shrink-0">
           <div className="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-xs">R</div>
         </div>
