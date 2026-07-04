@@ -513,16 +513,12 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                 </div>
 
                 {isPercentageMode && (
-                  <div className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-black/[0.03]">
+                  <div className="px-2 pt-1 pb-3">
                     <button 
                       onClick={() => setIsCustomTotal(!isCustomTotal)}
-                      className="w-full flex items-center justify-between text-left group"
+                      className="text-[12px] font-semibold text-black/30 hover:text-black/60 transition-colors mx-auto block underline decoration-black/20 underline-offset-4"
                     >
-                      <div className="flex items-center gap-2">
-                        <Edit2 className="w-4 h-4 text-muted-foreground group-hover:text-black transition-colors" />
-                        <span className="font-bold text-[14px] text-muted-foreground group-hover:text-black transition-colors">Personnaliser le montant à répartir</span>
-                      </div>
-                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isCustomTotal ? 'rotate-180' : ''}`} />
+                      modifier le montant de base
                     </button>
                     
                     <AnimatePresence>
@@ -531,7 +527,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden pt-4"
+                          className="overflow-hidden pt-3"
                         >
                           <div className="relative">
                             <input 
@@ -539,13 +535,10 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                               value={customTotalInput}
                               onChange={(e) => setCustomTotalInput(e.target.value)}
                               placeholder={`Ex: ${totalAvailable}`}
-                              className="w-full bg-[#F5F5F7] hover:bg-[#EAEAEB] transition-colors border-transparent rounded-[1.25rem] px-5 py-4 font-bold text-[16px] outline-none focus:ring-2 focus:ring-primary"
+                              className="w-full bg-white transition-colors border border-black/5 rounded-[1rem] px-4 py-3 font-bold text-[14px] outline-none focus:border-black/20"
                             />
-                            <span className="absolute right-5 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">FCFA</span>
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-[12px] text-muted-foreground">FCFA</span>
                           </div>
-                          <p className="text-[12px] font-medium text-muted-foreground mt-2 ml-1">
-                            Solde maximum disponible : <Amount value={totalAvailable} />
-                          </p>
                         </motion.div>
                       )}
                     </AnimatePresence>
