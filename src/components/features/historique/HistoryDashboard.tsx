@@ -116,7 +116,7 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
         commissionAmount: commissionLigne ? commissionLigne.amount : 0,
         totalAmount: details.reduce((acc: number, d: any) => acc + d.amount, 0),
         recipientCount: details.length,
-        status: exec.statut === "reussi" ? "SUCCESS" : (exec.statut === "partiel" ? "PARTIAL" : "FAILED"),
+        status: (exec.statut === "reussi" ? "SUCCESS" : exec.statut === "partiel" ? "PARTIAL" : "FAILED") as any,
         details
       };
     });

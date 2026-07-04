@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CheckCircle2, XCircle, Loader2, Edit2, RotateCcw, Plus, Trash2, Zap, SlidersHorizontal, BookOpen, Info } from "lucide-react";
+import { X, CheckCircle2, XCircle, Loader2, Edit2, RotateCcw, Plus, Trash2, Zap, SlidersHorizontal, BookOpen, Info, ChevronDown, User } from "lucide-react";
 import { Amount } from "@/components/shared/Amount";
 import { useUser } from "@/context/UserContext";
 import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
@@ -11,6 +11,7 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import Link from "next/link";
 import { getDashboardMetrics } from "@/app/actions/dashboard";
 import { getRegles } from "@/app/actions/regles";
+import { getDestinataires } from "@/app/actions/destinataires";
 import { executeRepartitionAction, executeQuickRepartitionAction } from "@/app/actions/repartir";
 
 type Step = "PREVIEW" | "EXECUTING" | "RESULT";
@@ -23,6 +24,8 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [isLoadingData, setIsLoadingData] = useState(true);
   
   const [rules, setRules] = useState<any[]>([]);
+  const [savedDestinataires, setSavedDestinataires] = useState<any[]>([]);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [selectedRuleId, setSelectedRuleId] = useState<string>("");
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [adjustedTargets, setAdjustedTargets] = useState<any[]>([]);
@@ -31,8 +34,8 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [modalMode, setModalMode] = useState<ModalMode>("quick");
   const [quickMode, setQuickMode] = useState<"percentage" | "fixed">("percentage");
   const [quickTargets, setQuickTargets] = useState<any[]>([
-    { id: "1", name: "Destinataire 1", value: 50, network: "MTN", phone: "" },
-    { id: "2", name: "Destinataire 2", value: 50, network: "Moov", phone: "" }
+    { id: "1", destinataireId: "", name: "", value: 50, network: "MTN", phone: "", isManual: false },
+    { id: "2", destinataireId: "", name: "", value: 50, network: "Moov", phone: "", isManual: false }
   ]);
   
   const [saveRuleName, setSaveRuleName] = useState("");
@@ -52,6 +55,11 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
         const { data: metrics } = await getDashboardMetrics();
         if (metrics) {
           setTotalAvailable(metrics.balance || 0);
+        }
+
+        const { data: dests } = await getDestinataires();
+        if (dests) {
+          setSavedDestinataires(dests);
         }
 
         if (!customData) {
@@ -159,14 +167,14 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     : (quickPreviewData?.targets || []);
 
   const isPercentageMode = modalMode === "rule" 
-    ? currentTargets.some(t => t.percent !== undefined)
+    ? currentTargets.some((t: any) => t.percent !== undefined)
     : quickMode === "percentage";
 
   const toDistribute = totalAvailable - (totalAvailable * COMMISSION_RATE);
-  const totalDistributedTargets = currentTargets.reduce((acc, t) => acc + (isPercentageMode ? (toDistribute * (Number(t.percent) || 0)) / 100 : Number(t.amount) || 0), 0);
-  const totalDistributed = totalDistributedTargets + (activeData?.commission || 0);
+  const totalDistributedTargets = currentTargets.reduce((acc: number, t: any) => acc + (isPercentageMode ? (toDistribute * (Number(t.percent) || 0)) / 100 : Number(t.amount) || 0), 0);
+  const totalDistributed = totalDistributedTargets + ((activeData as any)?.commission || 0);
   
-  const totalPercent = isPercentageMode ? currentTargets.reduce((acc, t) => acc + (Number(t.percent) || 0), 0) : 0;
+  const totalPercent = isPercentageMode ? currentTargets.reduce((acc: number, t: any) => acc + (Number(t.percent) || 0), 0) : 0;
   const isExact = isPercentageMode ? totalPercent === 100 : totalDistributedTargets <= toDistribute;
 
   const formatAmount = (val: number) => new Intl.NumberFormat('fr-FR').format(val);
@@ -176,7 +184,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     setStep("EXECUTING");
     
     const initialResults: Record<string, "PENDING" | "SUCCESS" | "FAILED"> = {};
-    currentTargets.forEach(t => initialResults[t.id] = "PENDING");
+    currentTargets.forEach((t: any) => initialResults[t.id] = "PENDING");
     setResults(initialResults);
 
     try {
@@ -194,7 +202,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
       
       // Mettre à jour l'UI avec le statut
       const finalResultsToSave: Record<string, "SUCCESS" | "FAILED"> = {};
-      currentTargets.forEach(t => {
+      currentTargets.forEach((t: any) => {
         finalResultsToSave[t.id] = finalStatus;
       });
       setResults(finalResultsToSave);
@@ -203,7 +211,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     } catch (e: any) {
       console.error(e);
       const finalResultsToSave: Record<string, "SUCCESS" | "FAILED"> = {};
-      currentTargets.forEach(t => finalResultsToSave[t.id] = "FAILED");
+      currentTargets.forEach((t: any) => finalResultsToSave[t.id] = "FAILED");
       setResults(finalResultsToSave);
       setStep("RESULT");
     }
@@ -211,7 +219,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
 
   const updateAdjustedTarget = (id: string, value: string) => {
     const toDistribute = totalAvailable - (totalAvailable * COMMISSION_RATE);
-    setAdjustedTargets(adjustedTargets.map(t => {
+    setAdjustedTargets(adjustedTargets.map((t: any) => {
       if (t.id === id) {
         if (isPercentageMode) {
           return { ...t, percent: Number(value), amount: (toDistribute * Number(value)) / 100 };
@@ -224,11 +232,25 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   };
 
   const addQuickTarget = () => {
-    setQuickTargets([...quickTargets, { id: Math.random().toString(), name: "", value: 0, network: "MTN", phone: "" }]);
+    setQuickTargets([...quickTargets, { id: Math.random().toString(), destinataireId: "", name: "", value: 0, network: "MTN", phone: "", isManual: false }]);
   };
   const updateQuickTarget = (id: string, field: string, value: string) => {
     setQuickTargets(quickTargets.map(t => t.id === id ? { ...t, [field]: value } : t));
   };
+  
+  const handleNameChange = (id: string, newName: string) => {
+    const existing = savedDestinataires.find(d => d.nom === newName);
+    setQuickTargets(quickTargets.map(t => {
+      if (t.id === id) {
+        if (existing) {
+          return { ...t, name: newName, network: existing.methode_mobile_money, phone: existing.numero };
+        }
+        return { ...t, name: newName };
+      }
+      return t;
+    }));
+  };
+
   const removeQuickTarget = (id: string) => {
     setQuickTargets(quickTargets.filter(t => t.id !== id));
   };
@@ -275,6 +297,8 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     setModalMode("quick");
     return null;
   }
+
+  if (!activeData) return null;
 
   return (
     <AnimatePresence>
@@ -337,7 +361,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                 onClick={() => setShowCommissionDetails(!showCommissionDetails)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/[0.02] hover:bg-black/[0.04] transition-colors text-muted-foreground text-[14px] font-medium"
               >
-                <span>À répartir : <strong className="text-black"><Amount value={activeData.toDistribute} /></strong></span>
+                <span>À répartir : <strong className="text-black"><Amount value={(activeData as any).toDistribute || 0} /></strong></span>
                 <span className="mx-1 opacity-50">·</span>
                 <span>frais {COMMISSION_TEXT}</span>
                 <Info className="w-3.5 h-3.5 ml-0.5 text-black/40" />
@@ -361,13 +385,13 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                       <div className="flex justify-between items-center text-[#B9811C]">
                         <span className="font-semibold text-[14px]">Frais Réparto ({COMMISSION_TEXT})</span>
                         <span className="font-bold tabular-nums text-[15px]">
-                          − <Amount value={activeData.commission} />
+                          − <Amount value={(activeData as any).commission || 0} />
                         </span>
                       </div>
                       <div className="flex justify-between items-center pt-3 border-t border-[#FDE1A9]/30">
                         <span className="font-black text-[15px] text-black">À répartir</span>
                         <span className="font-black tabular-nums text-[16px] text-black">
-                          <Amount value={activeData.toDistribute} />
+                          <Amount value={(activeData as any).toDistribute || 0} />
                         </span>
                       </div>
                       <p className="text-left text-[12px] font-medium text-muted-foreground pt-1 leading-relaxed">
@@ -461,28 +485,134 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                 <div className="space-y-3 mt-4">
                   <AnimatePresence>
                     {quickTargets.map((target, idx) => (
-                      <motion.div key={target.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex flex-col bg-white p-4 rounded-[1.5rem] border border-black/[0.03] shadow-sm relative group overflow-hidden">
-                        <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-black/[0.03] group-hover:bg-primary/50 transition-colors" />
-                        
-                        <div className="flex w-full gap-3 mb-3 pl-2 items-center">
-                          <input type="text" value={target.name} onChange={(e) => updateQuickTarget(target.id, "name", e.target.value)} placeholder={`Destinataire ${idx + 1}`} className="flex-1 min-w-[80px] bg-transparent text-lg font-bold outline-none placeholder:text-black/20" />
-                          <div className="relative w-24 shrink-0 bg-[#F5F5F7] rounded-[1rem] flex items-center pr-3 group-hover:bg-[#EEEEF0] transition-colors">
-                            <input type="number" value={target.value || ''} onChange={(e) => updateQuickTarget(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-2.5 px-3" />
-                            <span className="text-muted-foreground font-bold text-sm">{isPercentageMode ? "%" : "F"}</span>
-                          </div>
-                        </div>
-                        <div className="flex w-full gap-2 pl-2">
-                          <select value={target.network} onChange={(e) => updateQuickTarget(target.id, "network", e.target.value)} className="flex-1 min-w-[70px] bg-[#F5F5F7] rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary text-sm font-semibold appearance-none">
-                            <option value="MTN">MTN BJ</option>
-                            <option value="Moov">Moov BJ</option>
-                            <option value="Celtiis">Celtiis BJ</option>
-                            <option value="Wave">Wave CI</option>
-                          </select>
-                          <input type="tel" value={target.phone} onChange={(e) => updateQuickTarget(target.id, "phone", e.target.value)} placeholder="00 00 00 00" className="flex-[1.5] min-w-[100px] bg-[#F5F5F7] rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-primary text-sm font-mono font-medium tracking-wide" />
-                          <button onClick={() => removeQuickTarget(target.id)} className="w-11 shrink-0 flex items-center justify-center text-muted-foreground hover:text-danger bg-[#F5F5F7] hover:bg-danger/10 rounded-xl transition-colors">
+                      <motion.div key={target.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white p-5 rounded-[1.5rem] border-2 border-[#F5F5F7] relative group hover:border-black/10 transition-all">
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-[17px] font-extrabold text-black">Destinataire {idx + 1}</span>
+                          <button onClick={() => removeQuickTarget(target.id)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-[#F5F5F7] hover:bg-danger/10 text-black hover:text-danger transition-colors">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
+
+                        {!target.isManual ? (
+                          <div className="flex items-center justify-between gap-4">
+                            {/* Custom Dropdown UI */}
+                            <div className="relative flex-1">
+                              <button 
+                                onClick={() => setOpenDropdownId(openDropdownId === target.id ? null : target.id)}
+                                className="w-full flex items-center gap-3 p-2 -ml-2 rounded-2xl hover:bg-black/5 transition-colors text-left"
+                              >
+                                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                                  <User className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-[16px] text-black">
+                                      {target.name || "Choisir un contact"}
+                                    </span>
+                                    <ChevronDown className={`w-4 h-4 text-black transition-transform ${openDropdownId === target.id ? 'rotate-180' : ''}`} />
+                                  </div>
+                                  {target.destinataireId && (
+                                    <div className="text-[13px] font-bold text-black/60 mt-0.5 flex items-center gap-2">
+                                      <span className="uppercase">{target.network}</span>
+                                      <span className="font-mono tracking-wide text-black">{target.phone}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </button>
+
+                              <AnimatePresence>
+                                {openDropdownId === target.id && (
+                                  <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setOpenDropdownId(null)} />
+                                    <motion.div 
+                                      initial={{ opacity: 0, y: -10, scale: 0.95 }} 
+                                      animate={{ opacity: 1, y: 0, scale: 1 }} 
+                                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                      transition={{ duration: 0.15 }}
+                                      className="absolute top-full left-0 mt-2 w-[280px] bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-black/5 z-50 overflow-hidden py-2"
+                                    >
+                                      <div className="px-4 py-2 text-[10px] font-black text-black/30 uppercase tracking-widest">
+                                        Vos destinataires enregistrés
+                                      </div>
+                                      <div className="max-h-[250px] overflow-y-auto">
+                                        {savedDestinataires.length === 0 && (
+                                          <div className="px-4 py-3 text-sm text-black/50 italic font-medium">Aucun contact enregistré.</div>
+                                        )}
+                                        {savedDestinataires.map((d: any) => (
+                                          <button 
+                                            key={d.id}
+                                            onClick={() => {
+                                              setQuickTargets(targets => targets.map(t => t.id === target.id ? { ...t, destinataireId: d.id, name: d.libelle, network: d.methode_mobile_money, phone: d.numero, isManual: false } : t));
+                                              setOpenDropdownId(null);
+                                            }}
+                                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F5F5F7] transition-colors text-left"
+                                          >
+                                            <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                                              <User className="w-4 h-4 text-blue-600" />
+                                            </div>
+                                            <div>
+                                              <div className="font-bold text-[14px] text-black leading-tight">{d.libelle}</div>
+                                              <div className="text-[12px] font-semibold text-black/50 mt-0.5">{d.methode_mobile_money} • <span className="font-mono">{d.numero}</span></div>
+                                            </div>
+                                          </button>
+                                        ))}
+                                      </div>
+                                      
+                                      <div className="h-px bg-black/5 my-2" />
+                                      
+                                      <button 
+                                        onClick={() => {
+                                          setQuickTargets(targets => targets.map(t => t.id === target.id ? { ...t, isManual: true, name: "", phone: "", destinataireId: "" } : t));
+                                          setOpenDropdownId(null);
+                                        }}
+                                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F5F5F7] transition-colors text-left"
+                                      >
+                                        <div className="w-9 h-9 rounded-full bg-[#F5F5F7] flex items-center justify-center shrink-0">
+                                          <Plus className="w-4 h-4 text-black" />
+                                        </div>
+                                        <span className="font-bold text-[14px] text-black">Saisir un nouveau numéro</span>
+                                      </button>
+                                    </motion.div>
+                                  </>
+                                )}
+                              </AnimatePresence>
+                            </div>
+
+                            <div className="relative w-[100px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
+                              <input type="number" value={target.value || ''} onChange={(e) => updateQuickTarget(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-3 px-2 text-[16px] text-black placeholder:text-black/30" />
+                              <span className="text-black font-black text-[15px]">{isPercentageMode ? "%" : "F"}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 bg-[#F5F5F7] rounded-xl flex items-center px-4 py-3 border-2 border-transparent focus-within:border-black/10 transition-all">
+                                <input type="text" value={target.name} onChange={(e) => updateQuickTarget(target.id, "name", e.target.value)} placeholder="Nom (ex: Loyer)" className="w-full bg-transparent font-bold outline-none placeholder:text-black/40 text-black text-[15px]" />
+                              </div>
+                              <div className="relative w-[100px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
+                                <input type="number" value={target.value || ''} onChange={(e) => updateQuickTarget(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-3 px-2 text-[16px] text-black placeholder:text-black/30" />
+                                <span className="text-black font-black text-[15px]">{isPercentageMode ? "%" : "F"}</span>
+                              </div>
+                            </div>
+                            <div className="flex gap-3">
+                              <div className="flex-1 bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
+                                <select value={target.network} onChange={(e) => updateQuickTarget(target.id, "network", e.target.value)} className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]">
+                                  <option value="MTN">MTN BJ</option>
+                                  <option value="Moov">Moov BJ</option>
+                                  <option value="Celtiis">Celtiis BJ</option>
+                                  <option value="Wave">Wave CI</option>
+                                </select>
+                                <ChevronDown className="w-4 h-4 text-black absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              </div>
+                              <div className="flex-[2] bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all">
+                                <input type="tel" value={target.phone} onChange={(e) => updateQuickTarget(target.id, "phone", e.target.value)} placeholder="00 00 00 00" className="w-full h-full bg-transparent px-4 py-3 outline-none font-mono font-bold tracking-wide text-black placeholder:text-black/40 text-[15px]" />
+                              </div>
+                              <button onClick={() => setQuickTargets(targets => targets.map(t => t.id === target.id ? { ...t, isManual: false } : t))} className="px-4 py-3 bg-black text-white hover:bg-black/80 rounded-xl font-bold text-[14px] transition-colors">
+                                Annuler
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </motion.div>
                     ))}
                   </AnimatePresence>
@@ -511,7 +641,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                 </div>
 
                 <div className="bg-white rounded-[2rem] p-3 shadow-sm border border-black/[0.03] space-y-1">
-                  {currentTargets.map((target) => (
+                  {currentTargets.map((target: any) => (
                     <div key={target.id} className="flex justify-between items-center p-4 hover:bg-[#F9F9FA] rounded-2xl transition-colors">
                       <div className="flex flex-col flex-1">
                         <span className="font-bold text-[16px]">{target.label}</span>
@@ -523,6 +653,9 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                           <div className="font-bold tabular-nums text-primary text-[17px]">
                             {target.percent !== undefined ? `${target.percent}%` : <Amount value={target.amount} />}
                           </div>
+                          {target.percent !== undefined && (
+                            <span className="text-xs text-muted-foreground font-bold bg-black/5 px-2 py-0.5 rounded-md mt-1"><Amount value={target.amount} /></span>
+                          )}
                         </div>
                       )}
 
@@ -596,7 +729,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                       <h4 className="font-extrabold text-[#A87211] text-lg tracking-tight">Gagner du temps la prochaine fois ?</h4>
                     </div>
                     <p className="text-[15px] font-medium text-[#B9811C] mb-5 leading-relaxed">Enregistre cette répartition comme règle pour automatiser tes futurs envois en un clic.</p>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <input 
                         type="text" 
                         value={saveRuleName}
@@ -607,7 +740,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                       <button 
                         onClick={saveQuickAsRule}
                         disabled={!saveRuleName.trim()}
-                        className="px-6 py-3.5 shrink-0 bg-[#A87211] hover:bg-[#8C5D0B] disabled:opacity-50 text-white text-[15px] font-bold rounded-2xl shadow-lg shadow-[#A87211]/20 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                        className="w-full sm:w-auto px-6 py-3.5 shrink-0 bg-[#A87211] hover:bg-[#8C5D0B] disabled:opacity-50 text-white text-[15px] font-bold rounded-2xl shadow-lg shadow-[#A87211]/20 transition-all hover:-translate-y-0.5 active:translate-y-0"
                       >
                         Sauvegarder
                       </button>

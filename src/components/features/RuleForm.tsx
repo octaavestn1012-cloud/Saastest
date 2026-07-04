@@ -50,7 +50,7 @@ type RuleFormValues = z.infer<typeof ruleSchema>;
 
 interface RuleFormProps {
   initialValues?: Partial<RuleFormValues>;
-  onSubmit: (data: RuleFormValues) => void;
+  onSubmit: SubmitHandler<RuleFormValues>;
   isLoading?: boolean;
 }
 
