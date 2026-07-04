@@ -44,7 +44,7 @@ export function DashboardChart() {
           <Tooltip 
             contentStyle={{ backgroundColor: "rgba(0,0,0,0.8)", backdropFilter: "blur(12px)", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 40px -10px rgba(0,0,0,0.5)", color: "white" }}
             itemStyle={{ fontWeight: 700 }}
-            formatter={(value: any) => [formatAmount(value), "Montant"]}
+            formatter={(value: any) => [formatCurrency(value), "Montant"]}
           />
           <Area type="monotone" dataKey="in" name="Entrées" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorIn)" filter="url(#glowIn)" />
           <Area type="monotone" dataKey="out" name="Réparti" stroke="#A855F7" strokeWidth={3} fillOpacity={1} fill="url(#colorOut)" filter="url(#glowOut)" />

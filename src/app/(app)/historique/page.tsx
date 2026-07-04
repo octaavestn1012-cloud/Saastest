@@ -3,7 +3,7 @@ import { getHistorique } from "@/app/actions/historique";
 
 export const dynamic = "force-dynamic";
 
-export default async function HistoriquePage() {
+export default async function HistoriquePage({ searchParams }: { searchParams: { tx?: string } }) {
   const { data, plan } = await getHistorique();
   
   return (
@@ -14,7 +14,7 @@ export default async function HistoriquePage() {
           <p className="text-muted-foreground font-medium text-lg">Toutes tes répartitions.</p>
         </div>
         
-        <HistoryDashboard initialData={data || []} plan={plan || "gratuit"} />
+        <HistoryDashboard initialData={data || []} plan={plan || "gratuit"} initialTxId={searchParams?.tx} />
       </div>
     </div>
   );

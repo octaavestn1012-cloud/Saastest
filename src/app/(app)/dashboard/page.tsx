@@ -9,6 +9,7 @@ import { DashboardActionBtn } from "./DashboardActionBtn";
 import { ClientNextExecution } from "./ClientNextExecution";
 import { getDashboardMetrics } from "@/app/actions/dashboard";
 import { getHistorique } from "@/app/actions/historique";
+import { RecentExecutionsList } from "@/components/features/dashboard/RecentExecutionsList";
 
 export const dynamic = "force-dynamic";
 
@@ -115,28 +116,7 @@ export default async function DashboardPage() {
             <h3 className="text-lg font-bold mb-6 text-foreground">Répartitions récentes</h3>
             <div className="flex-1 flex flex-col justify-between">
               <div className="space-y-4">
-                {executions.length === 0 ? (
-                  <p className="text-muted-foreground text-sm text-center py-6">Aucune répartition enregistrée pour l'instant.</p>
-                ) : (
-                  executions.slice(0, 5).map((exec: any) => (
-                    <Link key={exec.id} href={`/historique/${exec.id}`} className="block">
-                      <div className="flex justify-between items-center p-3 hover:bg-black/[0.02] rounded-xl transition-colors cursor-pointer">
-                        <div className="flex-1">
-                          <p className="font-semibold text-sm">{exec.regles?.nom || "Règle supprimée"}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {new Date(exec.date_execution).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1.5">
-                          <div className="font-bold tabular-nums text-primary">
-                            <Amount value={exec.montant_total} variant="out" />
-                          </div>
-                          <StatusBadge status={exec.statut} />
-                        </div>
-                      </div>
-                    </Link>
-                  ))
-                )}
+                <RecentExecutionsList executions={executions} plan={metrics?.plan || "gratuit"} />
               </div>
               <div className="pt-6 mt-4 border-t border-black/[0.05]">
                 <Link href="/historique" className="text-sm font-semibold text-primary hover:underline flex items-center justify-center">
