@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, AlertCircle, Play, ChevronDown, Lock, Loader2 } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, AlertCircle, Play, ChevronDown, Lock, Loader2, User } from "lucide-react";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +19,8 @@ type RecipientRow = {
   value: number;
   network: string;
   phone: string;
+  isManual?: boolean;
+  destinataireId?: string;
 };
 
 interface RuleBuilderProps {
@@ -31,6 +33,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
 
   // State contacts (Carnet)
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetRowToUpdate, setTargetRowToUpdate] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -63,9 +66,11 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
       name: d.libelle,
       value: d.valeur,
       network: d.destinataires?.methode_mobile_money || "MTN",
-      phone: d.destinataires?.numero || ""
+      phone: d.destinataires?.numero || "",
+      destinataireId: d.destinataire_id,
+      isManual: false
     })) || [
-      { id: "temp_1", name: "", value: 0, network: "MTN", phone: "" }
+      { id: "temp_1", name: "", value: 0, network: "MTN", phone: "", isManual: true }
     ]
   );
 
@@ -119,7 +124,8 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
       name: "", 
       value: 0,
       network: "MTN",
-      phone: ""
+      phone: "",
+      isManual: true
     }]);
   };
 
@@ -327,93 +333,149 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
         {/* Lignes Destinataires */}
         <div className="space-y-3 mb-6">
           <AnimatePresence>
-            {recipients.map((recipient, index) => (
+            {recipients.map((target, idx) => (
               <motion.div 
-                key={recipient.id}
+                key={target.id}
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="flex flex-col sm:flex-row gap-3 bg-white p-3 rounded-2xl border border-black/10 items-center group relative hover:border-black/20 transition-colors"
+                className="bg-white p-5 rounded-[1.5rem] border border-black/10 relative group hover:border-black/20 transition-colors"
               >
-                <div className="hidden sm:flex text-muted-foreground/30 cursor-grab px-2">
-                  <GripVertical className="w-5 h-5" />
-                </div>
-                
-                <div className="flex-[1.5] relative">
-                  <input 
-                    type="text" 
-                    value={recipient.name}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      updateRecipient(recipient.id, "name", val);
-                      // Auto-fill if it matches a contact exactly
-                      const matchedContact = contacts.find(c => c.name === val);
-                      if (matchedContact) {
-                        updateRecipient(recipient.id, "network", matchedContact.network);
-                        updateRecipient(recipient.id, "phone", matchedContact.phone);
-                      }
-                    }}
-                    list="contacts-list"
-                    placeholder="Nom ou sélectionner..."
-                    className="w-full bg-[#F5F5F7] border-transparent rounded-[12px] px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
-                  />
-                  <datalist id="contacts-list">
-                    {contacts.map(c => (
-                      <option key={c.id} value={c.name}>{c.phone} ({c.network})</option>
-                    ))}
-                  </datalist>
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-[17px] font-extrabold text-black">Destinataire {idx + 1}</span>
+                  <button onClick={() => removeRecipient(target.id)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-[#F5F5F7] hover:bg-danger/10 text-black hover:text-danger transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
 
-                <div className="relative flex-1 w-full sm:w-auto">
-                  <input 
-                    type="number" 
-                    value={recipient.value || ''}
-                    onChange={(e) => updateRecipient(recipient.id, "value", e.target.value)}
-                    placeholder="0"
-                    className="w-full bg-[#F5F5F7] border-transparent rounded-[12px] pl-4 pr-10 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm font-bold font-mono text-center"
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
-                    {mode === "pourcentage" ? "%" : "F"}
-                  </span>
-                </div>
+                {!target.isManual ? (
+                  <div className="flex items-center justify-between gap-4">
+                    {/* Custom Dropdown UI */}
+                    <div className="relative flex-1 custom-dropdown-container">
+                      <button 
+                        onClick={() => setOpenDropdownId(openDropdownId === target.id ? null : target.id)}
+                        className="w-full flex items-center gap-3 p-2 -ml-2 rounded-2xl hover:bg-black/5 transition-colors text-left"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                          <User className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-[16px] text-black">
+                              {target.name || "Choisir un contact"}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 text-black transition-transform ${openDropdownId === target.id ? 'rotate-180' : ''}`} />
+                          </div>
+                          {target.phone && (
+                            <div className="text-[13px] font-bold text-black/60 mt-0.5 flex items-center gap-2">
+                              <span className="uppercase">{target.network}</span>
+                              <span className="font-mono tracking-wide text-black">{target.phone}</span>
+                            </div>
+                          )}
+                        </div>
+                      </button>
 
-                <select 
-                  value={recipient.network}
-                  onChange={(e) => updateRecipient(recipient.id, "network", e.target.value)}
-                  className="flex-1 bg-[#F5F5F7] border-transparent rounded-[12px] px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm font-medium appearance-none"
-                >
-                  <option value="MTN">MTN BJ</option>
-                  <option value="Moov">Moov BJ</option>
-                  <option value="Celtiis">Celtiis BJ</option>
-                  <option value="Wave">Wave CI</option>
-                </select>
+                      <AnimatePresence>
+                        {openDropdownId === target.id && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: -10, scale: 0.95 }} 
+                            animate={{ opacity: 1, y: 0, scale: 1 }} 
+                            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute top-full left-0 mt-2 w-[280px] bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-black/5 z-50 overflow-hidden py-2"
+                          >
+                            <div className="px-4 py-2 text-[10px] font-black text-black/30 uppercase tracking-widest">
+                              Vos destinataires enregistrés
+                            </div>
+                            <div className="max-h-[250px] overflow-y-auto">
+                                {contacts.length === 0 && (
+                                  <div className="px-4 py-3 text-sm text-black/50 italic font-medium">Aucun contact enregistré.</div>
+                                )}
+                                {contacts.map((d: any) => (
+                                  <button 
+                                    key={d.id}
+                                    onClick={() => {
+                                      setRecipients(targets => targets.map(t => t.id === target.id ? { ...t, destinataireId: d.id, name: d.name, network: d.network, phone: d.phone, isManual: false } : t));
+                                      setOpenDropdownId(null);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F5F5F7] transition-colors text-left"
+                                  >
+                                    <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                                      <User className="w-4 h-4 text-blue-600" />
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-[14px] text-black leading-tight">{d.name}</div>
+                                      <div className="text-[12px] font-semibold text-black/50 mt-0.5">{d.network} • <span className="font-mono">{d.phone}</span></div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                              
+                              <div className="h-px bg-black/5 my-2" />
+                              
+                              <button 
+                                onClick={() => {
+                                  setRecipients(targets => targets.map(t => t.id === target.id ? { ...t, isManual: true, name: "", phone: "", destinataireId: "" } : t));
+                                  setOpenDropdownId(null);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F5F5F7] transition-colors text-left"
+                              >
+                                <div className="w-9 h-9 rounded-full bg-[#F5F5F7] flex items-center justify-center shrink-0">
+                                  <Plus className="w-4 h-4 text-black" />
+                                </div>
+                                <span className="font-bold text-[14px] text-black">Saisir un nouveau numéro</span>
+                              </button>
+                            </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
 
-                <input 
-                  type="tel" 
-                  value={recipient.phone}
-                  onChange={(e) => updateRecipient(recipient.id, "phone", e.target.value)}
-                  placeholder="Numéro"
-                  className="flex-[1.5] bg-[#F5F5F7] border-transparent rounded-[12px] px-4 py-2.5 outline-none focus:ring-1 focus:ring-primary text-sm font-medium font-mono"
-                />
-
-                <button 
-                  onClick={() => removeRecipient(recipient.id)}
-                  className="p-3 text-muted-foreground hover:text-danger hover:bg-danger/10 rounded-xl transition-colors sm:opacity-0 group-hover:opacity-100 absolute sm:relative top-2 sm:top-0 right-2 sm:right-0"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+                    <div className="relative w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
+                      <input type="number" value={target.value || ''} onChange={(e) => updateRecipient(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-3 px-2 text-[16px] text-black placeholder:text-black/30" />
+                      <span className="text-black font-black text-[15px]">{mode === "pourcentage" ? "%" : "F"}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 bg-[#F5F5F7] rounded-xl flex items-center px-4 py-3 border-2 border-transparent focus-within:border-black/10 transition-all">
+                        <input type="text" value={target.name} onChange={(e) => updateRecipient(target.id, "name", e.target.value)} placeholder="Nom (ex: Loyer)" className="w-full bg-transparent font-bold outline-none placeholder:text-black/40 text-black text-[15px]" />
+                      </div>
+                      <div className="relative w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
+                        <input type="number" value={target.value || ''} onChange={(e) => updateRecipient(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-3 px-2 text-[16px] text-black placeholder:text-black/30" />
+                        <span className="text-black font-black text-[15px]">{mode === "pourcentage" ? "%" : "F"}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="flex-1 bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
+                        <select value={target.network} onChange={(e) => updateRecipient(target.id, "network", e.target.value)} className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]">
+                          <option value="MTN">MTN BJ</option>
+                          <option value="Moov">Moov BJ</option>
+                          <option value="Celtiis">Celtiis BJ</option>
+                          <option value="Wave">Wave CI</option>
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-black absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                      <div className="flex-[2] bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all">
+                        <input type="tel" value={target.phone} onChange={(e) => updateRecipient(target.id, "phone", e.target.value)} placeholder="00 00 00 00" className="w-full h-full bg-transparent px-4 py-3 outline-none font-mono font-bold tracking-wide text-black placeholder:text-black/40 text-[15px]" />
+                      </div>
+                      <button onClick={() => setRecipients(targets => targets.map(t => t.id === target.id ? { ...t, isManual: false } : t))} className="px-4 py-3 bg-black text-white hover:bg-black/80 rounded-xl font-bold text-[14px] transition-colors">
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>
         </div>
 
-        <Button 
-          variant="outline" 
+        <button 
           onClick={addRecipient}
-          className="w-full border-dashed border-2 border-black/10 bg-[#F5F5F7]/50 hover:border-black/30 hover:bg-[#F5F5F7] rounded-xl h-12 font-bold text-muted-foreground hover:text-black text-sm"
+          className="w-full bg-white border-dashed border-2 border-black/5 hover:border-black/20 rounded-[1.5rem] h-14 font-bold text-[15px] text-muted-foreground hover:text-black flex items-center justify-center transition-all hover:bg-black/[0.01]"
         >
-          + Ajouter un destinataire
-        </Button>
+          <Plus className="w-5 h-5 mr-2" /> Ajouter un destinataire
+        </button>
       </section>
 
       {/* SECTION 4 : COMMISSION */}
