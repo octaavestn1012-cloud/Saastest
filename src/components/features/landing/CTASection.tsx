@@ -7,30 +7,32 @@ import { ArrowRight } from "lucide-react";
 
 export function CTASection() {
   return (
-    <section className="py-24 px-4 bg-white">
-      <div className="max-w-5xl mx-auto">
+    <section className="py-24 px-4 bg-white relative overflow-hidden">
+      <div className="max-w-6xl mx-auto">
         <motion.div 
-          className="bg-gradient-to-br from-primary to-purple-600 rounded-[3rem] p-8 sm:p-16 text-center text-white shadow-2xl relative overflow-hidden"
+          className="bg-[#0A0A0A] rounded-[3rem] p-10 sm:p-20 text-center text-white shadow-[0_20px_80px_-20px_rgba(0,0,0,0.5)] relative overflow-hidden border border-white/10"
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
         >
-          {/* Cercles de décoration */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-black/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
+          {/* Glowing Orb */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-gradient-to-r from-primary/40 to-purple-600/40 blur-[120px] rounded-full -z-10 mix-blend-screen" />
+          
+          <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-20" />
 
           <div className="relative z-10">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-6">
-              Prêt à reprendre le contrôle de ton argent ?
+            <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-8 text-white leading-[1.1]">
+              Arrêtez de réfléchir.<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">Commencez à construire.</span>
             </h2>
-            <p className="text-xl text-white/80 font-medium mb-10 max-w-2xl mx-auto">
-              Rejoins les vendeurs intelligents qui automatisent leur trésorerie avec Réparto.
+            <p className="text-xl md:text-2xl text-white/60 font-medium mb-12 max-w-2xl mx-auto leading-relaxed">
+              Des milliers de transactions sont déjà réparties automatiquement chaque jour. Rejoignez le mouvement.
             </p>
             
-            <Link href="/login">
-              <Button className="bg-white hover:bg-gray-100 text-primary rounded-full px-8 py-7 text-lg font-bold shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 inline-flex items-center gap-2">
-                Commencer gratuitement
-                <ArrowRight className="w-5 h-5" />
+            <Link href="/signup">
+              <Button className="bg-white hover:bg-[#F5F5F7] text-black rounded-full px-10 py-8 text-xl font-bold shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:shadow-[0_0_60px_rgba(255,255,255,0.4)] transition-all hover:-translate-y-1 inline-flex items-center gap-3 group">
+                Créer mon compte gratuit
+                <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
           </div>

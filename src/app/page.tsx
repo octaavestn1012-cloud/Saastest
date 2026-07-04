@@ -1,7 +1,6 @@
 import { PublicHeader } from "@/components/features/landing/PublicHeader";
 import { HeroSection } from "@/components/features/landing/HeroSection";
-import { ProblemSolutionSection } from "@/components/features/landing/ProblemSolutionSection";
-import { BenefitsSection } from "@/components/features/landing/BenefitsSection";
+import { BentoGridSection } from "@/components/features/landing/BentoGridSection";
 import { TrustSection } from "@/components/features/landing/TrustSection";
 import { PricingSection } from "@/components/features/landing/PricingSection";
 import { FAQSection } from "@/components/features/landing/FAQSection";
@@ -15,8 +14,7 @@ export default function Home() {
       
       <main>
         <HeroSection />
-        <ProblemSolutionSection />
-        <BenefitsSection />
+        <BentoGridSection />
         <TrustSection />
         <PricingSection />
         <FAQSection />

@@ -21,11 +21,19 @@ export function PublicHeader() {
 
   return (
     <header 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? "bg-white/90 backdrop-blur-md shadow-sm border-b border-black/[0.05] py-3" : "bg-transparent py-5"
+      className={`fixed left-0 right-0 z-50 transition-all duration-500 ease-out flex justify-center ${
+        isScrolled 
+          ? "top-4 px-4 sm:px-6" 
+          : "top-0 px-4 sm:px-6 lg:px-8 bg-transparent py-5 w-full"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div 
+        className={`w-full transition-all duration-500 ${
+          isScrolled 
+            ? "max-w-5xl bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/40 rounded-full px-4 sm:px-6 py-3" 
+            : "max-w-7xl mx-auto"
+        }`}
+      >
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2" onClick={closeMenu}>
