@@ -21,6 +21,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [step, setStep] = useState<Step>("PREVIEW");
   const [results, setResults] = useState<Record<string, "PENDING" | "SUCCESS" | "FAILED">>({});
   const [totalAvailable, setTotalAvailable] = useState<number>(0);
+  const [maxBalance, setMaxBalance] = useState<number>(0);
   const [isLoadingData, setIsLoadingData] = useState(true);
   
   const [rules, setRules] = useState<any[]>([]);
@@ -42,8 +43,6 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [saveRuleTrigger, setSaveRuleTrigger] = useState("manual");
   const [ruleSaved, setRuleSaved] = useState(false);
   const [showCommissionDetails, setShowCommissionDetails] = useState(false);
-  const [isCustomTotal, setIsCustomTotal] = useState(false);
-  const [customTotalInput, setCustomTotalInput] = useState<string>("");
   const { plan } = useUser();
 
   const COMMISSION_RATE = plan === "pro" ? 0.008 : plan === "business" ? 0.004 : 0.019;
@@ -80,6 +79,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
       try {
         const { data: metrics } = await getDashboardMetrics();
         if (metrics) {
+          setMaxBalance(metrics.balance || 0);
           setTotalAvailable(metrics.balance || 0);
         }
 
@@ -165,16 +165,12 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     }
   }, [currentPreviewData, modalMode]);
 
-  const effectiveTotalQuick = modalMode === "quick" && quickMode === "percentage" && isCustomTotal && customTotalInput !== "" 
-    ? Number(customTotalInput) 
-    : totalAvailable;
-
   const quickPreviewData = useMemo(() => {
-    const commissionAmount = effectiveTotalQuick * COMMISSION_RATE;
-    const toDistribute = effectiveTotalQuick - commissionAmount;
+    const commissionAmount = totalAvailable * COMMISSION_RATE;
+    const toDistribute = totalAvailable - commissionAmount;
     return {
       name: "Répartition rapide",
-      totalAvailable: effectiveTotalQuick,
+      totalAvailable: totalAvailable,
       commission: commissionAmount,
       toDistribute: toDistribute,
       targets: quickTargets.map((r: any, index: number) => {
@@ -189,7 +185,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
         };
       })
     };
-  }, [quickTargets, quickMode, effectiveTotalQuick, COMMISSION_RATE]);
+  }, [quickTargets, quickMode]);
 
   const activeData = modalMode === "rule" ? currentPreviewData : quickPreviewData;
   const currentTargets = modalMode === "rule" 
@@ -222,10 +218,10 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
       let res;
       if (modalMode === "quick" || (modalMode === "rule" && isAdjusting)) {
         // Mode rapide ou règle ajustée à la volée : on envoie les targets calculés manuellement
-        res = await executeQuickRepartitionAction((activeData as any).totalAvailable, currentTargets, isPercentageMode ? "percentage" : "fixed");
+        res = await executeQuickRepartitionAction(totalAvailable, currentTargets, isPercentageMode ? "percentage" : "fixed");
       } else {
         // Mode règle stricte : on utilise le Rule ID de la BDD pour qu'il le re-calcule de façon sécurisée
-        res = await executeRepartitionAction((activeData as any).totalAvailable, activeRuleSource?.id);
+        res = await executeRepartitionAction(totalAvailable, activeRuleSource?.id);
       }
       
       const finalStatus = res.status === 'completed' ? "SUCCESS" : "FAILED";
@@ -384,7 +380,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
             <div className="flex flex-col items-center justify-center pt-5 pb-5 bg-white rounded-[2rem] shadow-sm border border-black/[0.03]">
               <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Solde disponible" : activeData.name}</span>
               <div className="text-4xl sm:text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-black to-black/70 mb-2">
-                <Amount value={activeData.totalAvailable} />
+                <Amount value={modalMode === "quick" && !customData ? maxBalance : activeData.totalAvailable} />
               </div>
               
               <button 
@@ -396,6 +392,26 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                 <span>frais {COMMISSION_TEXT}</span>
                 <Info className="w-3.5 h-3.5 ml-0.5 text-black/40" />
               </button>
+
+              {!customData && (
+                <div className="mt-5 w-full px-5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground text-left mb-2 ml-1">Préciser le montant à répartir</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={totalAvailable || ""}
+                      onChange={(e) => {
+                        let val = Number(e.target.value);
+                        if (val > maxBalance) val = maxBalance;
+                        setTotalAvailable(val);
+                      }}
+                      placeholder="0"
+                      className="w-full bg-[#F5F5F7] hover:bg-[#EAEAEB] transition-colors rounded-2xl px-5 py-3.5 font-bold text-[16px] outline-none focus:ring-2 focus:ring-primary text-black placeholder:text-black/20"
+                    />
+                    <span className="absolute right-5 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">FCFA</span>
+                  </div>
+                </div>
+              )}
 
               <AnimatePresence>
                 {showCommissionDetails && (
@@ -511,39 +527,6 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                     </div>
                   </div>
                 </div>
-
-                {isPercentageMode && (
-                  <div className="px-2 pt-1 pb-3">
-                    <button 
-                      onClick={() => setIsCustomTotal(!isCustomTotal)}
-                      className="text-[12px] font-semibold text-black/30 hover:text-black/60 transition-colors mx-auto block underline decoration-black/20 underline-offset-4"
-                    >
-                      Préciser le montant à répartir
-                    </button>
-                    
-                    <AnimatePresence>
-                      {isCustomTotal && (
-                        <motion.div 
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden pt-3"
-                        >
-                          <div className="relative">
-                            <input 
-                              type="number"
-                              value={customTotalInput}
-                              onChange={(e) => setCustomTotalInput(e.target.value)}
-                              placeholder={`Ex: ${totalAvailable}`}
-                              className="w-full bg-white transition-colors border border-black/5 rounded-[1rem] px-4 py-3 font-bold text-[14px] outline-none focus:border-black/20"
-                            />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-[12px] text-muted-foreground">FCFA</span>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
                 
                 <div className="space-y-3 mt-4">
                   <AnimatePresence>
