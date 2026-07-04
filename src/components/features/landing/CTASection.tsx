@@ -15,8 +15,8 @@ export function CTASection() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
         >
-          {/* Glowing Orb */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-gradient-to-r from-primary/40 to-purple-600/40 blur-[120px] rounded-full -z-10 mix-blend-screen" />
+          {/* Glowing Orb (Optimisé) */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-[radial-gradient(circle,rgba(34,197,94,0.15)_0%,rgba(168,85,247,0.15)_50%,transparent_70%)] -z-10" />
           
           <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-20" />
 

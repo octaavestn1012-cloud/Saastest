@@ -531,7 +531,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2">
                                     <span className="font-bold text-[16px] text-black">
-                                      {target.name || "Choisir un contact"}
+                                      {target.name || <span className="inline-block text-left leading-tight">Choisir un<br/>contact</span>}
                                     </span>
                                     <ChevronDown className={`w-4 h-4 text-black transition-transform ${openDropdownId === target.id ? 'rotate-180' : ''}`} />
                                   </div>

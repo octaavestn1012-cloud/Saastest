@@ -8,11 +8,11 @@ import { ArrowRight, Wallet, CheckCircle2 } from "lucide-react";
 export function HeroSection() {
   return (
     <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden px-4 min-h-screen flex items-center justify-center">
-      {/* Background Gradients */}
+      {/* Background Gradients (Optimisés) */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 bg-[#FAFAFA]">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/10 blur-[120px] mix-blend-multiply" />
-        <div className="absolute top-[20%] right-[-10%] w-[40%] h-[40%] rounded-full bg-purple-500/10 blur-[120px] mix-blend-multiply" />
-        <div className="absolute bottom-[-10%] left-[20%] w-[60%] h-[60%] rounded-full bg-blue-500/5 blur-[150px] mix-blend-multiply" />
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-[radial-gradient(circle,rgba(34,197,94,0.08)_0%,transparent_70%)]" />
+        <div className="absolute top-[20%] right-[-10%] w-[40%] h-[40%] rounded-full bg-[radial-gradient(circle,rgba(168,85,247,0.08)_0%,transparent_70%)]" />
+        <div className="absolute bottom-[-10%] left-[20%] w-[60%] h-[60%] rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.05)_0%,transparent_70%)]" />
       </div>
 
       <div className="max-w-7xl mx-auto w-full flex flex-col lg:flex-row items-center gap-16 lg:gap-24 relative z-10">
@@ -82,8 +82,8 @@ export function HeroSection() {
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
         >
           <div className="relative transform-gpu preserve-3d">
-            {/* Glow Behind */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-primary/30 to-purple-500/30 blur-[80px] rounded-full transform -translate-z-10" />
+            {/* Glow Behind (Optimisé) */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(34,197,94,0.15)_0%,rgba(168,85,247,0.15)_50%,transparent_70%)] transform -translate-z-10 scale-150" />
             
             <div className="bg-white/80 backdrop-blur-2xl rounded-[2.5rem] border border-white shadow-[0_20px_80px_-20px_rgba(0,0,0,0.15)] p-8 relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary via-purple-500 to-blue-500" />

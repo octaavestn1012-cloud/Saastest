@@ -19,8 +19,8 @@ export function TrustSection() {
 
   return (
     <section className="py-24 bg-[#0A0A0A] text-white px-4 relative overflow-hidden">
-      {/* Background Décoratif */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/20 blur-[150px] rounded-full -z-10" />
+      {/* Background Décoratif (Optimisé) */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[radial-gradient(circle,rgba(34,197,94,0.1)_0%,transparent_70%)] rounded-full -z-10" />
       
       <div className="max-w-7xl mx-auto w-full relative z-10 mb-20">
         <p className="text-center text-white/50 font-bold uppercase tracking-[0.2em] text-sm mb-10">Compatible avec vos outils préférés</p>
