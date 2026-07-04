@@ -201,10 +201,18 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const totalPercent = isPercentageMode ? currentTargets.reduce((acc: number, t: any) => acc + (Number(t.percent) || 0), 0) : 0;
   const isExact = isPercentageMode ? totalPercent === 100 : totalDistributedTargets <= toDistribute;
 
+  const hasValidTargets = currentTargets.length > 0 && currentTargets.every((t: any) => {
+    const validAmount = isPercentageMode ? (Number(t.percent) > 0) : (Number(t.amount) > 0);
+    const validContact = (t.label || t.name || "")?.trim() !== "" && (t.number || t.phone || "")?.trim() !== "";
+    return validAmount && validContact;
+  });
+
+  const isValidToSubmit = totalAvailable > 0 && hasValidTargets && isExact && (isPercentageMode ? true : totalDistributedTargets > 0);
+
   const formatAmount = (val: number) => new Intl.NumberFormat('fr-FR').format(val);
 
   const handleConfirm = async () => {
-    if (!isExact) return;
+    if (!isValidToSubmit) return;
     setStep("EXECUTING");
     
     const initialResults: Record<string, "PENDING" | "SUCCESS" | "FAILED"> = {};
@@ -787,7 +795,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           <div className="p-6 bg-white border-t border-black/[0.03] shrink-0 z-20 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:rounded-b-[2.5rem]">
             {step === "PREVIEW" && (
               <div className="flex flex-col gap-5">
-                <div className={!isExact && (isPercentageMode || totalDistributed > activeData.totalAvailable) ? "opacity-40 grayscale pointer-events-none transition-all duration-300" : "transition-all duration-300"}>
+                <div className={!isValidToSubmit || (!isPercentageMode && totalDistributedTargets > toDistribute) ? "opacity-40 grayscale pointer-events-none transition-all duration-300" : "transition-all duration-300"}>
                   <SlideToConfirm 
                     onConfirm={handleConfirm} 
                     text={`Envoyer ${formatAmount(activeData.totalAvailable)} FCFA`}
