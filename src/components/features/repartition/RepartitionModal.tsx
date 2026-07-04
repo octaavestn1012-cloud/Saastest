@@ -787,13 +787,18 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           <div className="p-6 bg-white border-t border-black/[0.03] shrink-0 z-20 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:rounded-b-[2.5rem]">
             {step === "PREVIEW" && (
               <div className="flex flex-col gap-5">
-                <div className={totalAvailable <= 0 || (!isExact && (isPercentageMode || totalDistributed > activeData.totalAvailable)) || (modalMode === "quick" && quickTargets.some(t => !t.phone || !t.name)) ? "opacity-40 grayscale pointer-events-none transition-all duration-300" : "transition-all duration-300"}>
+                <div className={!isExact && (isPercentageMode || totalDistributed > activeData.totalAvailable) ? "opacity-40 grayscale pointer-events-none transition-all duration-300" : "transition-all duration-300"}>
                   <SlideToConfirm 
                     onConfirm={handleConfirm} 
-                    text={totalAvailable <= 0 ? "Saisissez un montant" : (modalMode === "quick" && quickTargets.some(t => !t.phone || !t.name)) ? "Choisissez un contact" : `Envoyer ${formatAmount(activeData.totalAvailable)} FCFA`}
+                    text={`Envoyer ${formatAmount(activeData.totalAvailable)} FCFA`}
                     confirmedText="Autorisé"
                   />
                 </div>
+                {modalMode === "quick" && quickTargets.some(t => !t.phone || !t.name) && (
+                  <p className="text-center text-sm font-bold text-[#B9811C] mt-2">
+                    ⚠️ Pensez à bien choisir un contact pour chaque destinataire
+                  </p>
+                )}
                 {!customData && modalMode === "rule" && (
                   <Link href="/rules" onClick={onClose} className="block text-center text-[14px] font-bold text-muted-foreground hover:text-black transition-colors">
                     Gérer mes règles
