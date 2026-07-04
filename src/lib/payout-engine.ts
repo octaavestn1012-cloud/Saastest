@@ -52,24 +52,57 @@ export async function processQuickPayouts(userId: string, availableAmount: numbe
 
     if (amountToSend > remaining || amountToSend < 100) {
       results.push({ dest: t.label || t.name, amount: amountToSend, status: "echoue", error: "Montant insuffisant" });
-      await supabaseAdmin.from("execution_lignes").insert({ execution_id: execution.id, destinataire_libelle: t.label || t.name, montant: amountToSend, statut: "echoue", est_commission: false });
+      await supabaseAdmin.from("execution_lignes").insert({ 
+        execution_id: execution.id, 
+        destinataire_libelle: t.label || t.name, 
+        destinataire_numero: t.number || t.phone,
+        destinataire_reseau: t.method || t.network,
+        montant: amountToSend, 
+        statut: "echoue", 
+        erreur_message: "Montant insuffisant",
+        est_commission: false 
+      });
       continue;
     }
 
     try {
       const payoutRes = await createAndSendPayout(secretKey, amountToSend, t.method || t.network, t.number || t.phone, t.label || t.name);
-      results.push({ dest: t.label || t.name, amount: amountToSend, status: "reussi", data: payoutRes });
+      
+      const fedapayStatus = payoutRes?.v1?.payout?.status || payoutRes?.status || "pending";
+      const ligneStatut = fedapayStatus === "failed" ? "echoue" : fedapayStatus === "sent" || fedapayStatus === "approved" ? "reussi" : "en_cours";
+      const ref = payoutRes?.v1?.payout?.reference || payoutRes?.v1?.payout?.id?.toString() || payoutRes?.id?.toString() || "";
+
+      results.push({ dest: t.label || t.name, amount: amountToSend, status: ligneStatut, data: payoutRes });
       remaining -= amountToSend;
-      await supabaseAdmin.from("execution_lignes").insert({ execution_id: execution.id, destinataire_libelle: t.label || t.name, montant: amountToSend, statut: "reussi", est_commission: false });
+
+      await supabaseAdmin.from("execution_lignes").insert({ 
+        execution_id: execution.id, 
+        destinataire_libelle: t.label || t.name, 
+        destinataire_numero: t.number || t.phone,
+        destinataire_reseau: t.method || t.network,
+        montant: amountToSend, 
+        statut: ligneStatut, 
+        reference_transaction: ref,
+        est_commission: false 
+      });
     } catch (e: any) {
       results.push({ dest: t.label || t.name, amount: amountToSend, status: "echoue", error: e.message });
-      await supabaseAdmin.from("execution_lignes").insert({ execution_id: execution.id, destinataire_libelle: t.label || t.name, montant: amountToSend, statut: "echoue", est_commission: false });
+      await supabaseAdmin.from("execution_lignes").insert({ 
+        execution_id: execution.id, 
+        destinataire_libelle: t.label || t.name, 
+        destinataire_numero: t.number || t.phone,
+        destinataire_reseau: t.method || t.network,
+        montant: amountToSend, 
+        statut: "echoue", 
+        erreur_message: e.message,
+        est_commission: false 
+      });
     }
   }
 
-  const allSuccess = results.every(r => r.status === "reussi");
-  const anySuccess = results.some(r => r.status === "reussi");
-  const finalStatus = allSuccess ? "reussi" : anySuccess ? "partiel" : "echoue";
+  const hasFailed = results.some(r => r.status === "echoue");
+  const hasSuccess = results.some(r => r.status === "reussi" || r.status === "en_cours");
+  const finalStatus = !hasSuccess ? "echoue" : hasFailed ? "partiel" : results.every(r => r.status === "reussi") ? "reussi" : "en_cours";
 
   await supabaseAdmin.from("executions").update({ statut: finalStatus }).eq("id", execution.id);
   return { success: true, finalStatus, results };
@@ -193,16 +226,17 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
       await supabaseAdmin.from("execution_lignes").insert({
         execution_id: execution.id,
         destinataire_libelle: dist.libelle,
+        destinataire_numero: dist.destinataires.numero,
+        destinataire_reseau: dist.destinataires.methode_mobile_money,
         montant: amountToSend,
         statut: "echoue",
+        erreur_message: "Montant insuffisant",
         est_commission: false
       });
       continue;
     }
 
     try {
-      // Simulation pour l'étape 5, on n'appelle pas vraiment FedaPay si on veut juste tester la logique.
-      // Mais vu que la clé sandbox FedaPay est déjà là (Étape 6 faite), on peut faire le call Sandbox, l'argent n'est pas réel.
       const payoutRes = await createAndSendPayout(
         secretKey,
         amountToSend,
@@ -211,36 +245,44 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
         dist.libelle
       );
       
-      results.push({ dest: dist.libelle, amount: amountToSend, status: "reussi", data: payoutRes });
+      const fedapayStatus = payoutRes?.v1?.payout?.status || payoutRes?.status || "pending";
+      const ligneStatut = fedapayStatus === "failed" ? "echoue" : fedapayStatus === "sent" || fedapayStatus === "approved" ? "reussi" : "en_cours";
+      const ref = payoutRes?.v1?.payout?.reference || payoutRes?.v1?.payout?.id?.toString() || payoutRes?.id?.toString() || "";
+
+      results.push({ dest: dist.libelle, amount: amountToSend, status: ligneStatut, data: payoutRes });
       remaining -= amountToSend;
 
-      // Log la ligne de succès
       await supabaseAdmin.from("execution_lignes").insert({
         execution_id: execution.id,
         destinataire_libelle: dist.libelle,
+        destinataire_numero: dist.destinataires.numero,
+        destinataire_reseau: dist.destinataires.methode_mobile_money,
         montant: amountToSend,
-        statut: "reussi",
+        statut: ligneStatut,
+        reference_transaction: ref,
         est_commission: false
       });
 
     } catch (e: any) {
       results.push({ dest: dist.libelle, amount: amountToSend, status: "echoue", error: e.message });
       
-      // Log la ligne d'échec
       await supabaseAdmin.from("execution_lignes").insert({
         execution_id: execution.id,
         destinataire_libelle: dist.libelle,
+        destinataire_numero: dist.destinataires.numero,
+        destinataire_reseau: dist.destinataires.methode_mobile_money,
         montant: amountToSend,
         statut: "echoue",
+        erreur_message: e.message,
         est_commission: false
       });
     }
   }
 
   // Mettre à jour le statut global de l'exécution
-  const allSuccess = results.every(r => r.status === "reussi");
-  const anySuccess = results.some(r => r.status === "reussi");
-  const finalStatus = allSuccess ? "reussi" : anySuccess ? "partiel" : "echoue";
+  const hasFailed = results.some(r => r.status === "echoue");
+  const hasSuccess = results.some(r => r.status === "reussi" || r.status === "en_cours");
+  const finalStatus = !hasSuccess ? "echoue" : hasFailed ? "partiel" : results.every(r => r.status === "reussi") ? "reussi" : "en_cours";
 
   await supabaseAdmin.from("executions").update({ statut: finalStatus }).eq("id", execution.id);
 

@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Filter, ChevronRight, CheckCircle2, XCircle, AlertCircle, X, Download, RotateCcw, History } from "lucide-react";
+import { Search, Filter, ChevronRight, CheckCircle2, XCircle, AlertCircle, Clock, X, Download, RotateCcw, History, Loader2 } from "lucide-react";
 import { Amount } from "@/components/shared/Amount";
+import { retryPayoutLigne } from "@/app/actions/historique";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-type Status = "SUCCESS" | "PARTIAL" | "FAILED";
+type Status = "SUCCESS" | "PARTIAL" | "FAILED" | "PENDING";
 
 type TransactionDetail = {
   id: string;
@@ -13,7 +16,7 @@ type TransactionDetail = {
   network: string;
   phone: string;
   amount: number;
-  status: "SUCCESS" | "FAILED";
+  status: "SUCCESS" | "FAILED" | "PENDING";
   errorReason?: string;
   reference?: string;
 };
@@ -91,6 +94,8 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTx, setSelectedTx] = useState<TransactionHistory | null>(null);
   const [historyData, setHistoryData] = useState<TransactionHistory[]>([]);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => {
     // Transform DB data to TransactionHistory format
@@ -98,10 +103,12 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
       const allDetails = exec.execution_lignes?.map((ligne: any) => ({
         id: ligne.id,
         name: ligne.destinataire_libelle,
-        network: ligne.est_commission ? "Frais" : "Mobile Money",
-        phone: ligne.est_commission ? "Réparto" : "Masqué",
+        network: ligne.est_commission ? "Frais" : (ligne.destinataire_reseau || "Mobile Money"),
+        phone: ligne.est_commission ? "Réparto" : (ligne.destinataire_numero || "Masqué"),
         amount: Number(ligne.montant),
-        status: ligne.statut === "reussi" ? "SUCCESS" : "FAILED",
+        status: ligne.statut === "reussi" ? "SUCCESS" : ligne.statut === "en_cours" ? "PENDING" : "FAILED",
+        errorReason: ligne.erreur_message,
+        reference: ligne.reference_transaction,
         isCommission: ligne.est_commission
       })) || [];
 
@@ -111,12 +118,12 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
       return {
         id: exec.id,
         date: exec.date_execution,
-        ruleName: exec.regles?.nom || "Règle supprimée",
+        ruleName: exec.regles?.nom || "Rapide",
         totalAvailable: Number(exec.montant_total),
         commissionAmount: commissionLigne ? commissionLigne.amount : 0,
         totalAmount: details.reduce((acc: number, d: any) => acc + d.amount, 0),
         recipientCount: details.length,
-        status: (exec.statut === "reussi" ? "SUCCESS" : exec.statut === "partiel" ? "PARTIAL" : "FAILED") as any,
+        status: (exec.statut === "reussi" ? "SUCCESS" : exec.statut === "partiel" ? "PARTIAL" : exec.statut === "en_cours" ? "PENDING" : "FAILED") as any,
         details
       };
     });
@@ -127,6 +134,96 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
     if (filterStatus !== "all" && tx.status !== filterStatus.toUpperCase()) return false;
     return true;
   });
+
+  const handleRetry = async (ligneId: string) => {
+    setRetryingId(ligneId);
+    try {
+      const res = await retryPayoutLigne(ligneId);
+      if (res.success) {
+        // Optimistic UI update
+        const newStatus = res.ligneStatut === "reussi" ? "SUCCESS" : res.ligneStatut === "en_cours" ? "PENDING" : "FAILED";
+        
+        setHistoryData(prev => prev.map(tx => {
+          if (tx.id === selectedTx?.id) {
+            const updatedDetails = tx.details.map(d => d.id === ligneId ? { ...d, status: newStatus as any, errorReason: newStatus === "FAILED" ? "Échec lors de la relance" : undefined } : d);
+            const hasFailed = updatedDetails.some(d => d.status === "FAILED");
+            const hasSuccess = updatedDetails.some(d => d.status === "SUCCESS" || d.status === "PENDING");
+            const finalStatus = !hasSuccess ? "FAILED" : hasFailed ? "PARTIAL" : updatedDetails.every(d => d.status === "SUCCESS") ? "SUCCESS" : "PENDING";
+            
+            const updatedTx = { ...tx, status: finalStatus as any, details: updatedDetails };
+            if (selectedTx.id === updatedTx.id) setSelectedTx(updatedTx);
+            return updatedTx;
+          }
+          return tx;
+        }));
+      } else {
+        alert("Erreur lors de la relance: " + res.error);
+      }
+    } catch (e: any) {
+      alert("Erreur: " + e.message);
+    } finally {
+      setRetryingId(null);
+    }
+  };
+
+  const generatePDF = () => {
+    if (!selectedTx) return;
+    setIsGeneratingPdf(true);
+    
+    try {
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFontSize(20);
+      doc.setTextColor(0, 0, 0);
+      doc.text("Reçu de Répartition", 14, 22);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Règle : ${selectedTx.ruleName}`, 14, 30);
+      doc.text(`Date : ${formatDate(selectedTx.date)}`, 14, 36);
+      doc.text(`Statut global : ${selectedTx.status === "SUCCESS" ? "Réussi" : selectedTx.status === "PARTIAL" ? "Partiel" : selectedTx.status === "PENDING" ? "En cours" : "Échoué"}`, 14, 42);
+
+      // Amounts
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Solde déduit : ${selectedTx.totalAvailable} FCFA`, 14, 55);
+      doc.text(`Frais Réparto : ${selectedTx.commissionAmount} FCFA`, 14, 62);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total réparti : ${selectedTx.totalAmount} FCFA`, 14, 69);
+      
+      // Table
+      const tableColumn = ["Destinataire", "Numéro", "Montant (FCFA)", "Statut", "Référence"];
+      const tableRows = [];
+      
+      selectedTx.details.forEach(d => {
+        const rowData = [
+          d.name,
+          d.phone,
+          d.amount.toString(),
+          d.status === "SUCCESS" ? "Réussi" : d.status === "PENDING" ? "En cours" : "Échoué",
+          d.reference || "-"
+        ];
+        tableRows.push(rowData);
+      });
+      
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 80,
+        theme: "grid",
+        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255] },
+        styles: { font: "helvetica", fontSize: 10 }
+      });
+      
+      doc.save(`reparto_recu_${selectedTx.id.substring(0, 8)}.pdf`);
+    } catch (e) {
+      console.error(e);
+      alert("Erreur lors de la génération du PDF");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   return (
     <div className="space-y-6 pb-20 md:pb-0">
@@ -147,6 +244,7 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
            <button onClick={() => setFilterStatus("all")} className={`px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${filterStatus === "all" ? "bg-black text-white" : "bg-[#F5F5F7] text-muted-foreground hover:text-black"}`}>Tous</button>
            <button onClick={() => setFilterStatus("success")} className={`px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${filterStatus === "success" ? "bg-money-in/10 text-money-in" : "bg-[#F5F5F7] text-muted-foreground hover:text-black"}`}>Réussi</button>
+           <button onClick={() => setFilterStatus("pending")} className={`px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${filterStatus === "pending" ? "bg-blue-100 text-blue-700" : "bg-[#F5F5F7] text-muted-foreground hover:text-black"}`}>En cours</button>
            <button onClick={() => setFilterStatus("partial")} className={`px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${filterStatus === "partial" ? "bg-[#FFF8E7] text-[#B9811C]" : "bg-[#F5F5F7] text-muted-foreground hover:text-black"}`}>Partiel</button>
            <button onClick={() => setFilterStatus("failed")} className={`px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${filterStatus === "failed" ? "bg-danger/10 text-danger" : "bg-[#F5F5F7] text-muted-foreground hover:text-black"}`}>Échoué</button>
          </div>
@@ -294,6 +392,14 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
                                </div>
                                <span className="text-xs font-mono font-bold text-money-in/60 tracking-wider">{detail.reference}</span>
                             </div>
+                          ) : detail.status === "PENDING" ? (
+                            <div className="flex items-center justify-between bg-blue-50 rounded-xl px-3 py-2 mt-3">
+                               <div className="flex items-center gap-1.5">
+                                  <Clock className="w-4 h-4 text-blue-600" />
+                                  <span className="text-xs font-bold text-blue-600">En cours de traitement</span>
+                               </div>
+                               <span className="text-xs font-mono font-bold text-blue-600/60 tracking-wider">{detail.reference || "Attente"}</span>
+                            </div>
                           ) : (
                             <div className="bg-danger/5 rounded-xl p-3 mt-3 space-y-3">
                                <div className="flex items-center gap-1.5">
@@ -301,9 +407,25 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
                                   <span className="text-xs font-bold text-danger">Échoué</span>
                                </div>
                                <p className="text-[13px] font-medium text-danger/80">{detail.errorReason}</p>
-                               <button className="flex items-center justify-center gap-2 w-full bg-white border border-danger/20 text-danger hover:bg-danger hover:text-white transition-colors py-2.5 rounded-[12px] font-bold text-[13px]">
-                                 <RotateCcw className="w-3.5 h-3.5" />
-                                 Réessayer cet envoi
+                               <button 
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   handleRetry(detail.id);
+                                 }}
+                                 disabled={retryingId === detail.id}
+                                 className="flex items-center justify-center gap-2 w-full bg-white border border-danger/20 text-danger hover:bg-danger hover:text-white transition-colors py-2.5 rounded-[12px] font-bold text-[13px] disabled:opacity-50 disabled:cursor-not-allowed"
+                               >
+                                 {retryingId === detail.id ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      Relance en cours...
+                                    </>
+                                 ) : (
+                                    <>
+                                      <RotateCcw className="w-3.5 h-3.5" />
+                                      Réessayer cet envoi
+                                    </>
+                                 )}
                                </button>
                             </div>
                           )}
@@ -316,8 +438,12 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
 
               {/* Footer */}
               <div className="p-4 sm:p-6 bg-white border-t border-black/5 shrink-0">
-                <button className="w-full h-14 bg-black hover:bg-black/80 text-white rounded-2xl font-bold text-[15px] flex items-center justify-center gap-2 transition-colors">
-                  <Download className="w-5 h-5" />
+                <button 
+                  onClick={generatePDF}
+                  disabled={isGeneratingPdf}
+                  className="w-full h-14 bg-black hover:bg-black/80 text-white rounded-2xl font-bold text-[15px] flex items-center justify-center gap-2 transition-colors disabled:opacity-70"
+                >
+                  {isGeneratingPdf ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                   Télécharger le reçu complet
                 </button>
               </div>
@@ -348,13 +474,22 @@ function StatusBadge({ status, details }: { status: Status, details: Transaction
       </div>
     );
   }
+  if (status === "PENDING") {
+    return (
+      <div className="flex items-center gap-1.5 bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider">
+        <Clock className="w-3.5 h-3.5" />
+        En cours
+      </div>
+    );
+  }
   
   const failedCount = details.filter(d => d.status === "FAILED").length;
+  const successCount = details.filter(d => d.status === "SUCCESS").length;
   
   return (
     <div className="flex items-center gap-1.5 bg-[#FFF8E7] text-[#B9811C] px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider">
       <AlertCircle className="w-3.5 h-3.5" />
-      {failedCount > 0 ? `${details.length - failedCount}/${details.length} réussis` : "Partiel"}
+      {failedCount > 0 ? `${successCount}/${details.length} réussis` : "Partiel"}
     </div>
   );
 }
