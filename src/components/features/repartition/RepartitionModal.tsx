@@ -21,7 +21,6 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [step, setStep] = useState<Step>("PREVIEW");
   const [results, setResults] = useState<Record<string, "PENDING" | "SUCCESS" | "FAILED">>({});
   const [totalAvailable, setTotalAvailable] = useState<number>(0);
-  const [maxBalance, setMaxBalance] = useState<number>(0);
   const [isLoadingData, setIsLoadingData] = useState(true);
   
   const [rules, setRules] = useState<any[]>([]);
@@ -43,6 +42,8 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [saveRuleTrigger, setSaveRuleTrigger] = useState("manual");
   const [ruleSaved, setRuleSaved] = useState(false);
   const [showCommissionDetails, setShowCommissionDetails] = useState(false);
+  const [isCustomTotal, setIsCustomTotal] = useState(false);
+  const [customTotalInput, setCustomTotalInput] = useState<string>("");
   const { plan } = useUser();
 
   const COMMISSION_RATE = plan === "pro" ? 0.008 : plan === "business" ? 0.004 : 0.019;
@@ -80,7 +81,6 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
         const { data: metrics } = await getDashboardMetrics();
         if (metrics) {
           setTotalAvailable(metrics.balance || 0);
-          setMaxBalance(metrics.balance || 0);
         }
 
         const { data: dests } = await getDestinataires();
@@ -165,12 +165,16 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     }
   }, [currentPreviewData, modalMode]);
 
+  const effectiveTotalQuick = modalMode === "quick" && quickMode === "percentage" && isCustomTotal && customTotalInput !== "" 
+    ? Number(customTotalInput) 
+    : totalAvailable;
+
   const quickPreviewData = useMemo(() => {
-    const commissionAmount = totalAvailable * COMMISSION_RATE;
-    const toDistribute = totalAvailable - commissionAmount;
+    const commissionAmount = effectiveTotalQuick * COMMISSION_RATE;
+    const toDistribute = effectiveTotalQuick - commissionAmount;
     return {
       name: "Répartition rapide",
-      totalAvailable: totalAvailable,
+      totalAvailable: effectiveTotalQuick,
       commission: commissionAmount,
       toDistribute: toDistribute,
       targets: quickTargets.map((r: any, index: number) => {
@@ -185,7 +189,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
         };
       })
     };
-  }, [quickTargets, quickMode]);
+  }, [quickTargets, quickMode, effectiveTotalQuick, COMMISSION_RATE]);
 
   const activeData = modalMode === "rule" ? currentPreviewData : quickPreviewData;
   const currentTargets = modalMode === "rule" 
@@ -218,10 +222,10 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
       let res;
       if (modalMode === "quick" || (modalMode === "rule" && isAdjusting)) {
         // Mode rapide ou règle ajustée à la volée : on envoie les targets calculés manuellement
-        res = await executeQuickRepartitionAction(totalAvailable, currentTargets, isPercentageMode ? "percentage" : "fixed");
+        res = await executeQuickRepartitionAction((activeData as any).totalAvailable, currentTargets, isPercentageMode ? "percentage" : "fixed");
       } else {
         // Mode règle stricte : on utilise le Rule ID de la BDD pour qu'il le re-calcule de façon sécurisée
-        res = await executeRepartitionAction(totalAvailable, activeRuleSource?.id);
+        res = await executeRepartitionAction((activeData as any).totalAvailable, activeRuleSource?.id);
       }
       
       const finalStatus = res.status === 'completed' ? "SUCCESS" : "FAILED";
@@ -377,29 +381,11 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           {/* Body Scrollable */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
             
-            <div className="flex flex-col items-center justify-center pt-5 pb-5 bg-white rounded-[2rem] shadow-sm border border-black/[0.03] relative">
-              {modalMode === "quick" && (
-                <div className="absolute top-4 right-5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-black/5 px-2 py-1 rounded-md">
-                  Solde dispo : <Amount value={maxBalance} />
-                </div>
-              )}
-              <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Montant à répartir (FCFA)" : activeData.name}</span>
-              
-              {modalMode === "quick" ? (
-                <div className="relative flex items-center justify-center mb-2">
-                  <input 
-                    type="number"
-                    value={totalAvailable || ""}
-                    onChange={(e) => setTotalAvailable(Number(e.target.value))}
-                    className="w-full max-w-[280px] text-center bg-transparent text-4xl sm:text-5xl font-black tracking-tighter text-black outline-none placeholder:text-black/20 focus:scale-105 transition-all"
-                    placeholder="0"
-                  />
-                </div>
-              ) : (
-                <div className="text-4xl sm:text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-black to-black/70 mb-2">
-                  <Amount value={activeData.totalAvailable} />
-                </div>
-              )}
+            <div className="flex flex-col items-center justify-center pt-5 pb-5 bg-white rounded-[2rem] shadow-sm border border-black/[0.03]">
+              <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Solde disponible" : activeData.name}</span>
+              <div className="text-4xl sm:text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-black to-black/70 mb-2">
+                <Amount value={activeData.totalAvailable} />
+              </div>
               
               <button 
                 onClick={() => setShowCommissionDetails(!showCommissionDetails)}
@@ -525,6 +511,46 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                     </div>
                   </div>
                 </div>
+
+                {isPercentageMode && (
+                  <div className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-black/[0.03]">
+                    <button 
+                      onClick={() => setIsCustomTotal(!isCustomTotal)}
+                      className="w-full flex items-center justify-between text-left group"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Edit2 className="w-4 h-4 text-muted-foreground group-hover:text-black transition-colors" />
+                        <span className="font-bold text-[14px] text-muted-foreground group-hover:text-black transition-colors">Personnaliser le montant à répartir</span>
+                      </div>
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isCustomTotal ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    <AnimatePresence>
+                      {isCustomTotal && (
+                        <motion.div 
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden pt-4"
+                        >
+                          <div className="relative">
+                            <input 
+                              type="number"
+                              value={customTotalInput}
+                              onChange={(e) => setCustomTotalInput(e.target.value)}
+                              placeholder={`Ex: ${totalAvailable}`}
+                              className="w-full bg-[#F5F5F7] hover:bg-[#EAEAEB] transition-colors border-transparent rounded-[1.25rem] px-5 py-4 font-bold text-[16px] outline-none focus:ring-2 focus:ring-primary"
+                            />
+                            <span className="absolute right-5 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">FCFA</span>
+                          </div>
+                          <p className="text-[12px] font-medium text-muted-foreground mt-2 ml-1">
+                            Solde maximum disponible : <Amount value={totalAvailable} />
+                          </p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
                 
                 <div className="space-y-3 mt-4">
                   <AnimatePresence>
