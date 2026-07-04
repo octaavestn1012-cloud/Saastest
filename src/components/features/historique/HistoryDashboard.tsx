@@ -355,7 +355,9 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
                       </span>
                    </div>
                    <div className="flex justify-between items-center text-[#B9811C]">
-                      <span className="font-semibold text-[14px]">Frais Réparto (0,8%)</span>
+                      <span className="font-semibold text-[14px]">
+                        Frais Réparto ({selectedTx.totalAvailable > 0 ? ((selectedTx.commissionAmount / selectedTx.totalAvailable) * 100).toFixed(1).replace('.', ',') : "0"}%)
+                      </span>
                       <span className="font-bold tabular-nums text-[15px]">
                         − <Amount value={selectedTx.commissionAmount} />
                       </span>
