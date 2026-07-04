@@ -64,7 +64,7 @@ export async function retryPayoutLigne(ligneId: string) {
 
     // 2. Fetch FedaPay Key
     const { data: conn } = await supabase.from("connexions")
-      .select("*").eq("user_id", user.id).eq("passerelle", "FedaPay").eq("statut", "actif").single();
+      .select("*").eq("user_id", user.id).ilike("passerelle", "fedapay").eq("statut", "actif").single();
 
     if (!conn || !conn.cle_chiffree) throw new Error("Aucune connexion FedaPay active");
     const secretKey = decryptKey(conn.cle_chiffree);

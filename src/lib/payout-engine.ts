@@ -17,7 +17,7 @@ export async function processQuickPayouts(userId: string, availableAmount: numbe
   const commissionRate = plan === "pro" ? 0.008 : plan === "business" ? 0.004 : 0.019;
 
   const { data: conn, error: connError } = await supabaseAdmin.from("connexions")
-    .select("*").eq("user_id", userId).eq("passerelle", "FedaPay").eq("statut", "actif").single();
+    .select("*").eq("user_id", userId).ilike("passerelle", "fedapay").eq("statut", "actif").single();
 
   if (connError || !conn || !conn.cle_chiffree) {
     return { success: false, error: "Aucune connexion active" };
