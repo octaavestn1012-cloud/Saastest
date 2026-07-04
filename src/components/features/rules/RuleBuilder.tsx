@@ -70,7 +70,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
       destinataireId: d.destinataire_id,
       isManual: false
     })) || [
-      { id: "temp_1", name: "", value: 0, network: "MTN", phone: "", isManual: true }
+      { id: "temp_1", name: "", value: 0, network: "MTN", phone: "", isManual: false }
     ]
   );
 
@@ -125,7 +125,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
       value: 0,
       network: "MTN",
       phone: "",
-      isManual: true
+      isManual: false
     }]);
   };
 
@@ -339,7 +339,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="bg-white p-5 rounded-[1.5rem] border border-black/10 relative group hover:border-black/20 transition-colors"
+                className="bg-white p-5 rounded-[1.5rem] border-2 border-[#F5F5F7] relative group hover:border-black/10 transition-all"
               >
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-[17px] font-extrabold text-black">Destinataire {idx + 1}</span>
