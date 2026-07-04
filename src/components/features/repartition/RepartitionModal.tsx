@@ -518,7 +518,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                       onClick={() => setIsCustomTotal(!isCustomTotal)}
                       className="text-[12px] font-semibold text-black/30 hover:text-black/60 transition-colors mx-auto block underline decoration-black/20 underline-offset-4"
                     >
-                      modifier le montant de base
+                      Préciser le montant à répartir
                     </button>
                     
                     <AnimatePresence>
