@@ -21,6 +21,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [step, setStep] = useState<Step>("PREVIEW");
   const [results, setResults] = useState<Record<string, "PENDING" | "SUCCESS" | "FAILED">>({});
   const [totalAvailable, setTotalAvailable] = useState<number>(0);
+  const [availableBalance, setAvailableBalance] = useState<number>(0);
   const [isLoadingData, setIsLoadingData] = useState(true);
   
   const [rules, setRules] = useState<any[]>([]);
@@ -79,6 +80,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
         const { data: metrics } = await getDashboardMetrics();
         if (metrics) {
           setTotalAvailable(metrics.balance || 0);
+          setAvailableBalance(metrics.balance || 0);
         }
 
         const { data: dests } = await getDestinataires();
@@ -376,9 +378,26 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
             
             <div className="flex flex-col items-center justify-center pt-5 pb-5 bg-white rounded-[2rem] shadow-sm border border-black/[0.03]">
-              <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Solde disponible" : activeData.name}</span>
-              <div className="text-4xl sm:text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-black to-black/70 mb-2">
-                <Amount value={activeData.totalAvailable} />
+              <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Montant à répartir" : activeData.name}</span>
+              <div className="flex flex-col items-center mb-2 w-full px-6">
+                <div className="relative flex items-center justify-center w-full max-w-[280px]">
+                  <input
+                    type="number"
+                    value={totalAvailable || ""}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      if (val <= availableBalance) {
+                        setTotalAvailable(val);
+                      }
+                    }}
+                    className="w-full text-center text-4xl sm:text-5xl font-black tracking-tighter bg-transparent outline-none text-black placeholder:text-black/20"
+                    placeholder="0"
+                    max={availableBalance}
+                  />
+                </div>
+                <div className="text-[13px] font-medium text-muted-foreground mt-1">
+                  Solde disponible : <Amount value={availableBalance} />
+                </div>
               </div>
               
               <button 
@@ -794,11 +813,6 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                     confirmedText="Autorisé"
                   />
                 </div>
-                {modalMode === "quick" && quickTargets.some(t => !t.phone || !t.name) && (
-                  <p className="text-center text-sm font-bold text-[#B9811C] mt-2">
-                    ⚠️ Pensez à bien choisir un contact pour chaque destinataire
-                  </p>
-                )}
                 {!customData && modalMode === "rule" && (
                   <Link href="/rules" onClick={onClose} className="block text-center text-[14px] font-bold text-muted-foreground hover:text-black transition-colors">
                     Gérer mes règles
