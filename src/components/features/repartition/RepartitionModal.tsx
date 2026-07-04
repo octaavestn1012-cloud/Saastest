@@ -595,7 +595,6 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                                         <span className="font-bold text-[14px] text-black">Saisir un nouveau numéro</span>
                                       </button>
                                     </motion.div>
-                                  </>
                                 )}
                               </AnimatePresence>
                             </div>
