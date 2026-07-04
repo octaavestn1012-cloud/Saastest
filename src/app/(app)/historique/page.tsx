@@ -4,7 +4,7 @@ import { getHistorique } from "@/app/actions/historique";
 export const dynamic = "force-dynamic";
 
 export default async function HistoriquePage() {
-  const { data } = await getHistorique();
+  const { data, plan } = await getHistorique();
   
   return (
     <div className="min-h-screen bg-[#FDFDFD] p-4 sm:p-8 md:p-12">
@@ -14,7 +14,7 @@ export default async function HistoriquePage() {
           <p className="text-muted-foreground font-medium text-lg">Toutes tes répartitions.</p>
         </div>
         
-        <HistoryDashboard initialData={data || []} />
+        <HistoryDashboard initialData={data || []} plan={plan || "gratuit"} />
       </div>
     </div>
   );

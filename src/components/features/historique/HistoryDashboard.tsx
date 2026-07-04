@@ -89,13 +89,15 @@ const formatDate = (isoString: string) => {
   return `${day} ${month} ${year} à ${hours}:${minutes}`;
 };
 
-export function HistoryDashboard({ initialData }: { initialData: any[] }) {
+export function HistoryDashboard({ initialData, plan = "gratuit" }: { initialData: any[], plan?: string }) {
   const [filterPeriod, setFilterPeriod] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTx, setSelectedTx] = useState<TransactionHistory | null>(null);
   const [historyData, setHistoryData] = useState<TransactionHistory[]>([]);
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const commissionRateStr = plan === "pro" ? "0,8" : plan === "business" ? "0,4" : "1,9";
 
   useEffect(() => {
     // Transform DB data to TransactionHistory format
@@ -356,7 +358,7 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
                    </div>
                    <div className="flex justify-between items-center text-[#B9811C]">
                       <span className="font-semibold text-[14px]">
-                        Frais Réparto ({selectedTx.totalAvailable > 0 ? ((selectedTx.commissionAmount / selectedTx.totalAvailable) * 100).toFixed(1).replace('.', ',') : "0"}%)
+                        Frais Réparto ({commissionRateStr}%)
                       </span>
                       <span className="font-bold tabular-nums text-[15px]">
                         − <Amount value={selectedTx.commissionAmount} />

@@ -37,7 +37,10 @@ export async function getHistorique() {
       return { error: "Erreur lors de la récupération de l'historique" };
     }
 
-    return { data };
+    const { data: profile } = await supabase.from("profiles").select("plan").eq("id", user.id).single();
+    const plan = profile?.plan || "gratuit";
+
+    return { data, plan };
   } catch (error: any) {
     return { error: error.message };
   }
