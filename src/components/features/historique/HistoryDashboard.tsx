@@ -194,7 +194,7 @@ export function HistoryDashboard({ initialData }: { initialData: any[] }) {
       
       // Table
       const tableColumn = ["Destinataire", "Numéro", "Montant (FCFA)", "Statut", "Référence"];
-      const tableRows = [];
+      const tableRows: string[][] = [];
       
       selectedTx.details.forEach(d => {
         const rowData = [
