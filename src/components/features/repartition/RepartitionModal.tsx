@@ -49,6 +49,30 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const RESTANT_TEXT = plan === "pro" ? "99,2%" : plan === "business" ? "99,6%" : "98,1%";
 
   useEffect(() => {
+    // Bloquer le scroll du body quand le modal est ouvert
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
+  useEffect(() => {
+    // Fermer le dropdown au clic à l'extérieur
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.custom-dropdown-container')) {
+        setOpenDropdownId(null);
+      }
+    };
+    if (openDropdownId) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdownId]);
+
+  useEffect(() => {
     const fetchData = async () => {
       setIsLoadingData(true);
       try {
@@ -496,7 +520,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                         {!target.isManual ? (
                           <div className="flex items-center justify-between gap-4">
                             {/* Custom Dropdown UI */}
-                            <div className="relative flex-1">
+                            <div className="relative flex-1 custom-dropdown-container">
                               <button 
                                 onClick={() => setOpenDropdownId(openDropdownId === target.id ? null : target.id)}
                                 className="w-full flex items-center gap-3 p-2 -ml-2 rounded-2xl hover:bg-black/5 transition-colors text-left"
@@ -522,19 +546,17 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
 
                               <AnimatePresence>
                                 {openDropdownId === target.id && (
-                                  <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setOpenDropdownId(null)} />
-                                    <motion.div 
-                                      initial={{ opacity: 0, y: -10, scale: 0.95 }} 
-                                      animate={{ opacity: 1, y: 0, scale: 1 }} 
-                                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                                      transition={{ duration: 0.15 }}
-                                      className="absolute top-full left-0 mt-2 w-[280px] bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-black/5 z-50 overflow-hidden py-2"
-                                    >
-                                      <div className="px-4 py-2 text-[10px] font-black text-black/30 uppercase tracking-widest">
-                                        Vos destinataires enregistrés
-                                      </div>
-                                      <div className="max-h-[250px] overflow-y-auto">
+                                  <motion.div 
+                                    initial={{ opacity: 0, y: -10, scale: 0.95 }} 
+                                    animate={{ opacity: 1, y: 0, scale: 1 }} 
+                                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="absolute top-full left-0 mt-2 w-[280px] bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-black/5 z-50 overflow-hidden py-2"
+                                  >
+                                    <div className="px-4 py-2 text-[10px] font-black text-black/30 uppercase tracking-widest">
+                                      Vos destinataires enregistrés
+                                    </div>
+                                    <div className="max-h-[250px] overflow-y-auto">
                                         {savedDestinataires.length === 0 && (
                                           <div className="px-4 py-3 text-sm text-black/50 italic font-medium">Aucun contact enregistré.</div>
                                         )}
