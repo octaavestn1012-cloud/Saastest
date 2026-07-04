@@ -21,7 +21,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [step, setStep] = useState<Step>("PREVIEW");
   const [results, setResults] = useState<Record<string, "PENDING" | "SUCCESS" | "FAILED">>({});
   const [totalAvailable, setTotalAvailable] = useState<number>(0);
-  const [availableBalance, setAvailableBalance] = useState<number>(0);
+  const [maxBalance, setMaxBalance] = useState<number>(0);
   const [isLoadingData, setIsLoadingData] = useState(true);
   
   const [rules, setRules] = useState<any[]>([]);
@@ -80,7 +80,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
         const { data: metrics } = await getDashboardMetrics();
         if (metrics) {
           setTotalAvailable(metrics.balance || 0);
-          setAvailableBalance(metrics.balance || 0);
+          setMaxBalance(metrics.balance || 0);
         }
 
         const { data: dests } = await getDestinataires();
@@ -377,28 +377,29 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           {/* Body Scrollable */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
             
-            <div className="flex flex-col items-center justify-center pt-5 pb-5 bg-white rounded-[2rem] shadow-sm border border-black/[0.03]">
-              <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Montant à répartir" : activeData.name}</span>
-              <div className="flex flex-col items-center mb-2 w-full px-6">
-                <div className="relative flex items-center justify-center w-full max-w-[280px]">
-                  <input
+            <div className="flex flex-col items-center justify-center pt-5 pb-5 bg-white rounded-[2rem] shadow-sm border border-black/[0.03] relative">
+              {modalMode === "quick" && (
+                <div className="absolute top-4 right-5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-black/5 px-2 py-1 rounded-md">
+                  Solde dispo : <Amount value={maxBalance} />
+                </div>
+              )}
+              <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Montant à répartir (FCFA)" : activeData.name}</span>
+              
+              {modalMode === "quick" ? (
+                <div className="relative flex items-center justify-center mb-2">
+                  <input 
                     type="number"
                     value={totalAvailable || ""}
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      if (val <= availableBalance) {
-                        setTotalAvailable(val);
-                      }
-                    }}
-                    className="w-full text-center text-4xl sm:text-5xl font-black tracking-tighter bg-transparent outline-none text-black placeholder:text-black/20"
+                    onChange={(e) => setTotalAvailable(Number(e.target.value))}
+                    className="w-full max-w-[280px] text-center bg-transparent text-4xl sm:text-5xl font-black tracking-tighter text-black outline-none placeholder:text-black/20 focus:scale-105 transition-all"
                     placeholder="0"
-                    max={availableBalance}
                   />
                 </div>
-                <div className="text-[13px] font-medium text-muted-foreground mt-1">
-                  Solde disponible : <Amount value={availableBalance} />
+              ) : (
+                <div className="text-4xl sm:text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-black to-black/70 mb-2">
+                  <Amount value={activeData.totalAvailable} />
                 </div>
-              </div>
+              )}
               
               <button 
                 onClick={() => setShowCommissionDetails(!showCommissionDetails)}
