@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { decryptKey } from "./encryption";
 import { createAndSendPayout } from "./fedapay";
+import { createAndSendKkiapayPayout } from "./kkiapay";
 
 export async function processQuickPayouts(userId: string, availableAmount: number, targets: any[], mode: string) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -16,14 +17,17 @@ export async function processQuickPayouts(userId: string, availableAmount: numbe
   const plan = profile?.plan || "gratuit";
   const commissionRate = plan === "pro" ? 0.008 : plan === "business" ? 0.004 : 0.019;
 
-  const { data: conn, error: connError } = await supabaseAdmin.from("connexions")
-    .select("*").eq("user_id", userId).ilike("passerelle", "fedapay").eq("statut", "actif").single();
+  const { data: conns, error: connError } = await supabaseAdmin.from("connexions")
+    .select("*").eq("user_id", userId).eq("statut", "actif");
 
-  if (connError || !conn || !conn.cle_chiffree) {
+  if (connError || !conns || conns.length === 0) {
     return { success: false, error: "Aucune connexion active" };
   }
 
-  const secretKey = decryptKey(conn.cle_chiffree);
+  // Pick the first active connection for now (can be improved later to balance across multiple)
+  const conn = conns[0];
+
+  const decryptedKey = decryptKey(conn.cle_chiffree);
   const commissionAmount = Math.floor(availableAmount * commissionRate);
   const availableAfterCommission = availableAmount - commissionAmount;
   let remaining = availableAfterCommission;
@@ -66,11 +70,22 @@ export async function processQuickPayouts(userId: string, availableAmount: numbe
     }
 
     try {
-      const payoutRes = await createAndSendPayout(secretKey, amountToSend, t.method || t.network, t.number || t.phone, t.label || t.name);
-      
-      const fedapayStatus = payoutRes?.v1?.payout?.status || payoutRes?.status || "pending";
-      const ligneStatut = fedapayStatus === "failed" ? "echoue" : fedapayStatus === "sent" || fedapayStatus === "approved" ? "reussi" : "en_cours";
-      const ref = payoutRes?.v1?.payout?.reference || payoutRes?.v1?.payout?.id?.toString() || payoutRes?.id?.toString() || "";
+      let payoutRes;
+      let ligneStatut = "en_cours";
+      let ref = "";
+
+      if (conn.passerelle.toLowerCase() === "kkiapay") {
+        const keysObj = JSON.parse(decryptedKey);
+        payoutRes = await createAndSendKkiapayPayout(keysObj, amountToSend, t.method || t.network, t.number || t.phone, t.label || t.name);
+        // Map Kkiapay status logic (adapt once API is known)
+        ligneStatut = payoutRes?.status === "SUCCESS" ? "reussi" : payoutRes?.status === "FAILED" ? "echoue" : "en_cours";
+        ref = payoutRes?.transactionId || payoutRes?.id?.toString() || "";
+      } else {
+        payoutRes = await createAndSendPayout(decryptedKey, amountToSend, t.method || t.network, t.number || t.phone, t.label || t.name);
+        const fedapayStatus = payoutRes?.v1?.payout?.status || payoutRes?.status || "pending";
+        ligneStatut = fedapayStatus === "failed" ? "echoue" : fedapayStatus === "sent" || fedapayStatus === "approved" ? "reussi" : "en_cours";
+        ref = payoutRes?.v1?.payout?.reference || payoutRes?.v1?.payout?.id?.toString() || payoutRes?.id?.toString() || "";
+      }
 
       results.push({ dest: t.label || t.name, amount: amountToSend, status: ligneStatut, data: payoutRes });
       remaining -= amountToSend;
@@ -105,7 +120,7 @@ export async function processQuickPayouts(userId: string, availableAmount: numbe
   const finalStatus = !hasSuccess ? "echoue" : hasFailed ? "partiel" : results.every(r => r.status === "reussi") ? "reussi" : "en_cours";
 
   await supabaseAdmin.from("executions").update({ statut: finalStatus }).eq("id", execution.id);
-  return { success: true, finalStatus, results };
+  return { success: true, finalStatus, results, executionId: execution.id };
 }
 
 export async function processPayoutsForUser(userId: string, availableAmount: number, triggerOrRuleId: string = "a_chaque_entree", isRuleId: boolean = false) {
@@ -130,20 +145,20 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
   const commissionRate = plan === "pro" ? 0.008 : plan === "business" ? 0.004 : 0.019;
 
   // 2. Récupérer la connexion FedaPay de l'utilisateur
-  const { data: conn, error: connError } = await supabaseAdmin
+  const { data: conns, error: connError } = await supabaseAdmin
     .from("connexions")
     .select("*")
     .eq("user_id", userId)
-    .eq("passerelle", "FedaPay")
-    .eq("statut", "actif")
-    .single();
+    .eq("statut", "actif");
 
-  if (connError || !conn || !conn.cle_chiffree) {
-    console.error("Aucune connexion FedaPay active pour cet utilisateur.", connError);
+  if (connError || !conns || conns.length === 0) {
+    console.error("Aucune connexion active pour cet utilisateur.", connError);
     return { success: false, error: "Aucune connexion active" };
   }
 
-  const secretKey = decryptKey(conn.cle_chiffree);
+  const conn = conns[0];
+
+  const decryptedKey = decryptKey(conn.cle_chiffree);
 
   // 3. Chercher la règle
   let rulesQuery = supabaseAdmin
@@ -237,17 +252,33 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
     }
 
     try {
-      const payoutRes = await createAndSendPayout(
-        secretKey,
-        amountToSend,
-        dist.destinataires.methode_mobile_money,
-        dist.destinataires.numero,
-        dist.libelle
-      );
-      
-      const fedapayStatus = payoutRes?.v1?.payout?.status || payoutRes?.status || "pending";
-      const ligneStatut = fedapayStatus === "failed" ? "echoue" : fedapayStatus === "sent" || fedapayStatus === "approved" ? "reussi" : "en_cours";
-      const ref = payoutRes?.v1?.payout?.reference || payoutRes?.v1?.payout?.id?.toString() || payoutRes?.id?.toString() || "";
+      let payoutRes;
+      let ligneStatut = "en_cours";
+      let ref = "";
+
+      if (conn.passerelle.toLowerCase() === "kkiapay") {
+        const keysObj = JSON.parse(decryptedKey);
+        payoutRes = await createAndSendKkiapayPayout(
+          keysObj,
+          amountToSend,
+          dist.destinataires.methode_mobile_money,
+          dist.destinataires.numero,
+          dist.libelle
+        );
+        ligneStatut = payoutRes?.status === "SUCCESS" ? "reussi" : payoutRes?.status === "FAILED" ? "echoue" : "en_cours";
+        ref = payoutRes?.transactionId || payoutRes?.id?.toString() || "";
+      } else {
+        payoutRes = await createAndSendPayout(
+          decryptedKey,
+          amountToSend,
+          dist.destinataires.methode_mobile_money,
+          dist.destinataires.numero,
+          dist.libelle
+        );
+        const fedapayStatus = payoutRes?.v1?.payout?.status || payoutRes?.status || "pending";
+        ligneStatut = fedapayStatus === "failed" ? "echoue" : fedapayStatus === "sent" || fedapayStatus === "approved" ? "reussi" : "en_cours";
+        ref = payoutRes?.v1?.payout?.reference || payoutRes?.v1?.payout?.id?.toString() || payoutRes?.id?.toString() || "";
+      }
 
       results.push({ dest: dist.libelle, amount: amountToSend, status: ligneStatut, data: payoutRes });
       remaining -= amountToSend;
@@ -286,5 +317,5 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
 
   await supabaseAdmin.from("executions").update({ statut: finalStatus }).eq("id", execution.id);
 
-  return { success: true, finalStatus, results };
+  return { success: true, finalStatus, results, executionId: execution.id };
 }

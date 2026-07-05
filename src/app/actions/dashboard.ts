@@ -3,6 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { decryptKey } from "@/lib/encryption";
 import { getFedaPayBalance } from "@/lib/fedapay";
+import { getKkiapayBalance } from "@/lib/kkiapay";
 
 export async function getDashboardMetrics() {
   try {
@@ -11,22 +12,29 @@ export async function getDashboardMetrics() {
 
     if (!user) return { error: "Non autorisé" };
 
-    // 1. Récupérer le solde depuis FedaPay
+    // 1. Récupérer le solde de toutes les passerelles connectées
     let balance = 0;
-    const { data: conn } = await supabase
+    const { data: connexions } = await supabase
       .from("connexions")
-      .select("cle_chiffree")
+      .select("cle_chiffree, passerelle")
       .eq("user_id", user.id)
-      .eq("passerelle", "FedaPay")
-      .eq("statut", "actif")
-      .single();
+      .eq("statut", "actif");
 
-    if (conn && conn.cle_chiffree) {
-      const secretKey = decryptKey(conn.cle_chiffree);
-      try {
-        balance = await getFedaPayBalance(secretKey);
-      } catch (e) {
-        console.error("Impossible de récupérer le solde FedaPay:", e);
+    if (connexions && connexions.length > 0) {
+      for (const conn of connexions) {
+        if (conn.cle_chiffree) {
+          const decryptedKey = decryptKey(conn.cle_chiffree);
+          try {
+            if (conn.passerelle.toLowerCase() === "fedapay") {
+              balance += await getFedaPayBalance(decryptedKey);
+            } else if (conn.passerelle.toLowerCase() === "kkiapay") {
+              const keysObj = JSON.parse(decryptedKey);
+              balance += await getKkiapayBalance(keysObj);
+            }
+          } catch (e) {
+            console.error(`Impossible de récupérer le solde pour ${conn.passerelle}:`, e);
+          }
+        }
       }
     }
 

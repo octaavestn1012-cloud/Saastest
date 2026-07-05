@@ -15,7 +15,7 @@ export async function executeQuickRepartitionAction(amountFcfa: number, targets:
 
     revalidatePath("/dashboard");
     revalidatePath("/historique");
-    return { success: true, status: result.finalStatus === "reussi" ? "completed" : "partially_failed" };
+    return { success: true, status: result.finalStatus === "reussi" ? "completed" : "partially_failed", executionId: result.executionId };
   } catch (error: any) {
     console.error("Execute error:", error);
     throw new Error(error.message || "Erreur lors de l'exécution");
@@ -56,5 +56,33 @@ export async function executeRepartitionAction(amountFcfa: number, ruleId?: stri
   } catch (error: any) {
     console.error("Execute error:", error);
     throw new Error(error.message || "Erreur lors de l'exécution");
+  }
+}
+
+export async function updateExecutionRuleId(executionId: string, regleId: string) {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Non autorisé");
+
+    const { createClient: createSupabaseClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { error } = await supabaseAdmin
+      .from("executions")
+      .update({ regle_id: regleId })
+      .eq("id", executionId)
+      .eq("user_id", user.id);
+
+    if (error) throw error;
+    revalidatePath("/historique");
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Update execution error:", error);
+    return { success: false, error: error.message };
   }
 }

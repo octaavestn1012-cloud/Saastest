@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Amount } from "@/components/shared/Amount";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TransactionDetailModal, TransactionHistory } from "@/components/features/historique/TransactionDetailModal";
+import { formatDateToBenin } from "@/lib/utils/format";
 
 // Helper to format DB execution into TransactionHistory
 const formatExecutionToHistory = (exec: any): TransactionHistory => {
@@ -22,10 +23,26 @@ const formatExecutionToHistory = (exec: any): TransactionHistory => {
   const commissionLigne = allDetails.find((d: any) => d.isCommission);
   const details = allDetails.filter((d: any) => !d.isCommission);
 
+  let finalRuleName = "Répartition";
+  let triggerType: "Automatique" | "Manuelle" = "Manuelle";
+
+  if (exec.regles) {
+    if (exec.regles.nom) {
+      finalRuleName = exec.regles.nom;
+    } else {
+      finalRuleName = exec.regles.declencheur === "manuel" ? "Répartition manuelle" : "Répartition automatique";
+    }
+    triggerType = exec.regles.declencheur === "manuel" ? "Manuelle" : "Automatique";
+  } else {
+    finalRuleName = exec.regle_id ? "Répartition (Ancienne)" : "Répartition manuelle";
+    triggerType = "Manuelle";
+  }
+
   return {
     id: exec.id,
     date: exec.date_execution,
-    ruleName: exec.regles ? (exec.regles.nom || "Règle automatique") : (exec.regle_id ? "Règle supprimée" : "Répartition manuelle"),
+    ruleName: finalRuleName,
+    triggerType,
     totalAvailable: Number(exec.montant_total),
     commissionAmount: commissionLigne ? commissionLigne.amount : 0,
     totalAmount: details.reduce((acc: number, d: any) => acc + d.amount, 0),
@@ -46,6 +63,10 @@ export function RecentExecutionsList({
   
   // We keep a local state of executions in case of a retry update
   const [localExecutions, setLocalExecutions] = useState(executions);
+  
+  useEffect(() => {
+    setLocalExecutions(executions);
+  }, [executions]);
   
   const commissionRateStr = plan === "pro" ? "0,8" : plan === "business" ? "0,4" : "1,9";
 
@@ -98,26 +119,31 @@ export function RecentExecutionsList({
 
   return (
     <>
-      {localExecutions.slice(0, 5).map((exec: any) => (
-        <div 
-          key={exec.id} 
-          onClick={() => handleSelect(exec)} 
-          className="flex justify-between items-center p-3 hover:bg-black/[0.02] rounded-xl transition-colors cursor-pointer block"
-        >
-          <div className="flex-1">
-            <p className="font-semibold text-sm">{exec.regles ? (exec.regles.nom || "Règle automatique") : (exec.regle_id ? "Règle supprimée" : "Répartition manuelle")}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {new Date(exec.date_execution).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-1.5">
-            <div className="font-bold tabular-nums text-primary">
-              <Amount value={exec.montant_total} variant="out" />
+      {localExecutions.slice(0, 5).map((exec: any) => {
+        const hist = formatExecutionToHistory(exec);
+        const showTrigger = hist.ruleName !== "Répartition manuelle" && hist.ruleName !== "Répartition automatique" && hist.ruleName !== "Répartition (Ancienne)";
+        
+        return (
+          <div 
+            key={exec.id} 
+            onClick={() => handleSelect(exec)} 
+            className="flex justify-between items-center p-3 hover:bg-black/[0.02] rounded-xl transition-colors cursor-pointer"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm truncate">{hist.ruleName}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                {showTrigger ? `${hist.triggerType} • ` : ""}{formatDateToBenin(hist.date)}
+              </p>
             </div>
-            <StatusBadge status={exec.statut} />
+            <div className="flex flex-col items-end gap-1.5 shrink-0 pl-3">
+              <div className="font-bold tabular-nums text-primary">
+                <Amount value={exec.montant_total} variant="out" />
+              </div>
+              <StatusBadge status={exec.statut} />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       <TransactionDetailModal 
         selectedTx={selectedTxHistory} 

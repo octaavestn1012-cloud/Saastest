@@ -16,7 +16,7 @@ export async function getHistorique() {
       .from("executions")
       .select(`
         *,
-        regles ( nom ),
+        regles ( nom, declencheur ),
         execution_lignes (
           id,
           destinataire_libelle,

@@ -10,6 +10,7 @@ import { ClientNextExecution } from "./ClientNextExecution";
 import { getDashboardMetrics } from "@/app/actions/dashboard";
 import { getHistorique } from "@/app/actions/historique";
 import { RecentExecutionsList } from "@/components/features/dashboard/RecentExecutionsList";
+import { formatDateToBenin } from "@/lib/utils/format";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export default async function DashboardPage() {
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <Zap className="w-4 h-4 text-primary" />
               </div>
-              <h3 className="text-sm font-semibold text-muted-foreground">Solde FedaPay (Disponible)</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground">Solde disponible</h3>
             </div>
             <div className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tighter text-black mt-2 mb-8">
               <Amount value={balance} />
@@ -93,7 +94,7 @@ export default async function DashboardPage() {
                       <div>
                         <p className="font-semibold text-sm">{tx.source || "FedaPay"}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(tx.date_reception).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          {formatDateToBenin(tx.date_reception)}
                         </p>
                       </div>
                       <div className="font-bold tabular-nums text-money-in">

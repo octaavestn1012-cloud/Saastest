@@ -9,6 +9,8 @@ import { useState } from "react";
 import { retryPayoutLigne } from "@/app/actions/historique";
 
 // Note: These types could be moved to a shared types file
+import { formatDateToBenin } from "@/lib/utils/format";
+
 export type Status = "SUCCESS" | "PARTIAL" | "FAILED" | "PENDING";
 
 export type TransactionDetail = {
@@ -26,6 +28,7 @@ export type TransactionHistory = {
   id: string;
   date: string;
   ruleName: string;
+  triggerType: "Automatique" | "Manuelle";
   totalAmount: number;
   totalAvailable: number;
   commissionAmount: number;
@@ -49,14 +52,7 @@ export function TransactionDetailModal({
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const formatDate = (isoString: string) => {
-    const d = new Date(isoString);
-    const day = d.getDate();
-    const months = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
-    const month = months[d.getMonth()];
-    const year = d.getFullYear();
-    const hours = d.getHours().toString().padStart(2, '0');
-    const minutes = d.getMinutes().toString().padStart(2, '0');
-    return `${day} ${month} ${year} à ${hours}:${minutes}`;
+    return formatDateToBenin(isoString);
   };
 
   const handleRetry = async (ligneId: string) => {
@@ -168,7 +164,10 @@ export function TransactionDetailModal({
             {/* Header */}
             <div className="p-6 pb-4 border-b border-black/5 bg-white flex justify-between items-center shrink-0">
               <div>
-                <p className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Règle : {selectedTx.ruleName}</p>
+                <p className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                  Règle : {selectedTx.ruleName} 
+                  {selectedTx.ruleName !== "Répartition manuelle" && selectedTx.ruleName !== "Répartition automatique" && selectedTx.ruleName !== "Répartition (Ancienne)" ? ` • ${selectedTx.triggerType}` : ""}
+                </p>
                 <h2 className="text-xl font-black">{formatDate(selectedTx.date)}</h2>
               </div>
               <button 

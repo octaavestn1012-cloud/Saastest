@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Link2, Plus, AlertCircle, CheckCircle2, ShieldCheck, X, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
-import { connectFedaPay, deleteConnection } from "@/app/actions/connections";
+import { connectFedaPay, connectKkiapay, deleteConnection } from "@/app/actions/connections";
+import { formatDateToBenin } from "@/lib/utils/format";
 
 const AVAILABLE_GATEWAYS = [
   { name: "Kkiapay", desc: "Passerelle locale très populaire au Bénin.", color: "bg-blue-500" },
@@ -38,6 +39,8 @@ export default function ConnectionsPage() {
   // États du formulaire
   const [nom, setNom] = useState("");
   const [secretKey, setSecretKey] = useState("");
+  const [publicKey, setPublicKey] = useState("");
+  const [privateKey, setPrivateKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,12 +65,14 @@ export default function ConnectionsPage() {
     setSelectedGateway(gatewayName || null);
     setNom("");
     setSecretKey("");
+    setPublicKey("");
+    setPrivateKey("");
     setError(null);
     setIsModalOpen(true);
   };
 
   const handleConnect = async () => {
-    if (selectedGateway !== "FedaPay") {
+    if (selectedGateway !== "FedaPay" && selectedGateway !== "Kkiapay") {
       setError("Cette passerelle n'est pas encore supportée dans cette version.");
       return;
     }
@@ -77,11 +82,19 @@ export default function ConnectionsPage() {
     
     const formData = new FormData();
     formData.append("nom", nom);
-    formData.append("secretKey", secretKey);
+    
+    let result;
+    if (selectedGateway === "FedaPay") {
+      formData.append("secretKey", secretKey);
+      result = await connectFedaPay(formData);
+    } else if (selectedGateway === "Kkiapay") {
+      formData.append("publicKey", publicKey);
+      formData.append("privateKey", privateKey);
+      formData.append("secretKey", secretKey);
+      result = await connectKkiapay(formData);
+    }
 
-    const result = await connectFedaPay(formData);
-
-    if (result.error) {
+    if (result?.error) {
       setError(result.error);
       setIsSubmitting(false);
     } else {
@@ -170,7 +183,7 @@ export default function ConnectionsPage() {
                   conn.statut === "actif" ? "border-black/[0.05]" : "border-danger/10"
                 }`}>
                   <span className="text-[10px] font-medium text-muted-foreground uppercase">
-                    Ajouté le {new Date(conn.created_at).toLocaleDateString()}
+                    Ajouté le {formatDateToBenin(conn.created_at).split(" à")[0]}
                   </span>
                   <Button 
                     variant="outline" 
@@ -274,6 +287,33 @@ export default function ConnectionsPage() {
                   />
                 </div>
 
+                {selectedGateway === "Kkiapay" && (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-semibold text-foreground ml-1">Clé Publique (Public Key)</label>
+                      <input 
+                        type="text" 
+                        value={publicKey}
+                        onChange={(e) => setPublicKey(e.target.value)}
+                        placeholder="Ex: pk_..." 
+                        disabled={isSubmitting}
+                        className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium disabled:opacity-50" 
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-semibold text-foreground ml-1">Clé Privée (Private Key)</label>
+                      <input 
+                        type="password" 
+                        value={privateKey}
+                        onChange={(e) => setPrivateKey(e.target.value)}
+                        placeholder="Ex: priv_..." 
+                        disabled={isSubmitting}
+                        className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium tracking-widest disabled:opacity-50" 
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div className="space-y-1.5">
                   <label className="block text-sm font-semibold text-foreground ml-1">Clé Secrète (Secret Key)</label>
                   <input 
@@ -284,9 +324,11 @@ export default function ConnectionsPage() {
                     disabled={isSubmitting}
                     className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium tracking-widest disabled:opacity-50" 
                   />
-                  <p className="text-xs text-muted-foreground ml-1 mt-1">
-                    La clé publique n'est pas requise pour l'intégration sécurisée côté serveur.
-                  </p>
+                  {selectedGateway === "FedaPay" && (
+                    <p className="text-xs text-muted-foreground ml-1 mt-1">
+                      La clé publique n'est pas requise pour l'intégration sécurisée côté serveur.
+                    </p>
+                  )}
                 </div>
                 
                 <div className="bg-primary/10 text-primary p-4 rounded-2xl flex gap-3 text-sm font-medium items-start mt-2">

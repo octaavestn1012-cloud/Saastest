@@ -77,7 +77,7 @@ export function RepartirClient({ balance, rule }: { balance: number, rule: any }
       <div>
         <h2 className="text-2xl font-bold">Répartir maintenant</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Répartissez votre solde FedaPay selon votre règle : <span className="font-bold text-black">{rule.nom}</span>
+          Répartissez votre solde disponible selon votre règle : <span className="font-bold text-black">{rule.nom}</span>
         </p>
       </div>
 

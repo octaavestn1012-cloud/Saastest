@@ -6,8 +6,7 @@ import { Search, Filter, ChevronRight, CheckCircle2, XCircle, AlertCircle, Clock
 import { Amount } from "@/components/shared/Amount";
 import { retryPayoutLigne } from "@/app/actions/historique";
 import { TransactionDetailModal, TransactionDetail, TransactionHistory, Status } from "./TransactionDetailModal";
-
-
+import { formatDateToBenin } from "@/lib/utils/format";
 
 const MOCK_DATA: TransactionHistory[] = [
   {
@@ -55,14 +54,7 @@ const MOCK_DATA: TransactionHistory[] = [
 ];
 
 const formatDate = (isoString: string) => {
-  const d = new Date(isoString);
-  const day = d.getDate();
-  const months = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
-  const month = months[d.getMonth()];
-  const year = d.getFullYear();
-  const hours = d.getHours().toString().padStart(2, '0');
-  const minutes = d.getMinutes().toString().padStart(2, '0');
-  return `${day} ${month} ${year} à ${hours}:${minutes}`;
+  return formatDateToBenin(isoString);
 };
 
 export function HistoryDashboard({ initialData, plan = "gratuit", initialTxId }: { initialData: any[], plan?: string, initialTxId?: string }) {
@@ -91,10 +83,26 @@ export function HistoryDashboard({ initialData, plan = "gratuit", initialTxId }:
       const commissionLigne = allDetails.find((d: any) => d.isCommission);
       const details = allDetails.filter((d: any) => !d.isCommission);
 
+      let finalRuleName = "Répartition";
+      let triggerType: "Automatique" | "Manuelle" = "Manuelle";
+
+      if (exec.regles) {
+        if (exec.regles.nom) {
+          finalRuleName = exec.regles.nom;
+        } else {
+          finalRuleName = exec.regles.declencheur === "manuel" ? "Répartition manuelle" : "Répartition automatique";
+        }
+        triggerType = exec.regles.declencheur === "manuel" ? "Manuelle" : "Automatique";
+      } else {
+        finalRuleName = exec.regle_id ? "Répartition (Ancienne)" : "Répartition manuelle";
+        triggerType = "Manuelle";
+      }
+
       return {
         id: exec.id,
         date: exec.date_execution,
-        ruleName: exec.regles ? (exec.regles.nom || "Règle automatique") : (exec.regle_id ? "Règle supprimée" : "Répartition manuelle"),
+        ruleName: finalRuleName,
+        triggerType,
         totalAvailable: Number(exec.montant_total),
         commissionAmount: commissionLigne ? commissionLigne.amount : 0,
         totalAmount: details.reduce((acc: number, d: any) => acc + d.amount, 0),
@@ -164,12 +172,16 @@ export function HistoryDashboard({ initialData, plan = "gratuit", initialTxId }:
                  <div className="flex items-center gap-2">
                    <span className="text-sm font-bold text-black">{tx.ruleName}</span>
                    <span className="w-1 h-1 rounded-full bg-black/20"></span>
-                   <span className="text-[13px] font-medium text-muted-foreground">{formatDate(tx.date)}</span>
+                   <span className="text-[13px] font-medium text-muted-foreground">
+                     {tx.ruleName !== "Répartition manuelle" && tx.ruleName !== "Répartition automatique" && tx.ruleName !== "Répartition (Ancienne)" ? `${tx.triggerType} • ` : ""}
+                     {formatDate(tx.date)}
+                   </span>
                  </div>
                  <div className="text-2xl font-black tabular-nums tracking-tight">
                     <Amount value={tx.totalAmount} />
                  </div>
               </div>
+
               <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
                  <div className="text-sm font-medium text-muted-foreground">
                    {tx.recipientCount} destinataire{tx.recipientCount > 1 ? 's' : ''}

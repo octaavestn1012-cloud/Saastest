@@ -12,7 +12,8 @@ import Link from "next/link";
 import { getDashboardMetrics } from "@/app/actions/dashboard";
 import { getRegles } from "@/app/actions/regles";
 import { getDestinataires } from "@/app/actions/destinataires";
-import { executeRepartitionAction, executeQuickRepartitionAction } from "@/app/actions/repartir";
+import { saveRegle } from "@/app/actions/regles";
+import { executeRepartitionAction, executeQuickRepartitionAction, updateExecutionRuleId } from "@/app/actions/repartir";
 
 type Step = "PREVIEW" | "EXECUTING" | "RESULT";
 type ModalMode = "rule" | "quick";
@@ -40,7 +41,9 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   
   const [saveRuleName, setSaveRuleName] = useState("");
   const [saveRuleTrigger, setSaveRuleTrigger] = useState("manual");
+  const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
   const [ruleSaved, setRuleSaved] = useState(false);
+  const [isSavingRule, setIsSavingRule] = useState(false);
   const [showCommissionDetails, setShowCommissionDetails] = useState(false);
   const { plan } = useUser();
 
@@ -221,7 +224,10 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
         // Mode règle stricte : on utilise le Rule ID de la BDD pour qu'il le re-calcule de façon sécurisée
         res = await executeRepartitionAction(totalAvailable, activeRuleSource?.id);
       }
-      
+      if (res.executionId) {
+        setCurrentExecutionId(res.executionId);
+      }
+
       const finalStatus = res.status === 'completed' ? "SUCCESS" : "FAILED";
       
       // Mettre à jour l'UI avec le statut
@@ -279,28 +285,38 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     setQuickTargets(quickTargets.filter(t => t.id !== id));
   };
 
-  const saveQuickAsRule = () => {
-    if (!saveRuleName.trim()) return;
-    const ruleToSave = {
-      id: Date.now().toString(),
-      name: saveRuleName,
-      triggerType: saveRuleTrigger,
-      trigger: saveRuleTrigger === "manual" ? "Manuel" : 
-               saveRuleTrigger === "entry" ? "À chaque entrée" : 
-               saveRuleTrigger === "daily" ? "Quotidien à 08:00" : 
-               saveRuleTrigger === "weekly" ? "Hebdomadaire (Jour 1)" : 
-               "Mensuel (Le 1er)",
-      triggerTime: "08:00",
-      triggerDayOfWeek: "1",
-      triggerDayOfMonth: "1",
-      mode: quickMode,
-      recipients: quickTargets,
-      active: true,
-      recipientsCount: quickTargets.length,
+  const saveQuickAsRule = async () => {
+    if (!saveRuleName.trim() || isSavingRule) return;
+    setIsSavingRule(true);
+
+    let parsedDeclencheur = "manuel";
+    let config = null;
+    if (saveRuleTrigger === "entry") parsedDeclencheur = "a_chaque_entree";
+    if (saveRuleTrigger === "daily") { parsedDeclencheur = "quotidien"; config = "08:00"; }
+    if (saveRuleTrigger === "weekly") { parsedDeclencheur = "hebdomadaire"; config = "1"; }
+    if (saveRuleTrigger === "monthly") { parsedDeclencheur = "mensuel"; config = "1"; }
+
+    const payload = {
+      id: "temp_" + Date.now(),
+      nom: saveRuleName,
+      actif: false,
+      declencheur: parsedDeclencheur,
+      declencheur_config: config,
+      mode: quickMode === "percentage" ? "pourcentage" : "montant_fixe",
+      recipients: quickTargets
     };
-    const savedRules = JSON.parse(localStorage.getItem('reparto_rules') || '[]');
-    localStorage.setItem('reparto_rules', JSON.stringify([...savedRules, ruleToSave]));
-    setRuleSaved(true);
+
+    const res = await saveRegle(payload);
+    if (res.success && res.id) {
+      if (currentExecutionId) {
+        await updateExecutionRuleId(currentExecutionId, res.id);
+      }
+      setRuleSaved(true);
+    } else {
+      console.error("Erreur lors de la sauvegarde", res.error);
+      alert("Erreur: " + res.error);
+    }
+    setIsSavingRule(false);
   };
 
   if (isLoadingData) {
@@ -760,10 +776,10 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                       />
                       <button 
                         onClick={saveQuickAsRule}
-                        disabled={!saveRuleName.trim()}
+                        disabled={!saveRuleName.trim() || isSavingRule}
                         className="w-full sm:w-auto px-6 py-3.5 shrink-0 bg-[#A87211] hover:bg-[#8C5D0B] disabled:opacity-50 text-white text-[15px] font-bold rounded-2xl shadow-lg shadow-[#A87211]/20 transition-all hover:-translate-y-0.5 active:translate-y-0"
                       >
-                        Sauvegarder
+                        {isSavingRule ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Sauvegarder"}
                       </button>
                     </div>
                   </motion.div>

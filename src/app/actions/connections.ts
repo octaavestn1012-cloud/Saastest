@@ -90,3 +90,49 @@ export async function deleteConnection(id: string) {
     return { error: e.message };
   }
 }
+
+export async function connectKkiapay(formData: FormData) {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { error: "Vous devez être connecté." };
+    }
+
+    const nom = formData.get("nom") as string;
+    const publicKey = (formData.get("publicKey") as string || "").trim();
+    const privateKey = (formData.get("privateKey") as string || "").trim();
+    const secretKey = (formData.get("secretKey") as string || "").trim();
+
+    if (!nom || !publicKey || !privateKey || !secretKey) {
+      return { error: "Veuillez fournir le nom et toutes les clés (Publique, Privée, Secrète)." };
+    }
+
+    // Convert to JSON and encrypt
+    const keysObj = { publicKey, privateKey, secretKey };
+    const cleChiffree = encryptKey(JSON.stringify(keysObj));
+
+    // Save to DB
+    const { error: dbError } = await supabase
+      .from("connexions")
+      .insert({
+        user_id: user.id,
+        passerelle: "Kkiapay",
+        nom: nom,
+        statut: "actif",
+        cle_chiffree: cleChiffree
+      });
+
+    if (dbError) {
+      console.error("Erreur DB:", dbError);
+      return { error: "Erreur lors de l'enregistrement dans la base de données." };
+    }
+
+    return { success: true };
+
+  } catch (error: any) {
+    console.error("Erreur Kkiapay:", error);
+    return { error: error.message || "Une erreur inattendue est survenue." };
+  }
+}
