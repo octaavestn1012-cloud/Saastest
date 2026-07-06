@@ -5,6 +5,7 @@ import { UserProvider } from "@/context/UserContext";
 import { RepartitionProvider } from "@/context/RepartitionContext";
 import { ReactNode } from "react";
 import { Bell } from "lucide-react";
+import { GreetingHeader } from "@/components/shared/GreetingHeader";
 import { UserDropdown } from "@/components/shared/UserDropdown";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
@@ -20,13 +21,22 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         getAll() {
           return cookieStore.getAll()
         },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // The `setAll` method was called from a Server Component.
+          }
+        },
       },
     }
   );
 
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (error || !user) {
+  if (!user) {
     redirect("/login");
   }
 
@@ -40,12 +50,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <MigrationProvider>
           <AppShell userName={formattedName} userEmail={userEmail}>
             <header className="hidden md:flex justify-between items-center mb-8">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">Bonjour {formattedName} 👋</h1>
-                <p className="text-muted-foreground mt-1 text-sm">Prêt à répartir tes revenus ?</p>
-              </div>
+              <GreetingHeader formattedName={formattedName} />
               
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 ml-auto">
                 <button className="p-2 relative text-muted-foreground hover:bg-muted rounded-full transition-colors">
                   <Bell className="w-5 h-5" />
                   <span className="absolute top-2 right-2 w-2 h-2 bg-danger rounded-full" />
