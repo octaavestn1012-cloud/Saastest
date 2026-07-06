@@ -1,14 +1,7 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
 import "./globals.css";
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -23,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={cn("font-sans overflow-x-hidden", inter.variable)}>
-      <body className="antialiased min-h-screen bg-[#F5F5F7] text-foreground overflow-x-hidden">
+    <html lang="fr" className={cn("font-sans", inter.variable)}>
+      <body className="antialiased min-h-screen bg-[#F5F5F7] text-foreground">
         {children}
       </body>
     </html>
