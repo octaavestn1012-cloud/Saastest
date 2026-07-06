@@ -234,10 +234,10 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="flex items-center gap-3 pt-2 w-full"
+                className="grid grid-cols-2 gap-3 pt-2 w-full"
               >
                 {trigger === "hebdo" && (
-                  <div className="flex-1 min-w-0">
+                  <div className="w-full min-w-0">
                     <label className="block text-xs font-semibold mb-2 ml-1 truncate">Jour de la semaine</label>
                     <select 
                       value={triggerDayOfWeek}
@@ -256,7 +256,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                 )}
                 
                 {trigger === "mensuel" && (
-                  <div className="flex-1 min-w-0">
+                  <div className="w-full min-w-0">
                     <label className="block text-xs font-semibold mb-2 ml-1 truncate">Jour du mois</label>
                     <select 
                       value={triggerDayOfMonth}
@@ -271,7 +271,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                   </div>
                 )}
 
-                <div className="flex-1 min-w-0">
+                <div className="w-full min-w-0">
                   <label className="block text-xs font-semibold mb-2 ml-1 truncate">Heure d'exécution</label>
                   <input 
                     type="time" 
