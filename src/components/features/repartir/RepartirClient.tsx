@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Amount } from "@/components/shared/Amount";
-import { ArrowRight, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, Loader2, AlertCircle, User } from "lucide-react";
 import { executeRepartitionAction } from "@/app/actions/repartir";
 import Link from "next/link";
 
@@ -102,9 +102,21 @@ export function RepartirClient({ balance, rule }: { balance: number, rule: any }
                 : dist.valeur;
               
               return (
-                <div key={dist.id} className="flex justify-between items-center text-sm">
-                  <span className="font-medium">{dist.libelle}</span>
-                  <Amount value={amountToSend} variant="out" />
+                <div key={dist.id} className="flex justify-between items-center p-3 -mx-3 rounded-2xl hover:bg-black/5 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-[15px] text-black leading-tight">{dist.libelle}</div>
+                      <div className="text-[13px] font-semibold text-black/50 mt-0.5">
+                        {dist.destinataires?.methode_mobile_money || "Inconnu"} • <span className="font-mono">{dist.destinataires?.numero || "Aucun"}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <Amount value={amountToSend} variant="out" />
+                  </div>
                 </div>
               );
             })}

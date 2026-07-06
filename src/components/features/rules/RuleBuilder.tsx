@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
 import { RecipientModal, Recipient as Contact, COUNTRIES_NETWORKS, COUNTRY_CODES, COUNTRY_PHONE_LENGTHS } from "@/components/features/destinataires/RecipientModal";
 import { saveRegle } from "@/app/actions/regles";
-import { getDestinataires } from "@/app/actions/destinataires";
+import { getDestinataires, saveDestinataire } from "@/app/actions/destinataires";
 
 type RecipientRow = {
   id: string;
@@ -139,8 +139,39 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
     }]);
   };
 
+  const handleSaveRecipientInline = async (target: RecipientRow) => {
+    if (!target.name.trim() || !target.phone.trim()) return;
+    const expectedLen = COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8;
+    const cleanPhone = target.phone.replace(/[^0-9]/g, '');
+    if (cleanPhone.length !== expectedLen) return;
+
+    setIsSaving(true);
+    const fd = new FormData();
+    fd.append("libelle", target.name);
+    fd.append("reseau", target.network);
+    fd.append("pays", target.country || "Bénin");
+    fd.append("numero", `${COUNTRY_CODES[target.country || "Bénin"] || "+229"} ${cleanPhone}`);
+
+    await saveDestinataire(fd);
+    
+    // Refresh contacts list
+    getDestinataires().then(({data}) => {
+      if (data) {
+        setContacts(data.map(d => ({
+          id: d.id,
+          name: d.libelle,
+          network: d.methode_mobile_money,
+          phone: d.numero
+        })));
+      }
+    });
+
+    updateRecipient(target.id, "isManual", false);
+    setIsSaving(false);
+  };
+
   const updateRecipient = (id: string, field: keyof RecipientRow, value: any) => {
-    setRecipients(recipients.map(r => {
+    setRecipients(prev => prev.map(r => {
       if (r.id === id) {
         return { ...r, [field]: field === "value" ? Number(value) : value };
       }
@@ -452,13 +483,13 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                      <div className="flex-1 bg-[#F5F5F7] rounded-xl flex items-center px-4 py-3 border-2 border-transparent focus-within:border-black/10 transition-all">
-                        <input type="text" value={target.name} onChange={(e) => updateRecipient(target.id, "name", e.target.value)} placeholder="Nom (ex: Loyer)" className="w-full bg-transparent font-bold outline-none placeholder:text-black/40 text-black text-[15px]" />
+                    <div className="flex flex-row items-stretch sm:items-center gap-3">
+                      <div className="flex-1 bg-[#F5F5F7] rounded-xl flex items-center px-4 py-3 border-2 border-transparent focus-within:border-black/10 transition-all min-w-0">
+                        <input type="text" value={target.name} onChange={(e) => updateRecipient(target.id, "name", e.target.value)} placeholder="Nom (ex: Loyer)" className="w-full bg-transparent font-bold outline-none placeholder:text-black/40 text-black text-[15px] truncate" />
                       </div>
-                      <div className="relative w-full sm:w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
+                      <div className="relative w-[110px] sm:w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
                         <input type="number" value={target.value || ''} onChange={(e) => updateRecipient(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-3 px-2 text-[16px] text-black placeholder:text-black/30" />
-                        <span className="text-black font-black text-[15px]">{mode === "pourcentage" ? "%" : "F"}</span>
+                        <span className="text-black font-black text-[15px] ml-1">{mode === "pourcentage" ? "%" : "F"}</span>
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3">
@@ -470,18 +501,6 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                             updateRecipient(target.id, "country", newCountry);
                             const nets = COUNTRIES_NETWORKS[newCountry];
                             if (nets && nets.length > 0) updateRecipient(target.id, "network", nets[0]);
-                            
-                            const oldPrefix = COUNTRY_CODES[target.country || "Bénin"] || "+229";
-                            const newPrefix = COUNTRY_CODES[newCountry] || "+229";
-                            let newPhone = target.phone || "";
-                            if (!newPhone || newPhone.trim() === oldPrefix || newPhone.trim() === "") {
-                              newPhone = `${newPrefix} `;
-                            } else if (newPhone.startsWith(oldPrefix)) {
-                              newPhone = newPhone.replace(oldPrefix, newPrefix);
-                            } else if (!newPhone.includes("+")) {
-                              newPhone = `${newPrefix} ${newPhone}`;
-                            }
-                            updateRecipient(target.id, "phone", newPhone);
                           }} 
                           className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]"
                         >
@@ -491,6 +510,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                         </select>
                         <ChevronDown className="w-4 h-4 text-black absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
+                      
                       <div className="flex-1 bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
                         <select value={target.network} onChange={(e) => updateRecipient(target.id, "network", e.target.value)} className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]">
                           {(COUNTRIES_NETWORKS[target.country || "Bénin"] || COUNTRIES_NETWORKS["Bénin"]).map((net) => (
@@ -510,8 +530,13 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                         </div>
                         <input type="tel" value={target.phone} onChange={(e) => updateRecipient(target.id, "phone", e.target.value)} placeholder={Array(COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8).fill("0").join("").replace(/(.{2})/g, "$1 ").trim()} className="w-full h-full bg-transparent pr-4 py-3 outline-none font-mono font-bold tracking-wide text-black placeholder:text-black/40 text-[15px]" />
                       </div>
-                      <button onClick={() => setRecipients(targets => targets.map(t => t.id === target.id ? { ...t, isManual: false } : t))} className="px-4 py-3 bg-black text-white hover:bg-black/80 rounded-xl font-bold text-[14px] transition-colors shrink-0">
-                        Annuler
+                      
+                      <button 
+                        onClick={() => handleSaveRecipientInline(target)} 
+                        disabled={target.name.trim() === "" || target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8) || isSaving}
+                        className="px-4 py-3 bg-black text-white hover:bg-black/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-[14px] transition-colors shrink-0"
+                      >
+                        {isSaving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Enregistrer"}
                       </button>
                     </div>
                     {target.phone.replace(/[^0-9]/g, '').length > 0 && 

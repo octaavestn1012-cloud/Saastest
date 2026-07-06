@@ -11,9 +11,10 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import Link from "next/link";
 import { getDashboardMetrics } from "@/app/actions/dashboard";
 import { getRegles } from "@/app/actions/regles";
-import { getDestinataires } from "@/app/actions/destinataires";
+import { getDestinataires, saveDestinataire } from "@/app/actions/destinataires";
 import { saveRegle } from "@/app/actions/regles";
 import { executeRepartitionAction, executeQuickRepartitionAction, updateExecutionRuleId } from "@/app/actions/repartir";
+import { COUNTRIES_NETWORKS, COUNTRY_CODES, COUNTRY_PHONE_LENGTHS } from "@/components/features/destinataires/RecipientModal";
 import { useScrollLock } from "@/hooks/useScrollLock";
 
 type Step = "PREVIEW" | "EXECUTING" | "RESULT" | "RESULT_RULE_ONLY";
@@ -36,8 +37,8 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [modalMode, setModalMode] = useState<ModalMode>("quick");
   const [quickMode, setQuickMode] = useState<"percentage" | "fixed">("percentage");
   const [quickTargets, setQuickTargets] = useState<any[]>([
-    { id: "1", destinataireId: "", name: "", value: 50, network: "MTN", phone: "", isManual: false },
-    { id: "2", destinataireId: "", name: "", value: 50, network: "Moov", phone: "", isManual: false }
+    { id: "1", destinataireId: "", name: "", value: 50, country: "Bénin", network: "MTN BJ", phone: "", isManual: false },
+    { id: "2", destinataireId: "", name: "", value: 50, country: "Bénin", network: "Moov BJ", phone: "", isManual: false }
   ]);
   
   const [saveRuleName, setSaveRuleName] = useState("");
@@ -271,10 +272,31 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   };
 
   const addQuickTarget = () => {
-    setQuickTargets([...quickTargets, { id: Math.random().toString(), destinataireId: "", name: "", value: 0, network: "MTN", phone: "", isManual: false }]);
+    setQuickTargets([...quickTargets, { id: Math.random().toString(), destinataireId: "", name: "", value: 0, country: "Bénin", network: "MTN BJ", phone: "", isManual: false }]);
   };
-  const updateQuickTarget = (id: string, field: string, value: string) => {
-    setQuickTargets(quickTargets.map(t => t.id === id ? { ...t, [field]: value } : t));
+  const updateQuickTarget = (id: string, field: string, value: any) => {
+    setQuickTargets(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t));
+  };
+  
+  const handleSaveQuickTargetInline = async (target: any) => {
+    if (!target.name.trim() || !target.phone.trim()) return;
+    const expectedLen = COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8;
+    const cleanPhone = target.phone.replace(/[^0-9]/g, '');
+    if (cleanPhone.length !== expectedLen) return;
+
+    const fd = new FormData();
+    fd.append("libelle", target.name);
+    fd.append("reseau", target.network);
+    fd.append("pays", target.country || "Bénin");
+    fd.append("numero", `${COUNTRY_CODES[target.country || "Bénin"] || "+229"} ${cleanPhone}`);
+
+    await saveDestinataire(fd);
+    
+    getDestinataires().then(({data}) => {
+      if (data) setSavedDestinataires(data);
+    });
+
+    updateQuickTarget(target.id, "isManual", false);
   };
   
   const handleNameChange = (id: string, newName: string) => {
@@ -748,32 +770,65 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                           </div>
                         ) : (
                           <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1 bg-[#F5F5F7] rounded-xl flex items-center px-4 py-3 border-2 border-transparent focus-within:border-black/10 transition-all">
-                                <input type="text" value={target.name} onChange={(e) => updateQuickTarget(target.id, "name", e.target.value)} placeholder="Nom (ex: Loyer)" className="w-full bg-transparent font-bold outline-none placeholder:text-black/40 text-black text-[15px]" />
+                            <div className="flex flex-row items-stretch sm:items-center gap-3">
+                              <div className="flex-1 bg-[#F5F5F7] rounded-xl flex items-center px-4 py-3 border-2 border-transparent focus-within:border-black/10 transition-all min-w-0">
+                                <input type="text" value={target.name} onChange={(e) => updateQuickTarget(target.id, "name", e.target.value)} placeholder="Nom (ex: Loyer)" className="w-full bg-transparent font-bold outline-none placeholder:text-black/40 text-black text-[15px] truncate" />
                               </div>
-                              <div className="relative w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
+                              <div className="relative w-[110px] sm:w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
                                 <input type="number" value={target.value || ''} onChange={(e) => updateQuickTarget(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-3 px-2 text-[16px] text-black placeholder:text-black/30" />
-                                <span className="text-black font-black text-[15px]">{isPercentageMode ? "%" : "F"}</span>
+                                <span className="text-black font-black text-[15px] ml-1">{isPercentageMode ? "%" : "F"}</span>
                               </div>
                             </div>
-                            <div className="flex gap-3">
+                            <div className="flex flex-col sm:flex-row gap-3">
                               <div className="flex-1 bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
-                                <select value={target.network} onChange={(e) => updateQuickTarget(target.id, "network", e.target.value)} className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]">
-                                  <option value="MTN">MTN BJ</option>
-                                  <option value="Moov">Moov BJ</option>
-                                  <option value="Celtiis">Celtiis BJ</option>
-                                  <option value="Wave">Wave CI</option>
+                                <select 
+                                  value={target.country || "Bénin"} 
+                                  onChange={(e) => {
+                                    const newCountry = e.target.value;
+                                    updateQuickTarget(target.id, "country", newCountry);
+                                    const nets = COUNTRIES_NETWORKS[newCountry];
+                                    if (nets && nets.length > 0) updateQuickTarget(target.id, "network", nets[0]);
+                                  }} 
+                                  className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]"
+                                >
+                                  {Object.keys(COUNTRIES_NETWORKS).map((c) => (
+                                    <option key={c} value={c}>{c}</option>
+                                  ))}
                                 </select>
                                 <ChevronDown className="w-4 h-4 text-black absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                               </div>
-                              <div className="flex-[2] bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all">
-                                <input type="tel" value={target.phone} onChange={(e) => updateQuickTarget(target.id, "phone", e.target.value)} placeholder="00 00 00 00" className="w-full h-full bg-transparent px-4 py-3 outline-none font-mono font-bold tracking-wide text-black placeholder:text-black/40 text-[15px]" />
+                              <div className="flex-1 bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
+                                <select value={target.network} onChange={(e) => updateQuickTarget(target.id, "network", e.target.value)} className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]">
+                                  {(COUNTRIES_NETWORKS[target.country || "Bénin"] || COUNTRIES_NETWORKS["Bénin"]).map((net) => (
+                                    <option key={net} value={net}>{net}</option>
+                                  ))}
+                                </select>
+                                <ChevronDown className="w-4 h-4 text-black absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                               </div>
-                              <button onClick={() => setQuickTargets(targets => targets.map(t => t.id === target.id ? { ...t, isManual: false } : t))} className="px-4 py-3 bg-black text-white hover:bg-black/80 rounded-xl font-bold text-[14px] transition-colors">
-                                Annuler
+                              <div className={`flex-1 bg-[#F5F5F7] rounded-xl border-2 flex items-center transition-all ${
+                                target.phone && target.phone.replace(/[^0-9]/g, '').length > 0 && 
+                                target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8)
+                                ? 'border-red-500/50 focus-within:border-red-500' 
+                                : 'border-transparent focus-within:border-black/10'
+                              }`}>
+                                <div className="pl-4 pr-2 py-3 text-[15px] font-mono font-bold text-black/50 select-none flex items-center h-full">
+                                  {COUNTRY_CODES[target.country || "Bénin"] || "+229"}
+                                </div>
+                                <input type="tel" value={target.phone} onChange={(e) => updateQuickTarget(target.id, "phone", e.target.value)} placeholder={Array(COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8).fill("0").join("").replace(/(.{2})/g, "$1 ").trim()} className="w-full h-full bg-transparent pr-4 py-3 outline-none font-mono font-bold tracking-wide text-black placeholder:text-black/40 text-[15px]" />
+                              </div>
+                              
+                              <button 
+                                onClick={() => handleSaveQuickTargetInline(target)} 
+                                disabled={target.name.trim() === "" || (target.phone && target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8))}
+                                className="px-4 py-3 bg-black text-white hover:bg-black/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-[14px] transition-colors shrink-0"
+                              >
+                                Enregistrer
                               </button>
                             </div>
+                            {target.phone && target.phone.replace(/[^0-9]/g, '').length > 0 && 
+                             target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8) && (
+                              <p className="text-red-500 text-xs font-bold mt-1 ml-1">Ce numéro doit comporter exactement {COUNTRY_PHONE_LENGTHS[target.country || "Bénin"]} chiffres.</p>
+                            )}
                           </div>
                         )}
                       </motion.div>
