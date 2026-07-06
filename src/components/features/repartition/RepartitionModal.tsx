@@ -582,11 +582,11 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="grid grid-cols-2 gap-3 pt-4 mt-4 border-t border-black/5 w-full"
+                        className="flex flex-wrap gap-4 pt-4 mt-4 border-t border-black/5"
                       >
                         {saveRuleTrigger === "weekly" && (
-                          <div className="w-full min-w-0">
-                            <label className="block text-xs font-semibold mb-2 ml-1 truncate">Jour de la semaine</label>
+                          <div className="flex-1 min-w-[140px]">
+                            <label className="block text-xs font-semibold mb-2 ml-1">Jour de la semaine</label>
                             <select 
                               value={saveRuleTriggerDayOfWeek}
                               onChange={(e) => setSaveRuleTriggerDayOfWeek(e.target.value)}
@@ -604,8 +604,8 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                         )}
                         
                         {saveRuleTrigger === "monthly" && (
-                          <div className="w-full min-w-0">
-                            <label className="block text-xs font-semibold mb-2 ml-1 truncate">Jour du mois</label>
+                          <div className="flex-1 min-w-[140px]">
+                            <label className="block text-xs font-semibold mb-2 ml-1">Jour du mois</label>
                             <select 
                               value={saveRuleTriggerDayOfMonth}
                               onChange={(e) => setSaveRuleTriggerDayOfMonth(e.target.value)}
@@ -619,8 +619,8 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                           </div>
                         )}
 
-                        <div className="w-full min-w-0">
-                          <label className="block text-xs font-semibold mb-2 ml-1 truncate">Heure d'exécution</label>
+                        <div className="flex-1 min-w-[140px]">
+                          <label className="block text-xs font-semibold mb-2 ml-1">Heure d'exécution</label>
                           <input 
                             type="time" 
                             value={saveRuleTriggerTime}
