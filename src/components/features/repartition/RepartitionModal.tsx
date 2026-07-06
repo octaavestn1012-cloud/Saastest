@@ -590,7 +590,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                             <select 
                               value={saveRuleTriggerDayOfWeek}
                               onChange={(e) => setSaveRuleTriggerDayOfWeek(e.target.value)}
-                              className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
+                              className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary text-[15px] font-bold"
                             >
                               <option value="1">Lundi</option>
                               <option value="2">Mardi</option>
@@ -609,7 +609,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                             <select 
                               value={saveRuleTriggerDayOfMonth}
                               onChange={(e) => setSaveRuleTriggerDayOfMonth(e.target.value)}
-                              className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
+                              className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary text-[15px] font-bold"
                             >
                               {Array.from({length: 31}, (_, i) => i + 1).map(day => (
                                 <option key={day} value={day}>Le {day}</option>
@@ -625,7 +625,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                             type="time" 
                             value={saveRuleTriggerTime}
                             onChange={(e) => setSaveRuleTriggerTime(e.target.value)}
-                            className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary font-mono text-sm"
+                            className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary font-mono text-[15px] font-bold"
                           />
                         </div>
                       </motion.div>
@@ -646,7 +646,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                           value={saveRuleName}
                           onChange={(e) => setSaveRuleName(e.target.value)}
                           placeholder="Ex: Dépenses mensuelles..."
-                          className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary font-bold text-sm border border-transparent focus:border-primary/20 transition-all"
+                          className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary font-bold text-[15px] border border-transparent focus:border-primary/20 transition-all"
                         />
                       </motion.div>
                     )}

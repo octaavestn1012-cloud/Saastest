@@ -242,7 +242,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                     <select 
                       value={triggerDayOfWeek}
                       onChange={(e) => setTriggerDayOfWeek(e.target.value)}
-                      className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary text-[15px] font-bold"
                     >
                       <option value="1">Lundi</option>
                       <option value="2">Mardi</option>
@@ -261,7 +261,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                     <select 
                       value={triggerDayOfMonth}
                       onChange={(e) => setTriggerDayOfMonth(e.target.value)}
-                      className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary text-[15px] font-bold"
                     >
                       {Array.from({length: 31}, (_, i) => i + 1).map(day => (
                         <option key={day} value={day}>Le {day}</option>
@@ -277,7 +277,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                     type="time" 
                     value={triggerTime}
                     onChange={(e) => setTriggerTime(e.target.value)}
-                    className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full bg-black/5 rounded-xl px-4 py-4 outline-none focus:ring-1 focus:ring-primary font-mono text-[15px] font-bold"
                   />
                 </div>
               </motion.div>
