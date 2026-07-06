@@ -234,11 +234,11 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="flex flex-col sm:flex-row gap-4 pt-2"
+                className="flex items-center gap-3 pt-2 w-full"
               >
                 {trigger === "hebdo" && (
-                  <div className="flex-1 w-full">
-                    <label className="block text-xs font-semibold mb-2 ml-1">Jour de la semaine</label>
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-xs font-semibold mb-2 ml-1 truncate">Jour de la semaine</label>
                     <select 
                       value={triggerDayOfWeek}
                       onChange={(e) => setTriggerDayOfWeek(e.target.value)}
@@ -256,8 +256,8 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                 )}
                 
                 {trigger === "mensuel" && (
-                  <div className="flex-1 w-full">
-                    <label className="block text-xs font-semibold mb-2 ml-1">Jour du mois</label>
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-xs font-semibold mb-2 ml-1 truncate">Jour du mois</label>
                     <select 
                       value={triggerDayOfMonth}
                       onChange={(e) => setTriggerDayOfMonth(e.target.value)}
@@ -271,8 +271,8 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                   </div>
                 )}
 
-                <div className="flex-1 w-full">
-                  <label className="block text-xs font-semibold mb-2 ml-1">Heure d'exécution</label>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs font-semibold mb-2 ml-1 truncate">Heure d'exécution</label>
                   <input 
                     type="time" 
                     value={triggerTime}
