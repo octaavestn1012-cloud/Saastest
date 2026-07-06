@@ -402,7 +402,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           )}
 
           {/* Body Scrollable */}
-          <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
             
             {/* Résultat création de règle (Sans exécution) */}
             {(step === "RESULT_RULE_ONLY" || (isRuleOnly && step === "EXECUTING")) && (

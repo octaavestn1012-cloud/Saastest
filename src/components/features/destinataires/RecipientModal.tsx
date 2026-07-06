@@ -60,7 +60,7 @@ export function RecipientModal({ recipient, onClose, onSave }: RecipientModalPro
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto overscroll-contain">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
           <div>
             <label className="block text-sm font-semibold text-muted-foreground mb-1.5 ml-1">Nom / Libellé</label>
             <input 
