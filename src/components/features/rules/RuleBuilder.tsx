@@ -31,6 +31,7 @@ interface RuleBuilderProps {
 export function RuleBuilder({ initialData }: RuleBuilderProps) {
   const router = useRouter();
   const { openModal } = useRepartition();
+  const { user } = useUser();
 
   // State contacts (Carnet)
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -481,25 +482,30 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
       </section>
 
       {/* SECTION 3.5 : OPTIONS AVANCÉES (RECREATED) */}
-      <section className="bg-[#FFFDF9] border border-[#FDE1A9] rounded-[2rem] overflow-hidden shadow-sm relative">
+      <section className="bg-[#FFFDF9] border border-[#FDE1A9] rounded-[2rem] overflow-hidden shadow-sm relative mt-8">
         <div className="p-6 sm:p-8">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
             <div>
               <div className="flex items-center gap-3">
                 <h4 className="font-extrabold text-[19px] text-amber-700">Options avancées</h4>
-                <Link href="/billing" className="bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md flex items-center gap-1.5 shadow-sm hover:scale-105 transition-transform cursor-pointer pointer-events-auto">
-                  <Lock className="w-3 h-3" />
-                  Passer Pro
-                </Link>
               </div>
               <p className="text-amber-700/70 text-[14px] font-medium mt-1">Conditions, priorité, reste et notifications.</p>
             </div>
-            <button 
-              onClick={() => setAdvancedOpen(!advancedOpen)} 
-              className="w-10 h-10 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-full flex items-center justify-center transition-colors shrink-0"
-            >
-              <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${advancedOpen ? 'rotate-180' : ''}`} />
-            </button>
+            
+            <div className="flex items-center gap-3">
+              {(!plan || plan === "gratuit") && (
+                <Link href="/billing" className="bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white text-[13px] font-extrabold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer pointer-events-auto">
+                  <Lock className="w-4 h-4" />
+                  Passer Pro
+                </Link>
+              )}
+              <button 
+                onClick={() => setAdvancedOpen(!advancedOpen)} 
+                className="w-10 h-10 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-full flex items-center justify-center transition-colors shrink-0"
+              >
+                <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${advancedOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
           </div>
 
           <AnimatePresence>
@@ -512,8 +518,8 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
               >
                 <div className="pt-6 mt-6 border-t border-amber-100 relative">
                   
-                  {/* Container bloqué pour forcer l'upgrade */}
-                  <div className="space-y-8 relative group opacity-60 pointer-events-none">
+                  {/* Container bloqué pour forcer l'upgrade si plan gratuit */}
+                  <div className={`space-y-8 relative group transition-all duration-300 ${(!plan || plan === "gratuit") ? "opacity-60 pointer-events-none grayscale-[30%]" : "opacity-100"}`}>
                     
                     {/* 1. Condition de déclenchement */}
                     <div>
@@ -522,12 +528,12 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                           <h5 className="font-bold text-[16px] text-slate-800">1. Condition de déclenchement (SI...)</h5>
                           <p className="text-slate-500 text-[13px] font-medium mt-0.5">La règle ne s'exécute que si le solde est suffisant.</p>
                         </div>
-                        <Switch disabled checked={true} className="data-[state=checked]:bg-blue-600" />
+                        <Switch disabled={!plan || plan === "gratuit"} checked={true} className="data-[state=checked]:bg-blue-600" />
                       </div>
                       <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 border border-black/5">
                         <span className="font-bold text-[14px] text-slate-700 shrink-0">Exécuter SEULEMENT SI le solde dépasse</span>
                         <div className="flex items-center gap-2 bg-[#F5F5F7] px-4 py-2.5 rounded-xl w-full sm:w-auto">
-                          <input type="text" disabled placeholder="Ex: 50000" className="bg-transparent w-24 text-[14px] font-bold outline-none placeholder:text-black/30" />
+                          <input type="text" disabled={!plan || plan === "gratuit"} placeholder="Ex: 50000" className="bg-transparent w-24 text-[14px] font-bold outline-none placeholder:text-black/30" />
                           <span className="text-[13px] font-bold text-black/50">FCFA</span>
                         </div>
                       </div>
@@ -542,7 +548,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                         </div>
                         <p className="text-slate-500 text-[13px] font-medium mt-0.5">En cas de solde insuffisant, payer les premiers d'abord.</p>
                       </div>
-                      <Switch disabled checked={false} />
+                      <Switch disabled={!plan || plan === "gratuit"} checked={false} />
                     </div>
 
                     {/* 3. Envoyer le reste */}
@@ -554,7 +560,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                         </div>
                         <p className="text-slate-500 text-[13px] font-medium mt-0.5">Tout l'argent non réparti ira à ce destinataire.</p>
                       </div>
-                      <Switch disabled checked={false} />
+                      <Switch disabled={!plan || plan === "gratuit"} checked={false} />
                     </div>
 
                     {/* 4. Notifications personnalisées */}
@@ -564,12 +570,12 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                         <p className="text-slate-500 text-[13px] font-medium mt-0.5">Recevez une alerte quand cette règle s'exécute.</p>
                       </div>
                       <div className="bg-white rounded-2xl p-4 flex flex-wrap items-center gap-6 border border-black/5">
-                        <label className="flex items-center gap-2.5 cursor-not-allowed">
-                          <input type="checkbox" disabled className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
+                        <label className={`flex items-center gap-2.5 ${(!plan || plan === "gratuit") ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                          <input type="checkbox" disabled={!plan || plan === "gratuit"} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
                           <span className="font-bold text-[14px] text-slate-800">Par Email</span>
                         </label>
-                        <label className="flex items-center gap-2.5 cursor-not-allowed">
-                          <input type="checkbox" disabled className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
+                        <label className={`flex items-center gap-2.5 ${(!plan || plan === "gratuit") ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                          <input type="checkbox" disabled={!plan || plan === "gratuit"} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
                           <span className="font-bold text-[14px] text-slate-800">Par SMS</span>
                         </label>
                       </div>

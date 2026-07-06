@@ -24,7 +24,29 @@ export default function BillingPage() {
     if (!user) return;
     setUpdatingPlan(newPlan);
     
-    // Note interne : Paiement réel à venir. Pour l'instant, on met juste à jour la base.
+    // Si on passe à Pro ou Business, on passe par Moneroo
+    if (newPlan === 'pro' || newPlan === 'business') {
+      try {
+        const { initializeMonerooPayment } = await import('@/app/actions/billing');
+        const res = await initializeMonerooPayment(newPlan);
+        
+        if (res.checkout_url) {
+          // Redirection vers la page de paiement Moneroo
+          window.location.href = res.checkout_url;
+          return; // On ne remet pas updatingPlan à null car on quitte la page
+        } else {
+          console.error(res);
+          alert("Erreur lors de l'initialisation du paiement: " + res.error);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Erreur de connexion au serveur de paiement.");
+      }
+      setUpdatingPlan(null);
+      return;
+    }
+
+    // Rétrograder à gratuit (directement en base)
     const { error } = await supabase
       .from('profiles')
       .update({ plan: newPlan })
