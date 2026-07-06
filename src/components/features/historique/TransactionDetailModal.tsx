@@ -51,6 +51,8 @@ export function TransactionDetailModal({
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
+  useScrollLock();
+
   const formatDate = (isoString: string) => {
     return formatDateToBenin(isoString);
   };
@@ -179,7 +181,7 @@ export function TransactionDetailModal({
             </div>
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-6 space-y-6">
               
               {selectedTx.status === "PARTIAL" && (
                 <div className="bg-[#FFF8E7]/50 border border-[#FDE1A9]/30 rounded-2xl p-4 flex items-start gap-3">

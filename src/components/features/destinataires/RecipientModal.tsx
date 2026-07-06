@@ -15,10 +15,14 @@ interface RecipientModalProps {
   onSave: (recipient: Recipient) => void;
 }
 
+import { useScrollLock } from "@/hooks/useScrollLock";
+
 export function RecipientModal({ recipient, onClose, onSave }: RecipientModalProps) {
   const [name, setName] = useState(recipient?.name || "");
   const [network, setNetwork] = useState(recipient?.network || "MTN");
   const [phone, setPhone] = useState(recipient?.phone || "");
+
+  useScrollLock();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +60,7 @@ export function RecipientModal({ recipient, onClose, onSave }: RecipientModalPro
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto overscroll-contain">
           <div>
             <label className="block text-sm font-semibold text-muted-foreground mb-1.5 ml-1">Nom / Libellé</label>
             <input 

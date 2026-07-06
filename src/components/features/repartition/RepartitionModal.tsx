@@ -14,6 +14,7 @@ import { getRegles } from "@/app/actions/regles";
 import { getDestinataires } from "@/app/actions/destinataires";
 import { saveRegle } from "@/app/actions/regles";
 import { executeRepartitionAction, executeQuickRepartitionAction, updateExecutionRuleId } from "@/app/actions/repartir";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 type Step = "PREVIEW" | "EXECUTING" | "RESULT" | "RESULT_RULE_ONLY";
 type ModalMode = "rule" | "quick";
@@ -54,13 +55,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const COMMISSION_TEXT = plan === "pro" ? "0,8%" : plan === "business" ? "0,4%" : "1,9%";
   const RESTANT_TEXT = plan === "pro" ? "99,2%" : plan === "business" ? "99,6%" : "98,1%";
 
-  useEffect(() => {
-    // Bloquer le scroll du body quand le modal est ouvert
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, []);
+  useScrollLock();
 
   useEffect(() => {
     // Fermer le dropdown au clic à l'extérieur
@@ -407,7 +402,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           )}
 
           {/* Body Scrollable */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-6">
             
             {/* Résultat création de règle (Sans exécution) */}
             {(step === "RESULT_RULE_ONLY" || (isRuleOnly && step === "EXECUTING")) && (
