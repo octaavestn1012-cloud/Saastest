@@ -582,15 +582,15 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="flex flex-col sm:flex-row gap-4 pt-4 mt-4 border-t border-black/5"
+                        className="flex gap-3 pt-4 mt-4 border-t border-black/5"
                       >
                         {saveRuleTrigger === "weekly" && (
-                          <div className="flex-1 w-full">
-                            <label className="block text-xs font-semibold mb-2 ml-1">Jour de la semaine</label>
+                          <div className="flex-1 min-w-0">
+                            <label className="block text-[11px] sm:text-xs font-semibold mb-2 ml-1 truncate">Jour de la semaine</label>
                             <select 
                               value={saveRuleTriggerDayOfWeek}
                               onChange={(e) => setSaveRuleTriggerDayOfWeek(e.target.value)}
-                              className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
+                              className="w-full bg-black/5 rounded-xl px-3 sm:px-4 py-3 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
                             >
                               <option value="1">Lundi</option>
                               <option value="2">Mardi</option>
@@ -604,12 +604,12 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                         )}
                         
                         {saveRuleTrigger === "monthly" && (
-                          <div className="flex-1 w-full">
-                            <label className="block text-xs font-semibold mb-2 ml-1">Jour du mois</label>
+                          <div className="flex-1 min-w-0">
+                            <label className="block text-[11px] sm:text-xs font-semibold mb-2 ml-1 truncate">Jour du mois</label>
                             <select 
                               value={saveRuleTriggerDayOfMonth}
                               onChange={(e) => setSaveRuleTriggerDayOfMonth(e.target.value)}
-                              className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
+                              className="w-full bg-black/5 rounded-xl px-3 sm:px-4 py-3 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
                             >
                               {Array.from({length: 31}, (_, i) => i + 1).map(day => (
                                 <option key={day} value={day}>Le {day}</option>
@@ -619,13 +619,13 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                           </div>
                         )}
 
-                        <div className="flex-1 w-full">
-                          <label className="block text-xs font-semibold mb-2 ml-1">Heure d'exécution</label>
+                        <div className="flex-1 min-w-0">
+                          <label className="block text-[11px] sm:text-xs font-semibold mb-2 ml-1 truncate">Heure d'exécution</label>
                           <input 
                             type="time" 
                             value={saveRuleTriggerTime}
                             onChange={(e) => setSaveRuleTriggerTime(e.target.value)}
-                            className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary font-mono text-sm"
+                            className="w-full bg-black/5 rounded-xl px-3 sm:px-4 py-3 outline-none focus:ring-1 focus:ring-primary font-mono text-sm"
                           />
                         </div>
                       </motion.div>
