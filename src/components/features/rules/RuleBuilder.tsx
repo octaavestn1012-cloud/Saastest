@@ -55,7 +55,6 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
   // State de base
   const [ruleName, setRuleName] = useState(initialData?.nom || "");
   const [trigger, setTrigger] = useState(initialData?.declencheur || "a_chaque_entree");
-  const [isTriggerDropdownOpen, setIsTriggerDropdownOpen] = useState(false);
   const [triggerTime, setTriggerTime] = useState(initialData?.declencheur_config?.time || "08:00");
   const [triggerDayOfWeek, setTriggerDayOfWeek] = useState(initialData?.declencheur_config?.dayOfWeek || "1");
   const [triggerDayOfMonth, setTriggerDayOfMonth] = useState(initialData?.declencheur_config?.dayOfMonth || "1");
@@ -216,52 +215,17 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
           2. Déclencheur — Quand répartir ?
         </label>
         <div className="space-y-4">
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsTriggerDropdownOpen(!isTriggerDropdownOpen)}
-              className="w-full text-left bg-[#F5F5F7] border-transparent rounded-2xl px-6 py-4 text-lg font-medium outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer truncate pr-12"
-            >
-              {trigger === "manuel" ? "Manuel (Je lance moi-même)" :
-               trigger === "a_chaque_entree" ? "Automatique : À chaque entrée d'argent" :
-               trigger === "quotidien" ? "Automatique : Quotidien" :
-               trigger === "hebdo" ? "Automatique : Hebdomadaire" :
-               "Automatique : Mensuel"}
-            </button>
-            <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground bg-transparent pl-2">
-              <ChevronDown className="w-5 h-5" />
-            </div>
-
-            {isTriggerDropdownOpen && (
-              <>
-                <div 
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsTriggerDropdownOpen(false)}
-                />
-                <div className="absolute left-0 right-0 top-[calc(100%+8px)] bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-black/[0.05] z-50 overflow-hidden py-2">
-                  {[
-                    { id: "manuel", label: "Manuel (Je lance moi-même)" },
-                    { id: "a_chaque_entree", label: "Automatique : À chaque entrée d'argent" },
-                    { id: "quotidien", label: "Automatique : Quotidien" },
-                    { id: "hebdo", label: "Automatique : Hebdomadaire" },
-                    { id: "mensuel", label: "Automatique : Mensuel" }
-                  ].map(option => (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => {
-                        setTrigger(option.id);
-                        setIsTriggerDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-6 py-4 text-[16px] font-medium transition-colors ${trigger === option.id ? 'bg-primary/10 text-primary' : 'hover:bg-black/[0.02] text-black/80 hover:text-black'}`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          <select 
+            value={trigger}
+            onChange={(e) => setTrigger(e.target.value)}
+            className="w-full max-w-full bg-[#F5F5F7] border-transparent rounded-2xl px-6 py-4 text-lg font-medium outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer truncate pr-12"
+          >
+            <option value="manuel">Manuel (Je lance moi-même)</option>
+            <option value="a_chaque_entree">Automatique : À chaque entrée d'argent</option>
+            <option value="quotidien">Automatique : Quotidien</option>
+            <option value="hebdo">Automatique : Hebdomadaire</option>
+            <option value="mensuel">Automatique : Mensuel</option>
+          </select>
 
           {/* Champs conditionnels */}
           <AnimatePresence mode="popLayout">

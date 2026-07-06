@@ -41,7 +41,6 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   
   const [saveRuleName, setSaveRuleName] = useState("");
   const [saveRuleTrigger, setSaveRuleTrigger] = useState("manual");
-  const [isTriggerDropdownOpen, setIsTriggerDropdownOpen] = useState(false);
   const [saveRuleTriggerTime, setSaveRuleTriggerTime] = useState("08:00");
   const [saveRuleTriggerDayOfWeek, setSaveRuleTriggerDayOfWeek] = useState("1");
   const [saveRuleTriggerDayOfMonth, setSaveRuleTriggerDayOfMonth] = useState("1");
@@ -560,50 +559,20 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                 <div className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-black/[0.03]">
                   <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 ml-1">Déclencheur (en cas de sauvegarde)</label>
                   <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsTriggerDropdownOpen(!isTriggerDropdownOpen)}
-                      className="w-full text-left bg-[#F5F5F7] hover:bg-[#EAEAEB] transition-colors border-transparent rounded-[1.25rem] px-5 py-4 font-bold text-[15px] outline-none focus:ring-2 focus:ring-primary cursor-pointer truncate pr-12"
+                    <select
+                      value={saveRuleTrigger}
+                      onChange={(e) => setSaveRuleTrigger(e.target.value)}
+                      className="w-full max-w-full bg-[#F5F5F7] hover:bg-[#EAEAEB] transition-colors border-transparent rounded-[1.25rem] px-5 py-4 font-bold text-[15px] outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer truncate pr-12"
                     >
-                      {saveRuleTrigger === "manual" ? "Manuel (Je lance moi-même)" :
-                       saveRuleTrigger === "entry" ? "Automatique : À chaque entrée d'argent" :
-                       saveRuleTrigger === "daily" ? "Automatique : Quotidien" :
-                       saveRuleTrigger === "weekly" ? "Automatique : Hebdomadaire" :
-                       "Automatique : Mensuel"}
-                    </button>
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground bg-transparent pl-2">
+                      <option value="manual">Manuel (Je lance moi-même)</option>
+                      <option value="entry">Automatique : À chaque entrée d'argent</option>
+                      <option value="daily">Automatique : Quotidien</option>
+                      <option value="weekly">Automatique : Hebdomadaire</option>
+                      <option value="monthly">Automatique : Mensuel</option>
+                    </select>
+                    <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground bg-[#F5F5F7] pl-2">
                       <SlidersHorizontal className="w-5 h-5" />
                     </div>
-
-                    {isTriggerDropdownOpen && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-40"
-                          onClick={() => setIsTriggerDropdownOpen(false)}
-                        />
-                        <div className="absolute left-0 right-0 top-[calc(100%+8px)] bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-black/[0.05] z-50 overflow-hidden py-2">
-                          {[
-                            { id: "manual", label: "Manuel (Je lance moi-même)" },
-                            { id: "entry", label: "Automatique : À chaque entrée d'argent" },
-                            { id: "daily", label: "Automatique : Quotidien" },
-                            { id: "weekly", label: "Automatique : Hebdomadaire" },
-                            { id: "monthly", label: "Automatique : Mensuel" }
-                          ].map(option => (
-                            <button
-                              key={option.id}
-                              type="button"
-                              onClick={() => {
-                                setSaveRuleTrigger(option.id);
-                                setIsTriggerDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-5 py-3.5 text-[15px] font-bold transition-colors ${saveRuleTrigger === option.id ? 'bg-primary/10 text-primary' : 'hover:bg-black/[0.02] text-black/80 hover:text-black'}`}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
                   </div>
 
                   {/* Champs conditionnels pour le déclencheur */}
