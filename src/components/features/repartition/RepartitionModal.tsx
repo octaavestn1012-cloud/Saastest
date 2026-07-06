@@ -582,10 +582,10 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="flex flex-wrap gap-4 pt-4 mt-4 border-t border-black/5"
+                        className="flex flex-col sm:flex-row gap-4 pt-4 mt-4 border-t border-black/5"
                       >
                         {saveRuleTrigger === "weekly" && (
-                          <div className="flex-1 min-w-[140px]">
+                          <div className="flex-1 w-full">
                             <label className="block text-xs font-semibold mb-2 ml-1">Jour de la semaine</label>
                             <select 
                               value={saveRuleTriggerDayOfWeek}
@@ -604,7 +604,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                         )}
                         
                         {saveRuleTrigger === "monthly" && (
-                          <div className="flex-1 min-w-[140px]">
+                          <div className="flex-1 w-full">
                             <label className="block text-xs font-semibold mb-2 ml-1">Jour du mois</label>
                             <select 
                               value={saveRuleTriggerDayOfMonth}
@@ -619,7 +619,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                           </div>
                         )}
 
-                        <div className="flex-1 min-w-[140px]">
+                        <div className="flex-1 w-full">
                           <label className="block text-xs font-semibold mb-2 ml-1">Heure d'exécution</label>
                           <input 
                             type="time" 
