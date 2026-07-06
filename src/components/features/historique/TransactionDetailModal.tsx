@@ -10,6 +10,7 @@ import { retryPayoutLigne } from "@/app/actions/historique";
 
 // Note: These types could be moved to a shared types file
 import { formatDateToBenin } from "@/lib/utils/format";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 export type Status = "SUCCESS" | "PARTIAL" | "FAILED" | "PENDING";
 
