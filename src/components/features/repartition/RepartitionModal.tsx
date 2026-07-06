@@ -15,7 +15,7 @@ import { getDestinataires } from "@/app/actions/destinataires";
 import { saveRegle } from "@/app/actions/regles";
 import { executeRepartitionAction, executeQuickRepartitionAction, updateExecutionRuleId } from "@/app/actions/repartir";
 
-type Step = "PREVIEW" | "EXECUTING" | "RESULT";
+type Step = "PREVIEW" | "EXECUTING" | "RESULT" | "RESULT_RULE_ONLY";
 type ModalMode = "rule" | "quick";
 
 export function RepartitionModal({ onClose, customData }: { onClose: () => void, customData?: PreviewRule }) {
@@ -41,6 +41,10 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   
   const [saveRuleName, setSaveRuleName] = useState("");
   const [saveRuleTrigger, setSaveRuleTrigger] = useState("manual");
+  const [isTriggerDropdownOpen, setIsTriggerDropdownOpen] = useState(false);
+  const [saveRuleTriggerTime, setSaveRuleTriggerTime] = useState("08:00");
+  const [saveRuleTriggerDayOfWeek, setSaveRuleTriggerDayOfWeek] = useState("1");
+  const [saveRuleTriggerDayOfMonth, setSaveRuleTriggerDayOfMonth] = useState("1");
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(null);
   const [ruleSaved, setRuleSaved] = useState(false);
   const [isSavingRule, setIsSavingRule] = useState(false);
@@ -204,12 +208,22 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const totalPercent = isPercentageMode ? currentTargets.reduce((acc: number, t: any) => acc + (Number(t.percent) || 0), 0) : 0;
   const isExact = isPercentageMode ? totalPercent === 100 : totalDistributedTargets <= toDistribute;
 
+  const isRuleOnly = modalMode === "quick" && saveRuleTrigger !== "manual";
+
   const formatAmount = (val: number) => new Intl.NumberFormat('fr-FR').format(val);
 
   const handleConfirm = async () => {
     if (!isExact) return;
+    if (isRuleOnly && !saveRuleName.trim()) return;
+
     setStep("EXECUTING");
-    
+
+    if (isRuleOnly) {
+      await saveRuleInternal();
+      setStep("RESULT_RULE_ONLY");
+      return;
+    }
+
     const initialResults: Record<string, "PENDING" | "SUCCESS" | "FAILED"> = {};
     currentTargets.forEach((t: any) => initialResults[t.id] = "PENDING");
     setResults(initialResults);
@@ -224,8 +238,9 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
         // Mode règle stricte : on utilise le Rule ID de la BDD pour qu'il le re-calcule de façon sécurisée
         res = await executeRepartitionAction(totalAvailable, activeRuleSource?.id);
       }
-      if (res.executionId) {
-        setCurrentExecutionId(res.executionId);
+      let finalExecutionId = res.executionId;
+      if (finalExecutionId) {
+        setCurrentExecutionId(finalExecutionId);
       }
 
       const finalStatus = res.status === 'completed' ? "SUCCESS" : "FAILED";
@@ -285,21 +300,20 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     setQuickTargets(quickTargets.filter(t => t.id !== id));
   };
 
-  const saveQuickAsRule = async () => {
-    if (!saveRuleName.trim() || isSavingRule) return;
+  const saveRuleInternal = async (execId?: string) => {
     setIsSavingRule(true);
 
     let parsedDeclencheur = "manuel";
-    let config = null;
+    let config: any = null;
     if (saveRuleTrigger === "entry") parsedDeclencheur = "a_chaque_entree";
-    if (saveRuleTrigger === "daily") { parsedDeclencheur = "quotidien"; config = "08:00"; }
-    if (saveRuleTrigger === "weekly") { parsedDeclencheur = "hebdomadaire"; config = "1"; }
-    if (saveRuleTrigger === "monthly") { parsedDeclencheur = "mensuel"; config = "1"; }
+    if (saveRuleTrigger === "daily") { parsedDeclencheur = "quotidien"; config = { time: saveRuleTriggerTime }; }
+    if (saveRuleTrigger === "weekly") { parsedDeclencheur = "hebdomadaire"; config = { time: saveRuleTriggerTime, dayOfWeek: saveRuleTriggerDayOfWeek }; }
+    if (saveRuleTrigger === "monthly") { parsedDeclencheur = "mensuel"; config = { time: saveRuleTriggerTime, dayOfMonth: saveRuleTriggerDayOfMonth }; }
 
     const payload = {
       id: "temp_" + Date.now(),
       nom: saveRuleName,
-      actif: false,
+      actif: true,
       declencheur: parsedDeclencheur,
       declencheur_config: config,
       mode: quickMode === "percentage" ? "pourcentage" : "montant_fixe",
@@ -308,8 +322,9 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
 
     const res = await saveRegle(payload);
     if (res.success && res.id) {
-      if (currentExecutionId) {
-        await updateExecutionRuleId(currentExecutionId, res.id);
+      const targetExecId = execId || currentExecutionId;
+      if (targetExecId) {
+        await updateExecutionRuleId(targetExecId, res.id);
       }
       setRuleSaved(true);
     } else {
@@ -317,6 +332,10 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
       alert("Erreur: " + res.error);
     }
     setIsSavingRule(false);
+  };
+
+  const saveQuickAsRule = async () => {
+    await saveRuleInternal();
   };
 
   if (isLoadingData) {
@@ -361,7 +380,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           {/* Header */}
           <div className="flex items-center justify-between p-6 bg-white z-20 shrink-0 shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
             <h2 className="text-2xl font-extrabold tracking-tight">
-              {step === "PREVIEW" ? "Répartition" : step === "EXECUTING" ? "Envoi en cours..." : "Résultat"}
+              {step === "PREVIEW" ? "Répartition" : step === "EXECUTING" ? (isRuleOnly ? "Création en cours..." : "Envoi en cours...") : "Résultat"}
             </h2>
             {step !== "EXECUTING" && (
               <button onClick={onClose} className="p-2.5 bg-black/[0.03] hover:bg-black/10 rounded-full transition-colors">
@@ -391,11 +410,46 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           {/* Body Scrollable */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
             
-            <div className="flex flex-col items-center justify-center pt-5 pb-5 bg-white rounded-[2rem] shadow-sm border border-black/[0.03]">
-              <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Solde disponible" : activeData.name}</span>
-              <div className="text-4xl sm:text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-black to-black/70 mb-2">
-                <Amount value={activeData.totalAvailable} />
+            {/* Résultat création de règle (Sans exécution) */}
+            {(step === "RESULT_RULE_ONLY" || (isRuleOnly && step === "EXECUTING")) && (
+              <div className="space-y-6">
+                {step === "RESULT_RULE_ONLY" && (
+                  <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full bg-money-in/10 border border-money-in/20 text-money-in rounded-[2rem] p-8 text-center font-bold flex flex-col items-center justify-center gap-4">
+                    <div className="w-16 h-16 bg-money-in rounded-full flex items-center justify-center text-white shadow-lg shadow-money-in/30">
+                      <CheckCircle2 className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-2xl tracking-tight">Règle créée avec succès !</h3>
+                    <p className="text-money-in/80 font-medium mt-1">L'automatisation est maintenant active.</p>
+                  </motion.div>
+                )}
+                
+                <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-black/[0.03]">
+                  <h3 className="text-[13px] font-bold uppercase tracking-widest text-muted-foreground mb-3">Détails de la règle</h3>
+                  <div className="space-y-3 text-[15px] font-medium">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Nom</span>
+                      <span className="font-bold text-black">{saveRuleName}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Déclencheur</span>
+                      <span className="font-bold text-black">
+                        {saveRuleTrigger === "entry" ? "À chaque entrée d'argent" : 
+                         saveRuleTrigger === "daily" ? `Quotidien à ${saveRuleTriggerTime}` :
+                         saveRuleTrigger === "weekly" ? `Hebdomadaire (Jour ${saveRuleTriggerDayOfWeek}) à ${saveRuleTriggerTime}` :
+                         saveRuleTrigger === "monthly" ? `Mensuel (Le ${saveRuleTriggerDayOfMonth}) à ${saveRuleTriggerTime}` : "Manuel"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
+            )}
+
+            {step !== "RESULT_RULE_ONLY" && !(isRuleOnly && step === "EXECUTING") && (
+              <div className="flex flex-col items-center justify-center pt-5 pb-5 bg-white rounded-[2rem] shadow-sm border border-black/[0.03]">
+                <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Solde disponible" : activeData.name}</span>
+                <div className="text-4xl sm:text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-black to-black/70 mb-2">
+                  <Amount value={activeData.totalAvailable} />
+                </div>
               
               <button 
                 onClick={() => setShowCommissionDetails(!showCommissionDetails)}
@@ -442,6 +496,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                 )}
               </AnimatePresence>
             </div>
+            )}
 
             {/* Rule Selector (Mode Rule) */}
             {modalMode === "rule" && step === "PREVIEW" && !customData && (
@@ -505,21 +560,128 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                 <div className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-black/[0.03]">
                   <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 ml-1">Déclencheur (en cas de sauvegarde)</label>
                   <div className="relative">
-                    <select
-                      value={saveRuleTrigger}
-                      onChange={(e) => setSaveRuleTrigger(e.target.value)}
-                      className="w-full bg-[#F5F5F7] hover:bg-[#EAEAEB] transition-colors border-transparent rounded-[1.25rem] px-5 py-4 font-bold text-[15px] outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer"
+                    <button
+                      type="button"
+                      onClick={() => setIsTriggerDropdownOpen(!isTriggerDropdownOpen)}
+                      className="w-full text-left bg-[#F5F5F7] hover:bg-[#EAEAEB] transition-colors border-transparent rounded-[1.25rem] px-5 py-4 font-bold text-[15px] outline-none focus:ring-2 focus:ring-primary cursor-pointer truncate pr-12"
                     >
-                      <option value="manual">Manuel (Je lance moi-même)</option>
-                      <option value="entry">Automatique : À chaque entrée d'argent</option>
-                      <option value="daily">Automatique : Quotidien</option>
-                      <option value="weekly">Automatique : Hebdomadaire</option>
-                      <option value="monthly">Automatique : Mensuel</option>
-                    </select>
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                      {saveRuleTrigger === "manual" ? "Manuel (Je lance moi-même)" :
+                       saveRuleTrigger === "entry" ? "Automatique : À chaque entrée d'argent" :
+                       saveRuleTrigger === "daily" ? "Automatique : Quotidien" :
+                       saveRuleTrigger === "weekly" ? "Automatique : Hebdomadaire" :
+                       "Automatique : Mensuel"}
+                    </button>
+                    <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground bg-transparent pl-2">
                       <SlidersHorizontal className="w-5 h-5" />
                     </div>
+
+                    {isTriggerDropdownOpen && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-40"
+                          onClick={() => setIsTriggerDropdownOpen(false)}
+                        />
+                        <div className="absolute left-0 right-0 top-[calc(100%+8px)] bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-black/[0.05] z-50 overflow-hidden py-2">
+                          {[
+                            { id: "manual", label: "Manuel (Je lance moi-même)" },
+                            { id: "entry", label: "Automatique : À chaque entrée d'argent" },
+                            { id: "daily", label: "Automatique : Quotidien" },
+                            { id: "weekly", label: "Automatique : Hebdomadaire" },
+                            { id: "monthly", label: "Automatique : Mensuel" }
+                          ].map(option => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => {
+                                setSaveRuleTrigger(option.id);
+                                setIsTriggerDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-5 py-3.5 text-[15px] font-bold transition-colors ${saveRuleTrigger === option.id ? 'bg-primary/10 text-primary' : 'hover:bg-black/[0.02] text-black/80 hover:text-black'}`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
+
+                  {/* Champs conditionnels pour le déclencheur */}
+                  <AnimatePresence mode="popLayout">
+                    {(saveRuleTrigger === "daily" || saveRuleTrigger === "weekly" || saveRuleTrigger === "monthly") && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="flex flex-wrap gap-4 pt-4 mt-4 border-t border-black/5"
+                      >
+                        {saveRuleTrigger === "weekly" && (
+                          <div className="flex-1 min-w-[140px]">
+                            <label className="block text-xs font-semibold mb-2 ml-1">Jour de la semaine</label>
+                            <select 
+                              value={saveRuleTriggerDayOfWeek}
+                              onChange={(e) => setSaveRuleTriggerDayOfWeek(e.target.value)}
+                              className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
+                            >
+                              <option value="1">Lundi</option>
+                              <option value="2">Mardi</option>
+                              <option value="3">Mercredi</option>
+                              <option value="4">Jeudi</option>
+                              <option value="5">Vendredi</option>
+                              <option value="6">Samedi</option>
+                              <option value="0">Dimanche</option>
+                            </select>
+                          </div>
+                        )}
+                        
+                        {saveRuleTrigger === "monthly" && (
+                          <div className="flex-1 min-w-[140px]">
+                            <label className="block text-xs font-semibold mb-2 ml-1">Jour du mois</label>
+                            <select 
+                              value={saveRuleTriggerDayOfMonth}
+                              onChange={(e) => setSaveRuleTriggerDayOfMonth(e.target.value)}
+                              className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
+                            >
+                              {Array.from({length: 31}, (_, i) => i + 1).map(day => (
+                                <option key={day} value={day}>Le {day}</option>
+                              ))}
+                              <option value="last">Le dernier jour du mois</option>
+                            </select>
+                          </div>
+                        )}
+
+                        <div className="flex-1 min-w-[140px]">
+                          <label className="block text-xs font-semibold mb-2 ml-1">Heure d'exécution</label>
+                          <input 
+                            type="time" 
+                            value={saveRuleTriggerTime}
+                            onChange={(e) => setSaveRuleTriggerTime(e.target.value)}
+                            className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary font-mono text-sm"
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence>
+                    {(saveRuleTrigger !== "manual") && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-4 pt-4 border-t border-black/5"
+                      >
+                        <label className="block text-xs font-semibold mb-2 ml-1">Nom de la règle <span className="text-danger">*</span></label>
+                        <input 
+                          type="text" 
+                          value={saveRuleName}
+                          onChange={(e) => setSaveRuleName(e.target.value)}
+                          placeholder="Ex: Dépenses mensuelles..."
+                          className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary font-bold text-sm border border-transparent focus:border-primary/20 transition-all"
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
                 
                 <div className="space-y-3 mt-4">
@@ -803,10 +965,10 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           <div className="p-6 bg-white border-t border-black/[0.03] shrink-0 z-20 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:rounded-b-[2.5rem]">
             {step === "PREVIEW" && (
               <div className="flex flex-col gap-5">
-                <div className={!isExact && (isPercentageMode || totalDistributed > activeData.totalAvailable) ? "opacity-40 grayscale pointer-events-none transition-all duration-300" : "transition-all duration-300"}>
+                <div className={(!isExact || (modalMode === "quick" && saveRuleTrigger !== "manual" && !saveRuleName.trim())) ? "opacity-40 grayscale pointer-events-none transition-all duration-300" : "transition-all duration-300"}>
                   <SlideToConfirm 
                     onConfirm={handleConfirm} 
-                    text={`Envoyer ${formatAmount(activeData.totalAvailable)} FCFA`}
+                    text={modalMode === "quick" && saveRuleTrigger !== "manual" ? "Créer la règle automatique" : `Envoyer ${formatAmount(activeData.totalAvailable)} FCFA`}
                     confirmedText="Autorisé"
                   />
                 </div>
@@ -820,11 +982,11 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
             
             {step === "EXECUTING" && (
               <div className="flex justify-center items-center py-5 text-primary font-bold animate-pulse text-lg">
-                Traitement sécurisé en cours...
+                {(modalMode === "quick" && saveRuleTrigger !== "manual") ? "Création de la règle..." : "Traitement sécurisé en cours..."}
               </div>
             )}
 
-            {step === "RESULT" && (
+            {(step === "RESULT" || step === "RESULT_RULE_ONLY") && (
               <button 
                 onClick={onClose}
                 className="w-full bg-black text-white hover:bg-black/90 rounded-[1.5rem] h-16 text-lg font-bold shadow-xl shadow-black/10 transition-transform active:scale-95"
