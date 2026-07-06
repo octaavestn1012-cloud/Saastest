@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CreditCard, CheckCircle2, Receipt, Plus, Download, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/context/UserContext";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import { getUserInvoices } from "@/app/actions/invoices";
+import { downloadInvoicePdf } from "@/lib/utils/invoiceGenerator";
 
 export default function BillingPage() {
   const { user, plan: currentPlanRaw, refreshProfile } = useUser();
@@ -13,6 +15,19 @@ export default function BillingPage() {
   const supabase = createClient();
   
   const [updatingPlan, setUpdatingPlan] = useState<string | null>(null);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(true);
+
+  useEffect(() => {
+    async function loadInvoices() {
+      const res = await getUserInvoices();
+      if (res.invoices) {
+        setInvoices(res.invoices);
+      }
+      setLoadingInvoices(false);
+    }
+    loadInvoices();
+  }, []);
 
   // Transforme la première lettre en majuscule pour l'affichage ("gratuit" -> "Gratuit")
   const currentPlan = currentPlanRaw.charAt(0).toUpperCase() + currentPlanRaw.slice(1);
@@ -239,12 +254,43 @@ export default function BillingPage() {
               </div>
             </div>
             
-            <div className="p-6 flex-1 flex flex-col justify-center items-center text-center">
-              <Receipt className="w-12 h-12 text-black/10 mb-4" />
-              <p className="text-sm text-muted-foreground">
-                Vous n'avez pas encore de factures. Elles apparaîtront ici après votre premier paiement réel.
-              </p>
-            </div>
+            {loadingInvoices ? (
+              <div className="p-6 flex justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : invoices.length === 0 ? (
+              <div className="p-6 flex-1 flex flex-col justify-center items-center text-center">
+                <Receipt className="w-12 h-12 text-black/10 mb-4" />
+                <p className="text-sm text-muted-foreground">
+                  Vous n'avez pas encore de factures. Elles apparaîtront ici après votre premier paiement réel.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-black/5">
+                {invoices.map((inv) => (
+                  <div key={inv.id} className="flex items-center justify-between p-4 hover:bg-[#F5F5F7]/50 transition-colors">
+                    <div>
+                      <p className="font-bold text-sm">Abonnement {inv.plan.toUpperCase()}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(inv.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="font-bold text-sm text-green-600">{inv.amount_fcfa} FCFA</span>
+                      <Button 
+                        onClick={() => downloadInvoicePdf(inv, user?.user_metadata?.first_name || user?.email)}
+                        variant="outline" 
+                        size="sm" 
+                        className="rounded-xl flex items-center gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span className="hidden sm:inline">Télécharger</span>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

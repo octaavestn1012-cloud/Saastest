@@ -60,7 +60,7 @@ export async function POST(req: Request) {
       expirationDate.setDate(expirationDate.getDate() + 30);
 
       // Mettre à jour l'utilisateur dans Supabase
-      const { error } = await supabase
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({ 
           plan: purchasedPlan, 
@@ -68,12 +68,30 @@ export async function POST(req: Request) {
         })
         .eq("id", userId);
 
-      if (error) {
-        console.error("Erreur lors de la mise à jour Supabase :", error);
-        return NextResponse.json({ error: "Erreur base de données" }, { status: 500 });
+      if (profileError) {
+        console.error("Erreur lors de la mise à jour Supabase :", profileError);
+        return NextResponse.json({ error: "Erreur base de données (profil)" }, { status: 500 });
       }
 
-      console.log(`Plan PRO activé pour l'utilisateur ${userId}`);
+      // Enregistrer la facture dans la table invoices
+      const amountFcfa = data?.amount || (purchasedPlan === "business" ? 15000 : 5000);
+      
+      const { error: invoiceError } = await supabase
+        .from("invoices")
+        .insert([{
+          user_id: userId,
+          plan: purchasedPlan,
+          amount_fcfa: amountFcfa,
+          status: "paid"
+        }]);
+
+      if (invoiceError) {
+        // On logue l'erreur mais on ne bloque pas le retour de succès à Moneroo
+        // car le plan a bien été mis à jour
+        console.error("Erreur lors de l'enregistrement de la facture :", invoiceError);
+      }
+
+      console.log(`Plan ${purchasedPlan.toUpperCase()} activé pour l'utilisateur ${userId}`);
       return NextResponse.json({ received: true, status: "success" });
     }
 
