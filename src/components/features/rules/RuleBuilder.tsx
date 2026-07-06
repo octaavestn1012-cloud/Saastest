@@ -2,10 +2,11 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, AlertCircle, Play, ChevronDown, Lock, Loader2, User } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, GripVertical, CheckCircle2, AlertCircle, Play, ChevronDown, Lock, Loader2, User, SlidersHorizontal } from "lucide-react";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { Switch } from "@/components/ui/switch";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { useRepartition, PreviewRule } from "@/context/RepartitionContext";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
@@ -34,6 +35,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
   // State contacts (Carnet)
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetRowToUpdate, setTargetRowToUpdate] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -476,6 +478,109 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
         >
           <Plus className="w-5 h-5 mr-2" /> Ajouter un destinataire
         </button>
+      </section>
+
+      {/* SECTION 3.5 : OPTIONS AVANCÉES (RECREATED) */}
+      <section className="bg-[#FFFDF9] border border-[#FDE1A9] rounded-[2rem] overflow-hidden shadow-sm relative">
+        <div className="p-6 sm:p-8">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <div className="flex items-center gap-3">
+                <h4 className="font-extrabold text-[19px] text-amber-700">Options avancées</h4>
+                <Link href="/billing" className="bg-gradient-to-r from-amber-400 to-amber-500 text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md flex items-center gap-1.5 shadow-sm hover:scale-105 transition-transform cursor-pointer pointer-events-auto">
+                  <Lock className="w-3 h-3" />
+                  Passer Pro
+                </Link>
+              </div>
+              <p className="text-amber-700/70 text-[14px] font-medium mt-1">Conditions, priorité, reste et notifications.</p>
+            </div>
+            <button 
+              onClick={() => setAdvancedOpen(!advancedOpen)} 
+              className="w-10 h-10 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-full flex items-center justify-center transition-colors shrink-0"
+            >
+              <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${advancedOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {advancedOpen && (
+              <motion.div 
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="pt-6 mt-6 border-t border-amber-100 relative">
+                  
+                  {/* Container bloqué pour forcer l'upgrade */}
+                  <div className="space-y-8 relative group opacity-60 pointer-events-none">
+                    
+                    {/* 1. Condition de déclenchement */}
+                    <div>
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h5 className="font-bold text-[16px] text-slate-800">1. Condition de déclenchement (SI...)</h5>
+                          <p className="text-slate-500 text-[13px] font-medium mt-0.5">La règle ne s'exécute que si le solde est suffisant.</p>
+                        </div>
+                        <Switch disabled checked={true} className="data-[state=checked]:bg-blue-600" />
+                      </div>
+                      <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 border border-black/5">
+                        <span className="font-bold text-[14px] text-slate-700 shrink-0">Exécuter SEULEMENT SI le solde dépasse</span>
+                        <div className="flex items-center gap-2 bg-[#F5F5F7] px-4 py-2.5 rounded-xl w-full sm:w-auto">
+                          <input type="text" disabled placeholder="Ex: 50000" className="bg-transparent w-24 text-[14px] font-bold outline-none placeholder:text-black/30" />
+                          <span className="text-[13px] font-bold text-black/50">FCFA</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Ordre de priorité */}
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h5 className="font-bold text-[16px] text-slate-800">2. Ordre de priorité</h5>
+                          <span className="bg-black/5 text-black/40 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">Uniquement en montant fixe</span>
+                        </div>
+                        <p className="text-slate-500 text-[13px] font-medium mt-0.5">En cas de solde insuffisant, payer les premiers d'abord.</p>
+                      </div>
+                      <Switch disabled checked={false} />
+                    </div>
+
+                    {/* 3. Envoyer le reste */}
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h5 className="font-bold text-[16px] text-slate-800">3. Envoyer le reste (Le Reliquat)</h5>
+                          <span className="bg-black/5 text-black/40 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">Uniquement en montant fixe</span>
+                        </div>
+                        <p className="text-slate-500 text-[13px] font-medium mt-0.5">Tout l'argent non réparti ira à ce destinataire.</p>
+                      </div>
+                      <Switch disabled checked={false} />
+                    </div>
+
+                    {/* 4. Notifications personnalisées */}
+                    <div>
+                      <div className="mb-3">
+                        <h5 className="font-bold text-[16px] text-slate-800">4. Notifications personnalisées</h5>
+                        <p className="text-slate-500 text-[13px] font-medium mt-0.5">Recevez une alerte quand cette règle s'exécute.</p>
+                      </div>
+                      <div className="bg-white rounded-2xl p-4 flex flex-wrap items-center gap-6 border border-black/5">
+                        <label className="flex items-center gap-2.5 cursor-not-allowed">
+                          <input type="checkbox" disabled className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
+                          <span className="font-bold text-[14px] text-slate-800">Par Email</span>
+                        </label>
+                        <label className="flex items-center gap-2.5 cursor-not-allowed">
+                          <input type="checkbox" disabled className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
+                          <span className="font-bold text-[14px] text-slate-800">Par SMS</span>
+                        </label>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </section>
 
       {/* SECTION 4 : COMMISSION */}
