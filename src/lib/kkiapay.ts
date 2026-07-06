@@ -13,12 +13,25 @@ export async function createAndSendKkiapayPayout(
   const isSandbox = keys.publicKey.includes("sandbox") || keys.secretKey.includes("sandbox");
   const baseUrl = isSandbox ? "https://sandbox.api.kkiapay.me/api/v1" : "https://api.kkiapay.me/api/v1";
 
+  const lowerMethod = method.toLowerCase();
+  
+  // Nettoyage du numéro
+  let cleanPhone = phoneNumber.replace(/[^0-9+]/g, '');
+  if (cleanPhone.startsWith("+")) {
+      cleanPhone = cleanPhone.replace("+", ""); // Kkiapay préfère sans le + (ex: 22990000000)
+  }
+
+  // Mapping des partenaires Kkiapay
+  let partnerId = "MTNB";
+  if (lowerMethod.includes("moov")) partnerId = "MOOV";
+  else if (lowerMethod.includes("celtiis")) partnerId = "CELTIIS";
+
   // Pour Kkiapay Push Up, le format de la requête peut varier.
   const payload = {
     amount: amount,
-    phone: phoneNumber,
+    phone: cleanPhone,
     fullname: recipientName,
-    partner_id: method, // MTNB, MOOV, etc.
+    partner_id: partnerId,
     description: "Répartition via Réparto"
   };
 

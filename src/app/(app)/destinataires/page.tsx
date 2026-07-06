@@ -30,6 +30,7 @@ export default function DestinatairesPage() {
       setRecipients(data.map(d => ({
         id: d.id,
         name: d.libelle,
+        country: d.pays || "Bénin",
         network: d.methode_mobile_money,
         phone: d.numero
       })));
@@ -48,6 +49,7 @@ export default function DestinatairesPage() {
       formData.append("id", recipient.id);
     }
     formData.append("libelle", recipient.name);
+    if (recipient.country) formData.append("pays", recipient.country);
     formData.append("reseau", recipient.network);
     formData.append("numero", recipient.phone);
 

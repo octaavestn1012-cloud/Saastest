@@ -33,6 +33,12 @@ export default function SettingsPage() {
         setFullName(user.user_metadata?.full_name || "");
         setPhone(user.user_metadata?.phone || "");
         setPayoutNumber(user.user_metadata?.payout_number || "");
+        
+        // Charger les préférences de notification
+        const prefs = user.user_metadata?.preferences || {};
+        setNotifSuccess(prefs.notifSuccess ?? true);
+        setNotifError(prefs.notifError ?? true);
+        setNotifTrigger(prefs.notifTrigger ?? false);
       }
       setLoading(false);
     }
@@ -48,7 +54,12 @@ export default function SettingsPage() {
       data: { 
         full_name: fullName,
         phone: phone,
-        payout_number: payoutNumber
+        payout_number: payoutNumber,
+        preferences: {
+          notifSuccess,
+          notifError,
+          notifTrigger
+        }
       }
     });
 
@@ -70,7 +81,15 @@ export default function SettingsPage() {
 
   const handleResetPassword = async () => {
     if (!userEmail) return;
-    alert("Un lien de réinitialisation vous sera envoyé par email.");
+    const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
+    
+    if (error) {
+      alert("Erreur lors de l'envoi de l'email : " + error.message);
+    } else {
+      alert("Un véritable lien de réinitialisation vous a été envoyé par email !");
+    }
   };
 
   if (loading) {
@@ -179,8 +198,8 @@ export default function SettingsPage() {
                 Ce numéro sera utilisé si vous créez une règle de répartition vers "Moi-même".
               </p>
             </div>
-            <Button onClick={handleUpdateProfile} disabled={saving} className="bg-black hover:bg-black/80 text-white rounded-xl h-11 px-6 font-bold">
-              Sauvegarder le numéro
+            <Button onClick={handleUpdateProfile} disabled={saving} className="bg-black hover:bg-black/80 text-white rounded-xl h-11 px-6 font-bold mt-4">
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Sauvegarder le numéro"}
             </Button>
           </div>
         </div>
@@ -298,6 +317,11 @@ export default function SettingsPage() {
                   </div>
                 </label>
               </div>
+            </div>
+            <div className="flex justify-end pt-4">
+              <Button onClick={handleUpdateProfile} disabled={saving} className="bg-black hover:bg-black/80 text-white rounded-xl h-11 px-8 font-bold">
+                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Enregistrer les préférences"}
+              </Button>
             </div>
           </div>
         </div>

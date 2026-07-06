@@ -38,12 +38,42 @@ export async function createAndSendPayout(secretKey: string, amount: number, mod
   const isSandbox = secretKey.includes("sandbox");
   const baseUrl = isSandbox ? "https://sandbox-api.fedapay.com/v1" : "https://api.fedapay.com/v1";
 
-  // Mapping des modes réseau (Moov, MTN, Celtiis, Wave)
-  let fedapayMode = "mtn_open";
   const lowerMode = mode.toLowerCase();
+
+  // Nettoyage robuste du numéro et détermination du pays
+  let cleanPhone = phone.replace(/[^0-9+]/g, '');
+  let countryCode = "BJ";
+  
+  if (cleanPhone.startsWith("+229")) {
+    cleanPhone = cleanPhone.replace("+229", "");
+    countryCode = "BJ";
+  } else if (cleanPhone.startsWith("+225")) {
+    cleanPhone = cleanPhone.replace("+225", "");
+    countryCode = "CI";
+  } else if (cleanPhone.startsWith("+221")) {
+    cleanPhone = cleanPhone.replace("+221", "");
+    countryCode = "SN";
+  } else if (cleanPhone.startsWith("+228")) {
+    cleanPhone = cleanPhone.replace("+228", "");
+    countryCode = "TG";
+  } else if (cleanPhone.startsWith("+237")) {
+    cleanPhone = cleanPhone.replace("+237", "");
+    countryCode = "CM";
+  } else if (cleanPhone.startsWith("+223")) {
+    cleanPhone = cleanPhone.replace("+223", "");
+    countryCode = "ML";
+  } else {
+    if (lowerMode.includes("wave") || lowerMode.includes("orange ci")) countryCode = "CI";
+  }
+
+  // Mapping des modes réseau pour FedaPay
+  let fedapayMode = "mtn_open";
   if (lowerMode.includes("moov")) fedapayMode = "moov";
   else if (lowerMode.includes("celtiis")) fedapayMode = "celtiis";
   else if (lowerMode.includes("wave")) fedapayMode = "wave_ci";
+  else if (lowerMode.includes("orange")) fedapayMode = "orange";
+  else if (lowerMode.includes("free")) fedapayMode = "free";
+  else if (lowerMode.includes("tmoney")) fedapayMode = "tmoney";
 
   try {
     const payload = {
@@ -55,8 +85,8 @@ export async function createAndSendPayout(secretKey: string, amount: number, mod
         lastname: "Reparto",
         email: "reparto@saas.com",
         phone_number: {
-          number: phone,
-          country: lowerMode.includes("wave") ? "CI" : "BJ"
+          number: cleanPhone,
+          country: countryCode
         }
       },
       send_now: true

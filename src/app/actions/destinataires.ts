@@ -41,6 +41,7 @@ export async function saveDestinataire(formData: FormData) {
     const libelle = formData.get("libelle") as string;
     const reseau = formData.get("reseau") as string;
     const numero = formData.get("numero") as string;
+    const pays = formData.get("pays") as string;
 
     if (!libelle || !reseau || !numero) {
       return { error: "Veuillez remplir tous les champs obligatoires." };
@@ -49,6 +50,7 @@ export async function saveDestinataire(formData: FormData) {
     const payload = {
       user_id: user.id,
       libelle,
+      pays: pays || 'Bénin',
       methode_mobile_money: reseau,
       numero
     };
