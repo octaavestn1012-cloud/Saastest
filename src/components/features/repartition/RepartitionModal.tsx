@@ -590,7 +590,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                             <select 
                               value={saveRuleTriggerDayOfWeek}
                               onChange={(e) => setSaveRuleTriggerDayOfWeek(e.target.value)}
-                              className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
+                              className="w-full min-w-0 bg-black/5 rounded-xl px-2 sm:px-4 py-3 outline-none focus:ring-1 focus:ring-primary text-[13px] sm:text-sm font-medium"
                             >
                               <option value="1">Lundi</option>
                               <option value="2">Mardi</option>
@@ -609,12 +609,12 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                             <select 
                               value={saveRuleTriggerDayOfMonth}
                               onChange={(e) => setSaveRuleTriggerDayOfMonth(e.target.value)}
-                              className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary text-sm font-medium"
+                              className="w-full min-w-0 bg-black/5 rounded-xl px-2 sm:px-4 py-3 outline-none focus:ring-1 focus:ring-primary text-[13px] sm:text-sm font-medium"
                             >
                               {Array.from({length: 31}, (_, i) => i + 1).map(day => (
                                 <option key={day} value={day}>Le {day}</option>
                               ))}
-                              <option value="last">Le dernier jour du mois</option>
+                              <option value="last">Dernier jour</option>
                             </select>
                           </div>
                         )}
@@ -625,7 +625,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                             type="time" 
                             value={saveRuleTriggerTime}
                             onChange={(e) => setSaveRuleTriggerTime(e.target.value)}
-                            className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary font-mono text-sm"
+                            className="w-full min-w-0 bg-black/5 rounded-xl px-2 sm:px-4 py-3 outline-none focus:ring-1 focus:ring-primary font-mono text-[13px] sm:text-sm"
                           />
                         </div>
                       </motion.div>
