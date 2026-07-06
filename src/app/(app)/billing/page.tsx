@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CreditCard, CheckCircle2, Receipt, Plus, Download, AlertCircle, Loader2 } from "lucide-react";
+import { CreditCard, CheckCircle2, Receipt, Plus, Download, AlertCircle, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/context/UserContext";
 import { createClient } from "@/utils/supabase/client";
@@ -98,7 +98,9 @@ export default function BillingPage() {
               </span>
             </div>
             <p className="text-muted-foreground mb-4">
-              Idéal pour démarrer. Aucuns frais fixes mensuels.
+              {currentPlanRaw === 'gratuit' ? "Idéal pour démarrer. Aucuns frais fixes mensuels." :
+               currentPlanRaw === 'pro' ? "Votre plan professionnel pour maximiser vos gains et automatiser." :
+               "Le plan ultime pour les gros volumes et une gestion avancée."}
             </p>
             <div className="flex items-center gap-2 text-sm font-medium bg-[#F5F5F7] px-4 py-2 rounded-xl inline-flex text-black">
               <CheckCircle2 className="w-4 h-4 text-primary" />
@@ -133,16 +135,40 @@ export default function BillingPage() {
               </div>
               <ul className="space-y-3 mb-8 flex-1">
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
-                  1,9% de commission
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  1,9% de commission par répartition
                 </li>
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
-                  Jusqu'à 50 répartitions/mois
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  20 répartitions / mois maximum
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Plafond 500 000 FCFA / mois
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  1 seule règle active
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Répartition manuelle
+                </li>
+                <li className="flex items-center gap-2 text-sm text-muted-foreground line-through">
+                  <X className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+                  Règles automatiques
+                </li>
+                <li className="flex items-center gap-2 text-sm text-muted-foreground line-through">
+                  <X className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+                  Conditions avancées (SI...)
+                </li>
+                <li className="flex items-center gap-2 text-sm text-muted-foreground line-through">
+                  <X className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+                  Rapports avancés
                 </li>
               </ul>
               {currentPlan === 'Gratuit' ? (
-               <Button disabled className="w-full bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
+               <Button disabled className="w-full h-12 text-[15px] bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
                  Plan Actuel
                </Button>
              ) : (
@@ -150,7 +176,7 @@ export default function BillingPage() {
                  onClick={() => handlePlanChange('gratuit')} 
                  disabled={updatingPlan !== null}
                  variant="outline" 
-                 className="w-full rounded-xl font-bold"
+                 className="w-full h-12 text-[15px] rounded-xl font-bold"
                >
                  {updatingPlan === 'gratuit' ? <Loader2 className="w-5 h-5 animate-spin" /> : "Rétrograder"}
                </Button>
@@ -172,27 +198,51 @@ export default function BillingPage() {
               </div>
               <ul className="space-y-3 mb-8 flex-1">
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
-                  0,8% de commission
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  0,8% de commission (au lieu de 1,9%)
                 </li>
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
-                  Règles illimitées
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Répartitions ILLIMITÉES
                 </li>
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Aucun plafond de volume
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Règles ILLIMITÉES
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Règles auto (quotidien, hebdo, etc.)
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-bold bg-primary/10 px-2 py-1 -mx-2 rounded-md">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                   Conditions avancées (SI...)
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Ordre de priorité + ligne "reste"
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Notifications personnalisées
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Destinataires illimités
                 </li>
               </ul>
               {currentPlan === 'Pro' ? (
-                <Button disabled className="w-full bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
+                <Button disabled className="w-full h-12 text-[15px] bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
                   Plan Actuel
                 </Button>
               ) : (
                 <Button 
                   onClick={() => handlePlanChange('pro')} 
                   disabled={updatingPlan !== null}
-                  className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl font-bold shadow-sm"
+                  className="w-full h-12 text-[15px] bg-primary hover:bg-primary/90 text-white rounded-xl font-bold shadow-sm"
                 >
                   {updatingPlan === 'pro' ? <Loader2 className="w-5 h-5 animate-spin" /> : "Passer à ce plan"}
                 </Button>
@@ -210,28 +260,36 @@ export default function BillingPage() {
                 <span className="text-muted-foreground text-sm">/mois</span>
               </div>
               <ul className="space-y-3 mb-8 flex-1">
-                <li className="flex items-center gap-2 text-sm text-black font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
-                  0,4% de commission
+                <li className="flex items-center gap-2 text-sm text-black font-bold">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Tout ce qui est dans Pro, PLUS :
                 </li>
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
-                  Rapports avancés
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  0,4% de commission (la plus basse)
                 </li>
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Rapports avancés et exports
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                   Support prioritaire
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Multi-utilisateurs (Bientôt)
                 </li>
               </ul>
               {currentPlan === 'Business' ? (
-                <Button disabled className="w-full bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
+                <Button disabled className="w-full h-12 text-[15px] bg-[#F5F5F7] text-black hover:bg-[#F5F5F7] rounded-xl font-bold border border-black/5 cursor-default">
                   Plan Actuel
                 </Button>
               ) : (
                 <Button 
                   onClick={() => handlePlanChange('business')} 
                   disabled={updatingPlan !== null}
-                  className="w-full bg-black hover:bg-black/80 text-white rounded-xl font-bold shadow-sm"
+                  className="w-full h-12 text-[15px] bg-black hover:bg-black/80 text-white rounded-xl font-bold shadow-sm"
                 >
                   {updatingPlan === 'business' ? <Loader2 className="w-5 h-5 animate-spin" /> : "Passer à ce plan"}
                 </Button>
