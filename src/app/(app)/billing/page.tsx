@@ -226,34 +226,7 @@ export default function BillingPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
-          {/* Section 3 : Moyen de paiement */}
-          <div className="bg-white rounded-3xl border border-black/5 overflow-hidden shadow-sm flex flex-col">
-            <div className="px-6 py-5 border-b border-black/5 flex items-center gap-3 bg-[#F5F5F7]/50">
-              <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
-                <CreditCard className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-black">Moyen de paiement</h2>
-                <p className="text-sm text-muted-foreground">Pour le règlement de l'abonnement.</p>
-              </div>
-            </div>
-            
-            <div className="p-6 flex-1 flex flex-col justify-center items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-[#F5F5F7] flex items-center justify-center mb-4">
-                <AlertCircle className="w-8 h-8 text-muted-foreground/50" />
-              </div>
-              <h3 className="text-black font-bold mb-2">Aucun moyen de paiement</h3>
-              <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-                Ajoutez un moyen de paiement (Mobile Money ou carte) pour pouvoir souscrire à un plan supérieur de manière automatique (Paiement réel à venir).
-              </p>
-              <Button className="bg-black hover:bg-black/80 text-white rounded-xl font-bold px-6">
-                <Plus className="w-4 h-4 mr-2" />
-                Ajouter un moyen de paiement
-              </Button>
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 gap-8 pt-4">
           {/* Section 4 : Historique de facturation */}
           <div className="bg-white rounded-3xl border border-black/5 overflow-hidden shadow-sm flex flex-col">
             <div className="px-6 py-5 border-b border-black/5 flex items-center gap-3 bg-[#F5F5F7]/50">
