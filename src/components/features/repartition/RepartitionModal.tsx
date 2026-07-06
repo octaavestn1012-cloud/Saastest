@@ -625,7 +625,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                             type="time" 
                             value={saveRuleTriggerTime}
                             onChange={(e) => setSaveRuleTriggerTime(e.target.value)}
-                            className="w-full bg-black/5 rounded-xl px-2 py-3 outline-none focus:ring-1 focus:ring-primary font-mono text-sm"
+                            className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary font-mono text-sm"
                           />
                         </div>
                       </motion.div>

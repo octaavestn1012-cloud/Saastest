@@ -277,7 +277,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                     type="time" 
                     value={triggerTime}
                     onChange={(e) => setTriggerTime(e.target.value)}
-                    className="w-full bg-black/5 rounded-xl px-2 py-3 outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full bg-black/5 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
               </motion.div>
