@@ -28,6 +28,7 @@ export async function initializeMonerooPayment(planName: 'pro' | 'business') {
     const payload = {
       amount: AMOUNT,
       currency: "XOF",
+      description: `Abonnement ${planName.toUpperCase()} - Réparto`,
       customer: {
         email: user.email || "client@reparto.com",
         first_name: user.user_metadata?.first_name || "Client",
@@ -54,7 +55,8 @@ export async function initializeMonerooPayment(planName: 'pro' | 'business') {
 
     if (!response.ok || !data?.data?.checkout_url) {
       console.error("Moneroo Error:", data);
-      return { error: "Erreur lors de la création du paiement Moneroo", details: data };
+      const errorMessage = data?.message || data?.error || JSON.stringify(data) || "Erreur inconnue";
+      return { error: `Erreur Moneroo: ${errorMessage}`, details: data };
     }
 
     return { checkout_url: data.data.checkout_url };
