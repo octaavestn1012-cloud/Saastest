@@ -108,9 +108,12 @@ export default function BillingPage() {
             </div>
           </div>
           <div className="shrink-0">
-            {/* Scroll vers la section des plans */}
+            {/* Scroll vers le plan supérieur */}
             <Button 
-              onClick={() => document.getElementById("pricing-plans")?.scrollIntoView({ behavior: "smooth" })}
+              onClick={() => {
+                const target = currentPlanRaw === 'gratuit' ? 'plan-pro' : currentPlanRaw === 'pro' ? 'plan-business' : 'pricing-plans';
+                document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }}
               className="w-full md:w-auto bg-black hover:bg-black/80 text-white rounded-xl h-12 px-8 font-bold text-[15px]"
             >
               Changer de plan
@@ -124,7 +127,7 @@ export default function BillingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Gratuit */}
-            <div className={`bg-white border ${currentPlan === 'Gratuit' ? 'border-black/20 ring-2 ring-black/5' : 'border-black/10'} rounded-3xl p-6 shadow-sm flex flex-col`}>
+            <div id="plan-gratuit" className={`bg-white border ${currentPlan === 'Gratuit' ? 'border-black/20 ring-2 ring-black/5' : 'border-black/10'} rounded-3xl p-6 shadow-sm flex flex-col`}>
               <div className="mb-4">
                 <h3 className="text-lg font-bold text-black mb-1">Gratuit</h3>
                 <p className="text-sm text-muted-foreground h-10">Démarrer et tester.</p>
@@ -184,7 +187,7 @@ export default function BillingPage() {
             </div>
 
             {/* Pro */}
-            <div className={`bg-white border-2 border-primary rounded-3xl p-6 shadow-md relative flex flex-col ${currentPlan === 'Pro' ? 'ring-2 ring-primary/20' : ''}`}>
+            <div id="plan-pro" className={`bg-white border-2 border-primary rounded-3xl p-6 shadow-md relative flex flex-col ${currentPlan === 'Pro' ? 'ring-2 ring-primary/20' : ''}`}>
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
                 Populaire
               </div>
@@ -250,7 +253,7 @@ export default function BillingPage() {
             </div>
 
             {/* Business */}
-            <div className={`bg-white border ${currentPlan === 'Business' ? 'border-black/20 ring-2 ring-black/5' : 'border-black/10'} rounded-3xl p-6 shadow-sm flex flex-col`}>
+            <div id="plan-business" className={`bg-white border ${currentPlan === 'Business' ? 'border-black/20 ring-2 ring-black/5' : 'border-black/10'} rounded-3xl p-6 shadow-sm flex flex-col`}>
               <div className="mb-4">
                 <h3 className="text-lg font-bold text-black mb-1">Business</h3>
                 <p className="text-sm text-muted-foreground h-10">Pour les gros volumes.</p>
