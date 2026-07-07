@@ -62,7 +62,7 @@ export function PublicHeader() {
               Se connecter
             </Link>
             <Link href="/signup">
-              <Button className="bg-black hover:bg-black/80 text-white rounded-full px-6 font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
+              <Button className="bg-black hover:bg-black/80 text-white rounded-full h-11 px-8 text-[15px] font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
                 Commencer gratuitement
               </Button>
             </Link>
