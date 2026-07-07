@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Loader2, MailCheck, Eye, EyeOff } from "lucide-react";
+import { sendWelcomeEmail } from "@/lib/email";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,9 +55,13 @@ export default function SignupPage() {
       setError(error.message);
       setIsLoading(false);
     } else if (data?.user && !data.session) {
+      // Envoi de l'email de bienvenue
+      await sendWelcomeEmail(email);
       setSuccess(true);
       setIsLoading(false);
     } else {
+      // Auto login successful
+      await sendWelcomeEmail(email);
       router.push("/dashboard");
       router.refresh();
     }

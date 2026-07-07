@@ -52,7 +52,7 @@ export function TransactionDetailModal({
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-  useScrollLock();
+  useScrollLock(!!selectedTx);
 
   const formatDate = (isoString: string) => {
     return formatDateToBenin(isoString);
@@ -162,7 +162,7 @@ export function TransactionDetailModal({
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: "100%", opacity: 0, scale: 0.95 }}
               transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-              className="relative w-full md:w-[600px] h-[90vh] md:h-[85vh] bg-[#FDFDFD] md:rounded-[2.5rem] rounded-t-[2.5rem] shadow-2xl flex flex-col overflow-hidden"
+              className="relative w-full md:w-[600px] max-h-[90vh] md:max-h-[85vh] h-auto bg-[#FDFDFD] md:rounded-[2.5rem] rounded-t-[2rem] shadow-2xl flex flex-col overflow-hidden mt-auto md:mt-0"
             >
             {/* Header */}
             <div className="p-6 pb-4 border-b border-black/5 bg-white flex justify-between items-center shrink-0">

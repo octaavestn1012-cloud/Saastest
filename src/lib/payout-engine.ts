@@ -164,6 +164,8 @@ export async function processQuickPayouts(userId: string, availableAmount: numbe
   return { success: true, finalStatus, results, executionId: execution.id };
 }
 
+import { sendPayoutReceiptEmail } from "./email";
+
 export async function processPayoutsForUser(userId: string, availableAmount: number, triggerOrRuleId: string = "a_chaque_entree", isRuleId: boolean = false) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -175,12 +177,15 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
   // On utilise la clé "Service Role" pour contourner le RLS (puisqu'on n'est pas connecté via le navigateur)
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-  // 1. Récupérer le plan de l'utilisateur pour la commission
+  // 1. Récupérer le profil et l'email
   const { data: profile } = await supabaseAdmin
     .from("profiles")
     .select("plan")
     .eq("id", userId)
     .single();
+    
+  const { data: userAuth } = await supabaseAdmin.auth.admin.getUserById(userId);
+  const userEmail = userAuth?.user?.email;
 
   const plan = profile?.plan || "gratuit";
   const commissionRate = plan === "pro" ? 0.008 : plan === "business" ? 0.004 : 0.019;
@@ -375,6 +380,29 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
   const finalStatus = !hasSuccess ? "echoue" : hasFailed ? "partiel" : results.every(r => r.status === "reussi") ? "reussi" : "en_cours";
 
   await supabaseAdmin.from("executions").update({ statut: finalStatus }).eq("id", execution.id);
+
+  // Envoi de l'email de reçu si l'utilisateur a un email
+  if (userEmail) {
+    // Format details for the email template
+    const emailDetails = results.map(r => ({
+      name: r.dest,
+      network: "Mobile Money", // simplified for email
+      amount: r.amount,
+      status: r.status === "reussi" ? "SUCCESS" : r.status === "echoue" ? "FAILED" : "PENDING",
+      errorReason: r.error
+    }));
+
+    const txData = {
+      ruleName: rule.nom,
+      totalAvailable: availableAmount,
+      commissionAmount: commissionAmount,
+      totalAmount: availableAfterCommission,
+      status: finalStatus === "reussi" ? "SUCCESS" : finalStatus === "partiel" ? "PARTIAL" : finalStatus === "echoue" ? "FAILED" : "PENDING",
+      details: emailDetails
+    };
+
+    await sendPayoutReceiptEmail(userEmail, txData);
+  }
 
   return { success: true, finalStatus, results, executionId: execution.id };
 }
