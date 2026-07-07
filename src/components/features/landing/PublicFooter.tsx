@@ -34,10 +34,10 @@ export function PublicFooter() {
           <div>
             <h4 className="font-bold text-white mb-6 tracking-wide uppercase text-sm">Légal</h4>
             <ul className="space-y-4">
-              <li><Link href="#" className="text-white/50 hover:text-white font-medium transition-colors">Mentions légales</Link></li>
-              <li><Link href="#" className="text-white/50 hover:text-white font-medium transition-colors">Confidentialité</Link></li>
-              <li><Link href="#" className="text-white/50 hover:text-white font-medium transition-colors">CGV / CGU</Link></li>
-              <li><Link href="#" className="text-white/50 hover:text-white font-medium transition-colors">Contact</Link></li>
+              <li><Link href="/mentions-legales" className="text-white/50 hover:text-white font-medium transition-colors">Mentions légales</Link></li>
+              <li><Link href="/confidentialite" className="text-white/50 hover:text-white font-medium transition-colors">Confidentialité</Link></li>
+              <li><Link href="/cgu" className="text-white/50 hover:text-white font-medium transition-colors">CGV / CGU</Link></li>
+              <li><Link href="/support" className="text-white/50 hover:text-white font-medium transition-colors">Contact</Link></li>
             </ul>
           </div>
         </div>

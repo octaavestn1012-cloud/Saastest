@@ -8,12 +8,14 @@ type UserProfile = {
   id: string;
   nom: string | null;
   plan: PlanId;
+  role: 'user' | 'admin';
 };
 
 type UserContextType = {
   user: any | null; // Supabase auth user
   profile: UserProfile | null;
   plan: PlanId;
+  role: 'user' | 'admin';
   isLoading: boolean;
   refreshProfile: () => Promise<void>;
 };
@@ -25,6 +27,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [plan, setPlan] = useState<PlanId>('gratuit');
+  const [role, setRole] = useState<'user' | 'admin'>('user');
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
@@ -37,10 +40,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (data && !error) {
       setProfile(data as UserProfile);
       setPlan(data.plan as PlanId);
+      setRole(data.role as 'user' | 'admin' || 'user');
     } else {
       // Si le profil n'existe pas encore (ex: léger délai après l'inscription)
       // on garde le plan par défaut
       setPlan('gratuit');
+      setRole('user');
     }
   };
 
@@ -72,6 +77,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           setUser(null);
           setProfile(null);
           setPlan('gratuit');
+          setRole('user');
         }
         setIsLoading(false);
       }
@@ -83,7 +89,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, [supabase]);
 
   return (
-    <UserContext.Provider value={{ user, profile, plan, isLoading, refreshProfile }}>
+    <UserContext.Provider value={{ user, profile, plan, role, isLoading, refreshProfile }}>
       {children}
     </UserContext.Provider>
   );

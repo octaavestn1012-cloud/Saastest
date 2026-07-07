@@ -13,18 +13,13 @@ export async function sendWelcomeEmail(toEmail: string) {
       subject: "Bienvenue sur Réparto ! 🎉",
       html: `
         <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #111;">
-          <h1 style="color: #000;">Bienvenue sur Réparto !</h1>
+          <h1 style="color: #000;">Bienvenue sur Réparto ! 🎉</h1>
           <p>Bonjour,</p>
-          <p>Nous sommes ravis de vous compter parmi nous. Avec Réparto, vous allez pouvoir automatiser la répartition de vos revenus en toute simplicité.</p>
-          <p>Pour commencer :</p>
-          <ul>
-            <li>Connectez votre passerelle (FedaPay, Kkiapay, etc.)</li>
-            <li>Ajoutez vos destinataires</li>
-            <li>Créez votre première règle de répartition</li>
-          </ul>
-          <p>Si vous avez la moindre question, n'hésitez pas à nous contacter.</p>
+          <p>Nous sommes ravis de vous compter parmi nous ! Votre compte a été créé avec succès et est désormais prêt à être utilisé.</p>
+          <p>Avec Réparto, vous allez pouvoir automatiser et simplifier la répartition de vos revenus vers vos partenaires ou vos équipes en toute sérénité.</p>
+          <p>Rendez-vous sur votre tableau de bord pour découvrir toutes les fonctionnalités.</p>
           <br/>
-          <p>L'équipe Réparto</p>
+          <p>À très vite,<br/><strong>L'équipe Réparto</strong></p>
         </div>
       `,
     });

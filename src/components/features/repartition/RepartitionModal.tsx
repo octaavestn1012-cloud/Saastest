@@ -200,6 +200,13 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const totalDistributedTargets = currentTargets.reduce((acc: number, t: any) => acc + (isPercentageMode ? (toDistribute * (Number(t.percent) || 0)) / 100 : Number(t.amount) || 0), 0);
   const totalDistributed = totalDistributedTargets + ((activeData as any)?.commission || 0);
   
+  const computedGross = isPercentageMode 
+    ? totalAvailable 
+    : Math.ceil(totalDistributedTargets / (1 - COMMISSION_RATE));
+  const computedCommission = isPercentageMode 
+    ? totalAvailable * COMMISSION_RATE 
+    : computedGross - totalDistributedTargets;
+
   const totalPercent = isPercentageMode ? currentTargets.reduce((acc: number, t: any) => acc + (Number(t.percent) || 0), 0) : 0;
   const isExact = isPercentageMode ? totalPercent === 100 : totalDistributedTargets <= toDistribute;
 
@@ -228,10 +235,10 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
       let res;
       if (modalMode === "quick" || (modalMode === "rule" && isAdjusting)) {
         // Mode rapide ou règle ajustée à la volée : on envoie les targets calculés manuellement
-        res = await executeQuickRepartitionAction(totalAvailable, currentTargets, isPercentageMode ? "percentage" : "fixed");
+        res = await executeQuickRepartitionAction(computedGross, currentTargets, isPercentageMode ? "percentage" : "fixed");
       } else {
         // Mode règle stricte : on utilise le Rule ID de la BDD pour qu'il le re-calcule de façon sécurisée
-        res = await executeRepartitionAction(totalAvailable, activeRuleSource?.id);
+        res = await executeRepartitionAction(computedGross, activeRuleSource?.id);
       }
       let finalExecutionId = res.executionId;
       if (finalExecutionId) {
@@ -462,56 +469,11 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
 
             {step !== "RESULT_RULE_ONLY" && !(isRuleOnly && step === "EXECUTING") && (
               <div className="flex flex-col items-center justify-center pt-5 pb-5 bg-white rounded-[2rem] shadow-sm border border-black/[0.03]">
-                <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Solde disponible" : activeData.name}</span>
+                <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Total prélevé" : activeData.name}</span>
                 <div className="text-4xl sm:text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-black to-black/70 mb-2">
                   <Amount value={activeData.totalAvailable} />
                 </div>
-              
-              <button 
-                onClick={() => setShowCommissionDetails(!showCommissionDetails)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/[0.02] hover:bg-black/[0.04] transition-colors text-muted-foreground text-[14px] font-medium"
-              >
-                <span>À répartir : <strong className="text-black"><Amount value={(activeData as any).toDistribute || 0} /></strong></span>
-                <span className="mx-1 opacity-50">·</span>
-                <span>frais {COMMISSION_TEXT}</span>
-                <Info className="w-3.5 h-3.5 ml-0.5 text-black/40" />
-              </button>
-
-              <AnimatePresence>
-                {showCommissionDetails && (
-                  <motion.div 
-                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                    animate={{ height: "auto", opacity: 1, marginTop: 16 }}
-                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                    className="w-full px-5 overflow-hidden"
-                  >
-                    <div className="bg-[#FFF8E7]/50 border border-[#FDE1A9]/30 rounded-2xl p-4 space-y-3">
-                      <div className="flex justify-between items-center text-muted-foreground">
-                        <span className="font-semibold text-[13px]">Solde disponible</span>
-                        <span className="font-bold tabular-nums text-[14px]">
-                          <Amount value={activeData.totalAvailable} />
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-[#B9811C]">
-                        <span className="font-semibold text-[14px]">Frais Réparto ({COMMISSION_TEXT})</span>
-                        <span className="font-bold tabular-nums text-[15px]">
-                          − <Amount value={(activeData as any).commission || 0} />
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center pt-3 border-t border-[#FDE1A9]/30">
-                        <span className="font-black text-[15px] text-black">À répartir</span>
-                        <span className="font-black tabular-nums text-[16px] text-black">
-                          <Amount value={(activeData as any).toDistribute || 0} />
-                        </span>
-                      </div>
-                      <p className="text-left text-[12px] font-medium text-muted-foreground pt-1 leading-relaxed">
-                        Réparto prélève {COMMISSION_TEXT}. Tu répartis les {RESTANT_TEXT} restants comme tu veux.
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+              </div>
             )}
 
             {/* Rule Selector (Mode Rule) */}
@@ -682,31 +644,26 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                         </div>
 
                         {!target.isManual ? (
-                          <div className="flex items-center justify-between gap-4">
-                            {/* Custom Dropdown UI */}
-                            <div className="relative flex-1 custom-dropdown-container">
-                              <button 
-                                onClick={() => setOpenDropdownId(openDropdownId === target.id ? null : target.id)}
-                                className="w-full flex items-center gap-3 p-2 -ml-2 rounded-2xl hover:bg-black/5 transition-colors text-left"
-                              >
-                                <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                                  <User className="w-5 h-5 text-blue-600" />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold text-[16px] text-black">
-                                      {target.name || <span className="inline-block text-left leading-tight">Choisir un<br/>contact</span>}
-                                    </span>
-                                    <ChevronDown className={`w-4 h-4 text-black transition-transform ${openDropdownId === target.id ? 'rotate-180' : ''}`} />
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between gap-4">
+                              {/* Custom Dropdown UI */}
+                              <div className="relative flex-1 custom-dropdown-container min-w-0">
+                                <button 
+                                  onClick={() => setOpenDropdownId(openDropdownId === target.id ? null : target.id)}
+                                  className="w-full flex items-center gap-3 p-2 -ml-2 rounded-2xl hover:bg-black/5 transition-colors text-left"
+                                >
+                                  <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                                    <User className="w-5 h-5 text-blue-600" />
                                   </div>
-                                  {target.destinataireId && (
-                                    <div className="text-[13px] font-bold text-black/60 mt-0.5 flex items-center gap-2">
-                                      <span className="uppercase">{target.network}</span>
-                                      <span className="font-mono tracking-wide text-black">{target.phone}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-[16px] text-black truncate">
+                                        {target.name || <span className="inline-block text-left leading-tight">Choisir un<br/>contact</span>}
+                                      </span>
+                                      <ChevronDown className={`w-4 h-4 shrink-0 text-black transition-transform ${openDropdownId === target.id ? 'rotate-180' : ''}`} />
                                     </div>
-                                  )}
-                                </div>
-                              </button>
+                                  </div>
+                                </button>
 
                               <AnimatePresence>
                                 {openDropdownId === target.id && (
@@ -768,6 +725,13 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                               <span className="text-black font-black text-[15px]">{isPercentageMode ? "%" : "F"}</span>
                             </div>
                           </div>
+                          {target.destinataireId && (
+                            <div className="mt-1 pt-3 border-t border-black/5 flex justify-between items-center text-[12px] font-bold text-black/50">
+                              <span className="uppercase tracking-wider">{target.network}</span>
+                              <span className="font-mono tracking-wider text-black/70">{target.phone}</span>
+                            </div>
+                          )}
+                        </div>
                         ) : (
                           <div className="space-y-3">
                             <div className="flex flex-row items-stretch sm:items-center gap-3">
@@ -779,8 +743,9 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                                 <span className="text-black font-black text-[15px] ml-1">{isPercentageMode ? "%" : "F"}</span>
                               </div>
                             </div>
-                            <div className="flex flex-col sm:flex-row gap-3">
-                              <div className="flex-1 bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
+                            <div className="flex flex-col gap-3">
+                              {/* Pays: Horizontal sur desktop (w-full) */}
+                              <div className="w-full bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
                                 <select 
                                   value={target.country || "Bénin"} 
                                   onChange={(e) => {
@@ -789,7 +754,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                                     const nets = COUNTRIES_NETWORKS[newCountry];
                                     if (nets && nets.length > 0) updateQuickTarget(target.id, "network", nets[0]);
                                   }} 
-                                  className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]"
+                                  className="w-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]"
                                 >
                                   {Object.keys(COUNTRIES_NETWORKS).map((c) => (
                                     <option key={c} value={c}>{c}</option>
@@ -797,32 +762,37 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                                 </select>
                                 <ChevronDown className="w-4 h-4 text-black absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                               </div>
-                              <div className="flex-1 bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
-                                <select value={target.network} onChange={(e) => updateQuickTarget(target.id, "network", e.target.value)} className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]">
-                                  {(COUNTRIES_NETWORKS[target.country || "Bénin"] || COUNTRIES_NETWORKS["Bénin"]).map((net) => (
-                                    <option key={net} value={net}>{net}</option>
-                                  ))}
-                                </select>
-                                <ChevronDown className="w-4 h-4 text-black absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                              </div>
-                              <div className={`flex-1 bg-[#F5F5F7] rounded-xl border-2 flex items-center transition-all ${
-                                target.phone && target.phone.replace(/[^0-9]/g, '').length > 0 && 
-                                target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8)
-                                ? 'border-red-500/50 focus-within:border-red-500' 
-                                : 'border-transparent focus-within:border-black/10'
-                              }`}>
-                                <div className="pl-4 pr-2 py-3 text-[15px] font-mono font-bold text-black/50 select-none flex items-center h-full">
-                                  {COUNTRY_CODES[target.country || "Bénin"] || "+229"}
+
+                              {/* Réseau et Numéro sur la même ligne uniquement sur desktop */}
+                              <div className="flex flex-col sm:flex-row gap-3">
+                                <div className="flex-1 bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
+                                  <select value={target.network} onChange={(e) => updateQuickTarget(target.id, "network", e.target.value)} className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]">
+                                    {(COUNTRIES_NETWORKS[target.country || "Bénin"] || COUNTRIES_NETWORKS["Bénin"]).map((net) => (
+                                      <option key={net} value={net}>{net}</option>
+                                    ))}
+                                  </select>
+                                  <ChevronDown className="w-4 h-4 text-black absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                                 </div>
-                                <input type="tel" value={target.phone} onChange={(e) => updateQuickTarget(target.id, "phone", e.target.value)} placeholder={Array(COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8).fill("0").join("").replace(/(.{2})/g, "$1 ").trim()} className="w-full h-full bg-transparent pr-4 py-3 outline-none font-mono font-bold tracking-wide text-black placeholder:text-black/40 text-[15px]" />
+                                <div className={`flex-[2] bg-[#F5F5F7] rounded-xl border-2 flex items-center transition-all ${
+                                  target.phone && target.phone.replace(/[^0-9]/g, '').length > 0 && 
+                                  target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8)
+                                  ? 'border-red-500/50 focus-within:border-red-500' 
+                                  : 'border-transparent focus-within:border-black/10'
+                                }`}>
+                                  <div className="pl-4 pr-2 py-3 text-[15px] font-mono font-bold text-black/50 select-none flex items-center h-full">
+                                    {COUNTRY_CODES[target.country || "Bénin"] || "+229"}
+                                  </div>
+                                  <input type="tel" value={target.phone} onChange={(e) => updateQuickTarget(target.id, "phone", e.target.value)} placeholder={Array(COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8).fill("0").join("").replace(/(.{2})/g, "$1 ").trim()} className="w-full h-full bg-transparent pr-4 py-3 outline-none font-mono font-bold tracking-wide text-black placeholder:text-black/40 text-[15px]" />
+                                </div>
                               </div>
                               
+                              {/* Enregistrer: Horizontal (w-full) */}
                               <button 
                                 onClick={() => handleSaveQuickTargetInline(target)} 
                                 disabled={target.name.trim() === "" || (target.phone && target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8))}
-                                className="px-4 py-3 bg-black text-white hover:bg-black/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-[14px] transition-colors shrink-0"
+                                className="w-full py-3 bg-black text-white hover:bg-black/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-[15px] transition-colors"
                               >
-                                Enregistrer
+                                Enregistrer ce destinataire
                               </button>
                             </div>
                             {target.phone && target.phone.replace(/[^0-9]/g, '').length > 0 && 
@@ -914,21 +884,37 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
             )}
 
             {step === "PREVIEW" && (
-              <div className={`flex justify-between items-center px-6 py-5 rounded-[1.5rem] border ${!isExact && isPercentageMode ? 'bg-danger/5 border-danger/20' : 'bg-white border-black/[0.05] shadow-sm'}`}>
-                <span className="font-bold text-muted-foreground text-[15px]">Total réparti</span>
-                <div className="flex flex-col items-end">
-                  <span className={`font-black text-xl tabular-nums ${!isExact && isPercentageMode ? 'text-danger' : 'text-black'}`}>
-                    <Amount value={totalDistributedTargets} />
+              <div className={`bg-[#FFF8E7]/50 border ${!isExact ? 'border-danger/30' : 'border-[#FDE1A9]/30'} rounded-[1.5rem] p-5 space-y-3 mt-4 shadow-sm`}>
+                <div className="flex justify-between items-center pt-1 text-black">
+                  <span className="font-semibold text-[15px]">Total réparti</span>
+                  <div className="flex flex-col items-end">
+                    <span className={`font-bold tabular-nums text-[16px] ${!isExact && isPercentageMode ? 'text-danger' : 'text-black'}`}>
+                      <Amount value={totalDistributedTargets} />
+                    </span>
+                    {!isExact && isPercentageMode && (
+                      <span className="text-[13px] text-danger font-bold mt-1">La somme doit faire 100%</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex justify-between items-center text-[#B9811C]">
+                  <span className="font-semibold text-[14px]">Commission Réparto ({COMMISSION_TEXT})</span>
+                  <span className="font-bold tabular-nums text-[15px]">
+                    + <Amount value={computedCommission} />
                   </span>
-                  {!isExact && isPercentageMode && (
-                    <span className="text-[13px] text-danger font-bold mt-1">La somme doit faire 100%</span>
-                  )}
-                  {!isExact && !isPercentageMode && totalDistributedTargets > toDistribute && (
-                    <span className="text-[13px] text-danger font-bold mt-1">Dépassement de {formatAmount(totalDistributedTargets - toDistribute)} F</span>
-                  )}
-                  {!isExact && !isPercentageMode && totalDistributedTargets < toDistribute && (
-                    <span className="text-[13px] text-muted-foreground font-bold mt-1 bg-black/5 px-2 py-0.5 rounded-md">Reste : {formatAmount(toDistribute - totalDistributedTargets)} F</span>
-                  )}
+                </div>
+                <div className="flex justify-between items-center pt-3 border-t border-[#FDE1A9]/30">
+                  <span className="font-black text-[16px] text-black">Total prélevé</span>
+                  <div className="flex flex-col items-end">
+                    <span className={`font-black tabular-nums text-[18px] ${!isExact && !isPercentageMode ? 'text-danger' : 'text-black'}`}>
+                      <Amount value={computedGross} />
+                    </span>
+                    {!isExact && !isPercentageMode && computedGross > totalAvailable && (
+                      <span className="text-[13px] text-danger font-bold mt-1">Dépassement de {formatAmount(computedGross - totalAvailable)} F</span>
+                    )}
+                    {!isExact && !isPercentageMode && computedGross < totalAvailable && (
+                      <span className="text-[13px] text-[#B9811C] font-bold mt-1 bg-black/5 px-2 py-0.5 rounded-md">Reste sur le solde : {formatAmount(totalAvailable - computedGross)} F</span>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -987,7 +973,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                 <div className={(!isExact || (modalMode === "quick" && saveRuleTrigger !== "manual" && !saveRuleName.trim())) ? "opacity-40 grayscale pointer-events-none transition-all duration-300" : "transition-all duration-300"}>
                   <SlideToConfirm 
                     onConfirm={handleConfirm} 
-                    text={modalMode === "quick" && saveRuleTrigger !== "manual" ? "Créer la règle automatique" : `Envoyer ${formatAmount(activeData.totalAvailable)} FCFA`}
+                    text={modalMode === "quick" && saveRuleTrigger !== "manual" ? "Créer la règle automatique" : `Envoyer ${formatAmount(computedGross)} FCFA`}
                     confirmedText="Autorisé"
                   />
                 </div>

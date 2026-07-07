@@ -5,6 +5,7 @@ export interface UserProfile {
   commissionPhone: string;
   language: string;
   onboardingStep: number;
+  role: 'user' | 'admin';
 }
 
 export type PlanId = "gratuit" | "pro" | "business";

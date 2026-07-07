@@ -138,6 +138,13 @@ export default function SignupPage() {
               </div>
             </div>
 
+            <div className="flex items-start gap-3 py-2">
+              <input type="checkbox" id="terms" name="terms" required className="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer shrink-0" />
+              <label htmlFor="terms" className="text-[13px] text-muted-foreground leading-snug cursor-pointer font-medium">
+                En créant un compte, j'accepte les <Link href="/cgu" className="text-primary hover:underline font-bold" target="_blank">Conditions d'Utilisation</Link> et la <Link href="/confidentialite" className="text-primary hover:underline font-bold" target="_blank">Politique de confidentialité</Link>.
+              </label>
+            </div>
+
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-6 font-bold text-base mt-2" disabled={isLoading}>
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Créer mon compte"}
             </Button>

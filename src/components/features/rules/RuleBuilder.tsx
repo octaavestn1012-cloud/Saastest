@@ -485,15 +485,16 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                   <div className="space-y-3">
                     <div className="flex flex-row items-stretch sm:items-center gap-3">
                       <div className="flex-1 bg-[#F5F5F7] rounded-xl flex items-center px-4 py-3 border-2 border-transparent focus-within:border-black/10 transition-all min-w-0">
-                        <input type="text" value={target.name} onChange={(e) => updateRecipient(target.id, "name", e.target.value)} placeholder="Nom (ex: Loyer)" className="w-full bg-transparent font-bold outline-none placeholder:text-black/40 text-black text-[15px] truncate" />
+                      <input type="text" value={target.name} onChange={(e) => updateRecipient(target.id, "name", e.target.value)} placeholder="Nom (ex: Loyer)" className="w-full bg-transparent font-bold outline-none placeholder:text-black/40 text-black text-[15px] truncate" />
                       </div>
                       <div className="relative w-[110px] sm:w-[140px] shrink-0 bg-[#F5F5F7] rounded-xl flex items-center pr-4 border-2 border-transparent focus-within:border-black/10 transition-all">
                         <input type="number" value={target.value || ''} onChange={(e) => updateRecipient(target.id, "value", e.target.value)} placeholder="0" className="w-full bg-transparent text-right font-black outline-none py-3 px-2 text-[16px] text-black placeholder:text-black/30" />
                         <span className="text-black font-black text-[15px] ml-1">{mode === "pourcentage" ? "%" : "F"}</span>
                       </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <div className="flex-1 bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
+                    <div className="flex flex-col gap-3">
+                      {/* Pays: Horizontal sur desktop (w-full) */}
+                      <div className="w-full bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
                         <select 
                           value={target.country || "Bénin"} 
                           onChange={(e) => {
@@ -502,7 +503,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                             const nets = COUNTRIES_NETWORKS[newCountry];
                             if (nets && nets.length > 0) updateRecipient(target.id, "network", nets[0]);
                           }} 
-                          className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]"
+                          className="w-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]"
                         >
                           {Object.keys(COUNTRIES_NETWORKS).map((c) => (
                             <option key={c} value={c}>{c}</option>
@@ -511,35 +512,39 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                         <ChevronDown className="w-4 h-4 text-black absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
                       
-                      <div className="flex-1 bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
-                        <select value={target.network} onChange={(e) => updateRecipient(target.id, "network", e.target.value)} className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]">
-                          {(COUNTRIES_NETWORKS[target.country || "Bénin"] || COUNTRIES_NETWORKS["Bénin"]).map((net) => (
-                            <option key={net} value={net}>{net}</option>
-                          ))}
-                        </select>
-                        <ChevronDown className="w-4 h-4 text-black absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      </div>
-                      <div className={`flex-1 bg-[#F5F5F7] rounded-xl border-2 flex items-center transition-all ${
-                        target.phone.replace(/[^0-9]/g, '').length > 0 && 
-                        target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8)
-                        ? 'border-red-500/50 focus-within:border-red-500' 
-                        : 'border-transparent focus-within:border-black/10'
-                      }`}>
-                        <div className="pl-4 pr-2 py-3 text-[15px] font-mono font-bold text-black/50 select-none flex items-center h-full">
-                          {COUNTRY_CODES[target.country || "Bénin"] || "+229"}
+                      {/* Réseau et Numéro sur la même ligne uniquement sur desktop */}
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="flex-1 bg-[#F5F5F7] rounded-xl border-2 border-transparent focus-within:border-black/10 transition-all relative">
+                          <select value={target.network} onChange={(e) => updateRecipient(target.id, "network", e.target.value)} className="w-full h-full bg-transparent rounded-xl px-4 py-3 outline-none font-bold appearance-none text-black relative z-10 cursor-pointer text-[15px]">
+                            {(COUNTRIES_NETWORKS[target.country || "Bénin"] || COUNTRIES_NETWORKS["Bénin"]).map((net) => (
+                              <option key={net} value={net}>{net}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-black absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>
-                        <input type="tel" value={target.phone} onChange={(e) => updateRecipient(target.id, "phone", e.target.value)} placeholder={Array(COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8).fill("0").join("").replace(/(.{2})/g, "$1 ").trim()} className="w-full h-full bg-transparent pr-4 py-3 outline-none font-mono font-bold tracking-wide text-black placeholder:text-black/40 text-[15px]" />
+                        <div className={`flex-[2] bg-[#F5F5F7] rounded-xl border-2 flex items-center transition-all ${
+                          target.phone && target.phone.replace(/[^0-9]/g, '').length > 0 && 
+                          target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8)
+                          ? 'border-red-500/50 focus-within:border-red-500' 
+                          : 'border-transparent focus-within:border-black/10'
+                        }`}>
+                          <div className="pl-4 pr-2 py-3 text-[15px] font-mono font-bold text-black/50 select-none flex items-center h-full">
+                            {COUNTRY_CODES[target.country || "Bénin"] || "+229"}
+                          </div>
+                          <input type="tel" value={target.phone} onChange={(e) => updateRecipient(target.id, "phone", e.target.value)} placeholder={Array(COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8).fill("0").join("").replace(/(.{2})/g, "$1 ").trim()} className="w-full h-full bg-transparent pr-4 py-3 outline-none font-mono font-bold tracking-wide text-black placeholder:text-black/40 text-[15px]" />
+                        </div>
                       </div>
                       
+                      {/* Enregistrer: Horizontal (w-full) */}
                       <button 
                         onClick={() => handleSaveRecipientInline(target)} 
-                        disabled={target.name.trim() === "" || target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8) || isSaving}
-                        className="px-4 py-3 bg-black text-white hover:bg-black/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-[14px] transition-colors shrink-0"
+                        disabled={target.name.trim() === "" || (target.phone && target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8)) || isSaving}
+                        className="w-full py-3 bg-black text-white hover:bg-black/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-[15px] transition-colors"
                       >
-                        {isSaving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Enregistrer"}
+                        {isSaving ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Enregistrer ce destinataire"}
                       </button>
                     </div>
-                    {target.phone.replace(/[^0-9]/g, '').length > 0 && 
+                    {target.phone && target.phone.replace(/[^0-9]/g, '').length > 0 && 
                      target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8) && (
                       <p className="text-red-500 text-xs font-bold mt-1 ml-1">Ce numéro doit comporter exactement {COUNTRY_PHONE_LENGTHS[target.country || "Bénin"]} chiffres.</p>
                     )}
