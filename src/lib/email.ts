@@ -106,25 +106,25 @@ export async function sendPayoutReceiptEmail(toEmail: string, tx: any) {
 export async function sendFailedPayoutEmail(userEmail: string, amount: number, destination: string, errorMessage: string) {
   try {
     const { data, error } = await resend.emails.send({
-      from: \`Alerte Réparto <\${SENDER}>\`,
+      from: `Alerte Réparto <${SENDER}>`,
       to: [userEmail],
-      subject: \`⚠️ Échec d'une répartition automatique Réparto\`,
-      html: \`
+      subject: `⚠️ Échec d'une répartition automatique Réparto`,
+      html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px;">
           <h2 style="color: #FF3B30;">Alerte Réparto</h2>
           <p>Bonjour,</p>
           <p>Une de vos répartitions automatiques n'a pas pu aboutir aujourd'hui.</p>
           <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
             <ul style="margin: 0; padding-left: 20px;">
-              <li><strong>Destinataire :</strong> \${destination}</li>
-              <li><strong>Montant :</strong> \${amount} FCFA</li>
-              <li><strong>Raison de l'échec :</strong> \${errorMessage}</li>
+              <li><strong>Destinataire :</strong> ${destination}</li>
+              <li><strong>Montant :</strong> ${amount} FCFA</li>
+              <li><strong>Raison de l'échec :</strong> ${errorMessage}</li>
             </ul>
           </div>
           <p>Veuillez vous connecter à votre tableau de bord pour vérifier les soldes de vos passerelles et relancer la transaction manuellement depuis l'historique.</p>
           <p style="color: #888; font-size: 12px; margin-top: 40px;">Ceci est un message automatique, merci de ne pas y répondre.</p>
         </div>
-      \`
+      `
     });
     return { success: !error };
   } catch (err) {
