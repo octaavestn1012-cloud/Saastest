@@ -1,4 +1,8 @@
-export async function getFedaPayBalance(secretKey: string) {
+export async function getFedaPayBalance(rawSecretKey: string) {
+  let secretKey = rawSecretKey;
+  if (rawSecretKey.trim().startsWith("{")) {
+    try { secretKey = JSON.parse(rawSecretKey).secretKey; } catch(e){}
+  }
   const isSandbox = secretKey.includes("sandbox");
   const baseUrl = isSandbox ? "https://sandbox-api.fedapay.com/v1" : "https://api.fedapay.com/v1";
 
@@ -34,7 +38,11 @@ export async function getFedaPayBalance(secretKey: string) {
   }
 }
 
-export async function createAndSendPayout(secretKey: string, amount: number, mode: string, phone: string, name: string) {
+export async function createAndSendPayout(rawSecretKey: string, amount: number, mode: string, phone: string, name: string) {
+  let secretKey = rawSecretKey;
+  if (rawSecretKey.trim().startsWith("{")) {
+    try { secretKey = JSON.parse(rawSecretKey).secretKey; } catch(e){}
+  }
   const isSandbox = secretKey.includes("sandbox");
   const baseUrl = isSandbox ? "https://sandbox-api.fedapay.com/v1" : "https://api.fedapay.com/v1";
 

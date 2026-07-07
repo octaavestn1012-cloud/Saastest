@@ -46,11 +46,18 @@ export async function getHistorique() {
   }
 }
 
+import { getFedaPayBalance } from "@/lib/fedapay";
+import { getKkiapayBalance, createAndSendKkiapayPayout } from "@/lib/kkiapay";
+
 export async function retryPayoutLigne(ligneId: string) {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Non autorisé");
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = require('@supabase/supabase-js').createClient(supabaseUrl, supabaseServiceKey);
 
     // 1. Fetch ligne
     const { data: ligne, error: ligneError } = await supabase
@@ -65,39 +72,109 @@ export async function retryPayoutLigne(ligneId: string) {
     if (ligne.statut !== "echoue") throw new Error("Seules les lignes échouées peuvent être relancées");
     if (!ligne.destinataire_numero || !ligne.destinataire_reseau) throw new Error("Informations du destinataire manquantes");
 
-    // 2. Fetch FedaPay Key
-    const { data: conn } = await supabase.from("connexions")
-      .select("*").eq("user_id", user.id).ilike("passerelle", "fedapay").eq("statut", "actif").single();
+    // 2. Build Gateway Pool
+    const { data: conns } = await supabase.from("connexions")
+      .select("*").eq("user_id", user.id).eq("statut", "actif");
 
-    if (!conn || !conn.cle_chiffree) throw new Error("Aucune connexion FedaPay active");
-    const secretKey = decryptKey(conn.cle_chiffree);
+    if (!conns || conns.length === 0) throw new Error("Aucune connexion active trouvée");
 
-    // 3. Retry Payout
-    const payoutRes = await createAndSendPayout(
-      secretKey, 
-      ligne.montant, 
-      ligne.destinataire_reseau, 
-      ligne.destinataire_numero, 
-      ligne.destinataire_libelle
-    );
+    const gatewayPool: any[] = [];
+    for (const conn of conns) {
+      if (!conn.cle_chiffree) continue;
+      const decryptedKey = decryptKey(conn.cle_chiffree);
+      try {
+        let bal = 0;
+        if (conn.passerelle.toLowerCase() === "fedapay") {
+          bal = await getFedaPayBalance(decryptedKey);
+        } else if (conn.passerelle.toLowerCase() === "kkiapay") {
+          const keysObj = JSON.parse(decryptedKey);
+          bal = await getKkiapayBalance(keysObj);
+        }
+        if (bal > 0) {
+          gatewayPool.push({ conn, decryptedKey, balance: bal });
+        }
+      } catch (e) {
+        console.error(`Erreur solde ${conn.passerelle}:`, e);
+      }
+    }
 
-    const fedapayStatus = payoutRes?.v1?.payout?.status || payoutRes?.status || "pending";
-    const ligneStatut = fedapayStatus === "failed" ? "echoue" : fedapayStatus === "sent" || fedapayStatus === "approved" ? "reussi" : "en_cours";
-    const ref = payoutRes?.v1?.payout?.reference || payoutRes?.v1?.payout?.id?.toString() || payoutRes?.id?.toString() || "";
+    gatewayPool.sort((a, b) => b.balance - a.balance);
+    const totalPoolBalance = gatewayPool.reduce((sum, g) => sum + g.balance, 0);
 
-    // 4. Update ligne
-    // @ts-ignore
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabaseAdmin = require('@supabase/supabase-js').createClient(supabaseUrl, supabaseServiceKey);
+    if (ligne.montant > totalPoolBalance || ligne.montant < 100) {
+      throw new Error(`Solde global insuffisant ou montant invalide. Requis: ${ligne.montant}F`);
+    }
 
-    await supabaseAdmin.from("execution_lignes").update({
-      statut: ligneStatut,
-      reference_transaction: ref,
-      erreur_message: fedapayStatus === "failed" ? "Échec lors de la relance" : null
-    }).eq("id", ligneId);
+    // 3. Retry Payout (Split if necessary)
+    let remainingAmount = ligne.montant;
+    let isFirst = true;
+    let mainStatus = "echoue";
 
-    // 5. Update execution status
+    for (const gateway of gatewayPool) {
+      if (remainingAmount <= 0) break;
+      if (gateway.balance <= 0) continue;
+
+      const payoutAmount = Math.min(remainingAmount, gateway.balance);
+      if (payoutAmount < 100) continue;
+
+      let payoutRes;
+      let ligneStatut = "en_cours";
+      let ref = "";
+      let errMsg = null;
+
+      try {
+        if (gateway.conn.passerelle.toLowerCase() === "kkiapay") {
+          const keysObj = JSON.parse(gateway.decryptedKey);
+          payoutRes = await createAndSendKkiapayPayout(keysObj, payoutAmount, ligne.destinataire_reseau, ligne.destinataire_numero, ligne.destinataire_libelle);
+          ligneStatut = payoutRes?.status === "SUCCESS" ? "reussi" : payoutRes?.status === "FAILED" ? "echoue" : "en_cours";
+          ref = payoutRes?.transactionId || payoutRes?.id?.toString() || "";
+        } else {
+          payoutRes = await createAndSendPayout(gateway.decryptedKey, payoutAmount, ligne.destinataire_reseau, ligne.destinataire_numero, ligne.destinataire_libelle);
+          const fedapayStatus = payoutRes?.v1?.payout?.status || payoutRes?.status || "pending";
+          ligneStatut = fedapayStatus === "failed" ? "echoue" : fedapayStatus === "sent" || fedapayStatus === "approved" ? "reussi" : "en_cours";
+          ref = payoutRes?.v1?.payout?.reference || payoutRes?.v1?.payout?.id?.toString() || payoutRes?.id?.toString() || "";
+        }
+      } catch (e: any) {
+        ligneStatut = "echoue";
+        errMsg = e.message;
+      }
+
+      if (isFirst) {
+        mainStatus = ligneStatut;
+        await supabaseAdmin.from("execution_lignes").update({
+          statut: ligneStatut,
+          reference_transaction: ref,
+          erreur_message: errMsg,
+          montant: payoutAmount,
+          destinataire_libelle: ligne.destinataire_libelle + (payoutAmount < ligne.montant ? ` (Part ${payoutAmount}F)` : "")
+        }).eq("id", ligneId);
+        isFirst = false;
+      } else {
+        await supabaseAdmin.from("execution_lignes").insert({
+          execution_id: ligne.execution_id,
+          destinataire_libelle: ligne.destinataire_libelle + ` (Part ${payoutAmount}F)`,
+          destinataire_numero: ligne.destinataire_numero,
+          destinataire_reseau: ligne.destinataire_reseau,
+          montant: payoutAmount,
+          statut: ligneStatut,
+          reference_transaction: ref,
+          erreur_message: errMsg,
+          est_commission: ligne.est_commission
+        });
+      }
+
+      gateway.balance -= payoutAmount;
+      remainingAmount -= payoutAmount;
+    }
+
+    if (remainingAmount > 0) {
+       // We couldn't fulfill it entirely despite the balance check (maybe rounding or <100 fragments)
+       if (isFirst) {
+          throw new Error("Impossible de scinder le reste du montant.");
+       }
+    }
+
+    // 4. Update execution status
     const { data: allLignes } = await supabaseAdmin.from("execution_lignes").select("statut").eq("execution_id", ligne.executions.id);
     if (allLignes) {
       const hasFailed = allLignes.some((r: any) => r.statut === "echoue");
@@ -108,7 +185,7 @@ export async function retryPayoutLigne(ligneId: string) {
     }
 
     revalidatePath("/historique");
-    return { success: true, ligneStatut };
+    return { success: true, ligneStatut: mainStatus };
   } catch (error: any) {
     console.error("Retry error:", error);
     return { success: false, error: error.message };

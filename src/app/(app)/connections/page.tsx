@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Link2, Plus, AlertCircle, CheckCircle2, ShieldCheck, X, Loader2 } from "lucide-react";
+import { Link2, Plus, AlertCircle, CheckCircle2, ShieldCheck, X, Loader2, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
 import { connectFedaPay, connectKkiapay, deleteConnection } from "@/app/actions/connections";
@@ -34,6 +34,7 @@ export default function ConnectionsPage() {
   
   // États de données
   const [connections, setConnections] = useState<any[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // États du formulaire
@@ -41,16 +42,21 @@ export default function ConnectionsPage() {
   const [secretKey, setSecretKey] = useState("");
   const [publicKey, setPublicKey] = useState("");
   const [privateKey, setPrivateKey] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const supabase = createClient();
 
   const loadConnections = async () => {
     setIsLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) setUserId(user.id);
+
     const { data } = await supabase
       .from("connexions")
-      .select("id, nom, passerelle, statut, created_at")
+      .select("id, nom, passerelle, statut, created_at, user_id")
       .order("created_at", { ascending: false });
     
     if (data) setConnections(data);
@@ -67,7 +73,9 @@ export default function ConnectionsPage() {
     setSecretKey("");
     setPublicKey("");
     setPrivateKey("");
+    setWebhookSecret("");
     setError(null);
+    setCopied(false);
     setIsModalOpen(true);
   };
 
@@ -85,12 +93,15 @@ export default function ConnectionsPage() {
     
     let result;
     if (selectedGateway === "FedaPay") {
+      formData.append("publicKey", publicKey);
       formData.append("secretKey", secretKey);
+      if (webhookSecret) formData.append("webhookSecret", webhookSecret);
       result = await connectFedaPay(formData);
     } else if (selectedGateway === "Kkiapay") {
       formData.append("publicKey", publicKey);
       formData.append("privateKey", privateKey);
       formData.append("secretKey", secretKey);
+      if (webhookSecret) formData.append("webhookSecret", webhookSecret);
       result = await connectKkiapay(formData);
     }
 
@@ -145,41 +156,58 @@ export default function ConnectionsPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className={`p-5 rounded-2xl shadow-sm border relative overflow-hidden flex flex-col group hover:shadow-md transition-all ${
+                className={`p-6 rounded-[1.5rem] shadow-sm border relative overflow-hidden flex flex-col group hover:shadow-md transition-all ${
                   conn.statut === "actif" ? "bg-white border-black/[0.05]" : "bg-danger/5 border-danger/20"
                 }`}
               >
-                <div className={`absolute top-0 right-0 w-24 h-24 rounded-bl-full blur-xl ${
+                <div className={`absolute top-0 right-0 w-32 h-32 rounded-bl-full blur-2xl ${
                   conn.statut === "actif" ? "bg-money-in/5" : "bg-danger/10"
                 }`} />
                 
-                <div className="relative z-10 flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                <button 
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (confirm("Voulez-vous vraiment supprimer cette connexion ?")) {
+                      await deleteConnection(conn.id);
+                      loadConnections();
+                    }
+                  }}
+                  className="absolute top-4 right-4 z-20 p-2 text-muted-foreground/30 hover:text-danger hover:bg-danger/10 rounded-full transition-colors"
+                  title="Supprimer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                
+                <div className="relative z-10 flex flex-col mb-4">
+                  <div className="flex items-center gap-3 pr-10">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
                       conn.statut === "actif" ? "bg-money-in/10 text-money-in" : "bg-danger/10 text-danger"
                     }`}>
                       <Link2 className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-[15px] leading-none mb-1 capitalize">{conn.nom}</h3>
-                      <p className="text-xs text-muted-foreground capitalize">{conn.passerelle}</p>
+                      <h3 className="font-bold text-[16px] leading-tight mb-1.5 capitalize">{conn.nom}</h3>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground capitalize">{conn.passerelle}</p>
+                        <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded flex-shrink-0 text-[9px] font-bold uppercase tracking-wider ${
+                          conn.statut === "actif" ? "text-money-in bg-money-in/10" : "text-danger bg-danger/10"
+                        }`}>
+                          {conn.statut === "actif" ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertCircle className="w-2.5 h-2.5" />}
+                          {conn.statut}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
-                    conn.statut === "actif" ? "text-money-in bg-money-in/10" : "text-danger bg-danger/10"
-                  }`}>
-                    {conn.statut === "actif" ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
-                    {conn.statut}
                   </div>
                 </div>
                 
                 {conn.statut === "erreur" && (
-                  <div className="relative z-10 text-xs font-medium text-danger mb-4 bg-danger/10 p-3 rounded-xl border border-danger/20 leading-snug">
-                    La clé API semble invalide ou expirée. Vérifiez vos accès.
+                  <div className="mt-2 text-xs text-danger flex items-start gap-1.5 p-2 bg-danger/5 rounded-lg border border-danger/10">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <p>La clé semble invalide ou expirée.</p>
                   </div>
                 )}
-
-                <div className={`relative z-10 mt-auto pt-4 border-t flex justify-between items-center ${
+                
+                <div className={`relative z-10 mt-auto pt-5 border-t flex justify-between items-center ${
                   conn.statut === "actif" ? "border-black/[0.05]" : "border-danger/10"
                 }`}>
                   <span className="text-[10px] font-medium text-muted-foreground uppercase">
@@ -187,16 +215,10 @@ export default function ConnectionsPage() {
                   </span>
                   <Button 
                     variant="outline" 
-                    onClick={async () => {
-                      if (confirm("Voulez-vous vraiment supprimer cette connexion ?")) {
-                        await deleteConnection(conn.id);
-                        loadConnections();
-                      }
-                    }}
-                    className={`rounded-lg h-8 px-4 text-xs ${
-                      conn.statut === "erreur" ? "bg-white text-danger border-danger/30 hover:bg-danger/10" : "hover:bg-danger/10 hover:text-danger hover:border-transparent transition-colors"
-                    }`}>
-                    Supprimer
+                    onClick={() => openModal(conn.passerelle)}
+                    className="rounded-lg h-8 px-4 text-xs font-semibold hover:bg-black/5 hover:text-black transition-colors"
+                  >
+                    Gérer
                   </Button>
                 </div>
               </motion.div>
@@ -253,7 +275,7 @@ export default function ConnectionsPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-[2rem] p-6 sm:p-8 w-full max-w-md shadow-2xl relative z-10"
+              className="bg-white rounded-[2rem] p-6 sm:p-8 w-full max-w-md shadow-2xl relative z-10 max-h-[90vh] overflow-y-auto"
             >
               <button 
                 onClick={() => !isSubmitting && setIsModalOpen(false)} 
@@ -287,31 +309,30 @@ export default function ConnectionsPage() {
                   />
                 </div>
 
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-semibold text-foreground ml-1">Clé Publique (Public Key)</label>
+                  <input 
+                    type="text" 
+                    value={publicKey}
+                    onChange={(e) => setPublicKey(e.target.value)}
+                    placeholder="Ex: pk_..." 
+                    disabled={isSubmitting}
+                    className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium disabled:opacity-50" 
+                  />
+                </div>
+
                 {selectedGateway === "Kkiapay" && (
-                  <>
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-semibold text-foreground ml-1">Clé Publique (Public Key)</label>
-                      <input 
-                        type="text" 
-                        value={publicKey}
-                        onChange={(e) => setPublicKey(e.target.value)}
-                        placeholder="Ex: pk_..." 
-                        disabled={isSubmitting}
-                        className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium disabled:opacity-50" 
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="block text-sm font-semibold text-foreground ml-1">Clé Privée (Private Key)</label>
-                      <input 
-                        type="password" 
-                        value={privateKey}
-                        onChange={(e) => setPrivateKey(e.target.value)}
-                        placeholder="Ex: priv_..." 
-                        disabled={isSubmitting}
-                        className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium tracking-widest disabled:opacity-50" 
-                      />
-                    </div>
-                  </>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-semibold text-foreground ml-1">Clé Privée (Private Key)</label>
+                    <input 
+                      type="password" 
+                      value={privateKey}
+                      onChange={(e) => setPrivateKey(e.target.value)}
+                      placeholder="Ex: priv_..." 
+                      disabled={isSubmitting}
+                      className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium tracking-widest disabled:opacity-50" 
+                    />
+                  </div>
                 )}
 
                 <div className="space-y-1.5">
@@ -330,6 +351,64 @@ export default function ConnectionsPage() {
                     </p>
                   )}
                 </div>
+
+                <div className="space-y-1.5 pt-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-semibold text-foreground ml-1">Clé Secrète Webhook <span className="font-bold text-danger">*</span></label>
+                  </div>
+                  
+                  <div className="bg-[#F5F5F7] rounded-xl p-3 border border-black/5 mb-3">
+                    <p className="text-[11px] text-muted-foreground mb-2 leading-tight">
+                      1. Copiez cette URL et collez-la dans la section Webhooks de {selectedGateway}.<br/>
+                      2. {selectedGateway} vous donnera une Clé Secrète Webhook. Collez-la ci-dessous.
+                    </p>
+                    <div className="flex gap-2 items-center bg-white p-2 rounded-lg border border-black/5">
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={userId ? `${window.location.origin}/api/webhooks/${selectedGateway?.toLowerCase()}/${userId}` : ""} 
+                        className="flex-1 bg-transparent border-none p-0 focus:ring-0 text-muted-foreground truncate font-mono text-[10px]"
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={`h-7 px-3 shrink-0 rounded-md text-[10px] font-bold ${copied ? 'bg-money-in/10 text-money-in hover:bg-money-in/20' : 'bg-[#F5F5F7] text-foreground hover:bg-black/5'}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (userId) {
+                            navigator.clipboard.writeText(`${window.location.origin}/api/webhooks/${selectedGateway?.toLowerCase()}/${userId}`);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }
+                        }}
+                      >
+                        {copied ? (
+                          <>
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Copié !
+                          </>
+                        ) : (
+                          <>
+                            <Link2 className="w-3 h-3 mr-1" />
+                            Copier
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <input 
+                    type="password" 
+                    value={webhookSecret}
+                    onChange={(e) => setWebhookSecret(e.target.value)}
+                    placeholder="Collez la Clé Secrète Webhook ici" 
+                    disabled={isSubmitting}
+                    className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium tracking-widest disabled:opacity-50" 
+                  />
+                  <p className="text-xs text-muted-foreground ml-1 mt-1">
+                    Nécessaire pour que Réparto soit alerté automatiquement des entrées d'argent.
+                  </p>
+                </div>
                 
                 <div className="bg-primary/10 text-primary p-4 rounded-2xl flex gap-3 text-sm font-medium items-start mt-2">
                   <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
@@ -339,7 +418,7 @@ export default function ConnectionsPage() {
                 <Button 
                   className="w-full h-14 rounded-xl mt-4 bg-black hover:bg-black/80 text-white font-bold text-base shadow-lg shadow-black/10 transition-transform active:scale-95 disabled:opacity-70" 
                   onClick={handleConnect}
-                  disabled={isSubmitting || !nom || !secretKey}
+                  disabled={isSubmitting || !nom || !secretKey || !webhookSecret}
                 >
                   {isSubmitting ? (
                     <>

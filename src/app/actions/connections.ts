@@ -14,9 +14,10 @@ export async function connectFedaPay(formData: FormData) {
 
     const nom = formData.get("nom") as string;
     const secretKey = (formData.get("secretKey") as string).trim();
+    const webhookSecret = (formData.get("webhookSecret") as string)?.trim();
 
-    if (!nom || !secretKey) {
-      return { error: "Veuillez fournir un nom et une clé secrète." };
+    if (!nom || !secretKey || !webhookSecret) {
+      return { error: "Veuillez fournir un nom, une clé secrète et une clé webhook." };
     }
 
     // 1. Déterminer l'environnement
@@ -51,8 +52,13 @@ export async function connectFedaPay(formData: FormData) {
       return { error: `Impossible de joindre les serveurs: ${e.message}` };
     }
 
-    // 3. Chiffrer la clé secrète
-    const cleChiffree = encryptKey(secretKey);
+    // 3. Chiffrer la clé secrète (et publique)
+    const publicKey = formData.get("publicKey") as string;
+    const keyPayload = publicKey ? JSON.stringify({ secretKey, publicKey }) : secretKey;
+    const cleChiffree = encryptKey(keyPayload);
+    
+    // Chiffrer le webhook secret (maintenant obligatoire)
+    const webhookSecretChiffre = encryptKey(webhookSecret);
 
     // 4. Enregistrer dans la base de données
     const { error: dbError } = await supabase
@@ -62,7 +68,8 @@ export async function connectFedaPay(formData: FormData) {
         passerelle: "fedapay",
         nom: nom,
         statut: "actif",
-        cle_chiffree: cleChiffree
+        cle_chiffree: cleChiffree,
+        webhook_secret_chiffre: webhookSecretChiffre
       });
 
     if (dbError) {
@@ -102,16 +109,20 @@ export async function connectKkiapay(formData: FormData) {
 
     const nom = formData.get("nom") as string;
     const publicKey = (formData.get("publicKey") as string || "").trim();
-    const privateKey = (formData.get("privateKey") as string || "").trim();
-    const secretKey = (formData.get("secretKey") as string || "").trim();
+    const privateKey = (formData.get("privateKey") as string).trim();
+    const secretKey = (formData.get("secretKey") as string).trim();
+    const webhookSecret = (formData.get("webhookSecret") as string)?.trim();
 
-    if (!nom || !publicKey || !privateKey || !secretKey) {
-      return { error: "Veuillez fournir le nom et toutes les clés (Publique, Privée, Secrète)." };
+    if (!nom || !publicKey || !privateKey || !secretKey || !webhookSecret) {
+      return { error: "Veuillez fournir toutes les clés requises (Publique, Privée, Secrète et Webhook)." };
     }
 
     // Convert to JSON and encrypt
     const keysObj = { publicKey, privateKey, secretKey };
     const cleChiffree = encryptKey(JSON.stringify(keysObj));
+
+    // Chiffrer le webhook secret (maintenant obligatoire)
+    const webhookSecretChiffre = encryptKey(webhookSecret);
 
     // Save to DB
     const { error: dbError } = await supabase
@@ -121,7 +132,8 @@ export async function connectKkiapay(formData: FormData) {
         passerelle: "Kkiapay",
         nom: nom,
         statut: "actif",
-        cle_chiffree: cleChiffree
+        cle_chiffree: cleChiffree,
+        webhook_secret_chiffre: webhookSecretChiffre
       });
 
     if (dbError) {

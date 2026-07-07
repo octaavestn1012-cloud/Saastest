@@ -1,0 +1,76 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
+import { decryptKey } from '@/lib/encryption';
+import { processPayoutsForUser } from '@/lib/payout-engine';
+
+export async function POST(req: Request, { params }: { params: { userId: string } }) {
+  try {
+    const userId = params.userId;
+    
+    // Récupérer le corps de la requête
+    const bodyText = await req.text();
+    const signature = req.headers.get('x-kkiapay-signature');
+    
+    // Connexion admin à Supabase
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Vérifier si l'utilisateur possède une connexion Kkiapay active
+    const { data: conn } = await supabaseAdmin
+      .from('connexions')
+      .select('webhook_secret_chiffre')
+      .eq('user_id', userId)
+      .eq('passerelle', 'Kkiapay')
+      .eq('statut', 'actif')
+      .single();
+
+    if (!conn) {
+      return NextResponse.json({ error: 'Connexion Kkiapay introuvable ou inactive' }, { status: 404 });
+    }
+
+    if (!conn.webhook_secret_chiffre) {
+      return NextResponse.json({ error: 'Secret Webhook non configuré pour cet utilisateur' }, { status: 400 });
+    }
+
+    if (!signature) {
+      return NextResponse.json({ error: 'Signature manquante' }, { status: 401 });
+    }
+
+    // Déchiffrer le secret et vérifier la signature HMAC (Kkiapay utilise souvent sha256)
+    const secret = decryptKey(conn.webhook_secret_chiffre);
+    const expectedSignature = crypto.createHmac('sha256', secret).update(bodyText).digest('hex');
+
+    if (signature !== expectedSignature) {
+      console.error(`[Kkiapay Webhook] Signature invalide pour l'utilisateur ${userId}`);
+      return NextResponse.json({ error: 'Signature invalide' }, { status: 401 });
+    }
+
+    let data;
+    try {
+      data = JSON.parse(bodyText);
+    } catch(e) {
+      return NextResponse.json({ error: 'JSON Invalide' }, { status: 400 });
+    }
+
+    // Kkiapay envoie généralement le statut de la transaction
+    const isSuccess = data?.status === 'SUCCESS' || data?.type === 'PAYMENT_SUCCESS';
+    const amount = data?.amount;
+
+    if (isSuccess && amount && amount > 0) {
+      console.log(`[Kkiapay Webhook] Paiement entrant de ${amount} FCFA détecté pour l'utilisateur ${userId}`);
+      
+      // Exécution asynchrone pour répondre rapidement à Kkiapay
+      processPayoutsForUser(userId, amount, "a_chaque_entree", false)
+        .then(result => console.log("[Kkiapay Webhook] Répartition terminée:", result))
+        .catch(err => console.error("[Kkiapay Webhook] Erreur de répartition:", err));
+    }
+
+    return NextResponse.json({ received: true }, { status: 200 });
+
+  } catch (error: any) {
+    console.error("Kkiapay Webhook Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
