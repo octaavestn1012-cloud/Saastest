@@ -8,14 +8,15 @@ import Link from "next/link";
 const plans = [
   {
     name: "Gratuit",
-    target: "Pour tester et démarrer",
+    target: "Démarrer et tester.",
     price: "0",
     commission: "1,9%",
     features: [
-      "1 Règle de répartition",
-      "Jusqu'à 3 destinataires",
-      "Déclenchement manuel",
-      "Support par email"
+      "1,9% de commission par répartition",
+      "20 répartitions / mois maximum",
+      "Plafond 500 000 FCFA / mois",
+      "1 seule règle active",
+      "Répartition manuelle"
     ],
     highlighted: false
   },
@@ -25,25 +26,29 @@ const plans = [
     price: "5 000",
     commission: "0,8%",
     features: [
-      "Règles illimitées",
-      "Destinataires illimités",
-      "Règles conditionnelles (SI... ALORS...)",
-      "Déclenchement automatique",
-      "Support prioritaire WhatsApp"
+      "0,8% de commission (au lieu de 1,9%)",
+      "Répartitions ILLIMITÉES",
+      "Aucun plafond de volume",
+      "Règles ILLIMITÉES",
+      "Règles auto (quotidien, hebdo, etc.)",
+      "Conditions avancées (SI...)",
+      "Ordre de priorité + ligne \"reste\"",
+      "Notifications personnalisées",
+      "Destinataires illimités"
     ],
     highlighted: true
   },
   {
     name: "Business",
-    target: "Pour les gros volumes",
+    target: "Pour les gros volumes.",
     price: "15 000",
     commission: "0,4%",
     features: [
-      "Toutes les fonctions Pro",
-      "Multi-comptes d'encaissement",
-      "API Développeur",
-      "Accompagnement dédié",
-      "Rapports comptables avancés"
+      "Tout ce qui est dans Pro, PLUS :",
+      "0,4% de commission (la plus basse)",
+      "Rapports avancés et exports",
+      "Support prioritaire",
+      "Multi-utilisateurs (Bientôt)"
     ],
     highlighted: false
   }
