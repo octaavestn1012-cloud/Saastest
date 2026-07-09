@@ -25,11 +25,11 @@ export async function getFedaPayBalance(rawSecretKey: string) {
     // Pour aider au débogage local si le solde reste à 0
     console.log("FedaPay Balance API Response:", JSON.stringify(data).substring(0, 200) + "...");
 
-    // Format 1: data["v1/balances"]
     if (data && data["v1/balances"] && Array.isArray(data["v1/balances"]) && data["v1/balances"].length > 0) {
-      // Dans le cas de plusieurs devises ou comptes, on prend le premier solde > 0
-      const activeBalance = data["v1/balances"].find((b: any) => b.amount > 0) || data["v1/balances"][0];
-      return activeBalance?.amount || 0;
+      // L'API FedaPay renvoie un tableau de sous-comptes (un par moyen de paiement : MTN, Moov, Carte, etc.)
+      // Le "Solde Disponible Global" affiché sur le Dashboard FedaPay est la SOMME exacte de tous ces sous-comptes.
+      const totalDisponible = data["v1/balances"].reduce((somme: number, b: any) => somme + (b.amount || 0), 0);
+      return totalDisponible;
     }
     
     // Format 2: data.balances
