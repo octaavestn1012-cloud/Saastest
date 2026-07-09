@@ -2,7 +2,8 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { decryptKey } from "@/lib/encryption";
-import { createAndSendPayout } from "@/lib/fedapay";
+import { createAndSendPayout, getFedaPayBalance } from "@/lib/fedapay";
+import { getKkiapayBalance, createAndSendKkiapayPayout } from "@/lib/kkiapay";
 import { revalidatePath } from "next/cache";
 
 export async function getHistorique() {
@@ -46,8 +47,7 @@ export async function getHistorique() {
   }
 }
 
-import { getFedaPayBalance } from "@/lib/fedapay";
-import { getKkiapayBalance, createAndSendKkiapayPayout } from "@/lib/kkiapay";
+
 
 export async function retryPayoutLigne(ligneId: string) {
   try {

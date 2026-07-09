@@ -97,6 +97,26 @@ export async function deleteConnection(id: string) {
     return { error: e.message };
   }
 }
+export async function toggleConnectionStatus(id: string, currentStatus: string) {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Non autorisé" };
+
+    const newStatus = currentStatus === "actif" ? "pause" : "actif";
+    
+    const { error } = await supabase
+      .from("connexions")
+      .update({ statut: newStatus })
+      .eq("id", id)
+      .eq("user_id", user.id);
+      
+    if (error) return { error: error.message };
+    return { success: true, newStatus };
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
 
 export async function connectKkiapay(formData: FormData) {
   try {

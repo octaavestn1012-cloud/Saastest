@@ -661,81 +661,87 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                   <div className={`space-y-8 relative group transition-all duration-300 ${(!plan || plan === "gratuit") ? "opacity-60 pointer-events-none grayscale-[30%]" : "opacity-100"}`}>
                     
                     {/* 1. Condition de déclenchement */}
-                    <div>
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h5 className="font-bold text-[16px] text-slate-800">1. Condition de déclenchement (SI...)</h5>
-                          <p className="text-slate-500 text-[13px] font-medium mt-0.5">La règle ne s'exécute que si le solde est suffisant.</p>
+                    {trigger !== "manuel" && (
+                      <div>
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h5 className="font-bold text-[16px] text-slate-800">1. Condition de déclenchement (SI...)</h5>
+                            <p className="text-slate-500 text-[13px] font-medium mt-0.5">La règle ne s'exécute que si le solde est suffisant.</p>
+                          </div>
+                          <Switch disabled={!isPremium} checked={conditionEnabled} onCheckedChange={setConditionEnabled} className="data-[state=checked]:bg-blue-600" />
                         </div>
-                        <Switch disabled={!isPremium} checked={conditionEnabled} onCheckedChange={setConditionEnabled} className="data-[state=checked]:bg-blue-600" />
-                      </div>
-                      <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 border border-black/5">
-                        <span className="font-bold text-[14px] text-slate-700 shrink-0">Exécuter SEULEMENT SI le solde dépasse</span>
-                        <div className="flex items-center gap-2 bg-[#F5F5F7] px-4 py-2.5 rounded-xl w-full sm:w-auto">
-                          <input type="number" value={conditionAmount} onChange={(e) => setConditionAmount(e.target.value)} disabled={!isPremium || !conditionEnabled} placeholder="Ex: 50000" className="bg-transparent w-24 text-[14px] font-bold outline-none placeholder:text-black/30" />
-                          <span className="text-[13px] font-bold text-black/50">FCFA</span>
+                        <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 border border-black/5">
+                          <span className="font-bold text-[14px] text-slate-700 shrink-0">Exécuter SEULEMENT SI le solde dépasse</span>
+                          <div className="flex items-center gap-2 bg-[#F5F5F7] px-4 py-2.5 rounded-xl w-full sm:w-auto">
+                            <input type="number" value={conditionAmount} onChange={(e) => setConditionAmount(e.target.value)} disabled={!isPremium || !conditionEnabled} placeholder="Ex: 50000" className="bg-transparent w-24 text-[14px] font-bold outline-none placeholder:text-black/30" />
+                            <span className="text-[13px] font-bold text-black/50">FCFA</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* 2. Ordre de priorité */}
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h5 className="font-bold text-[16px] text-slate-800">2. Ordre de priorité</h5>
-                          <span className="bg-black/5 text-black/40 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">Uniquement en montant fixe</span>
+                    {trigger !== "manuel" && (
+                      <>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h5 className="font-bold text-[16px] text-slate-800">2. Ordre de priorité</h5>
+                              <span className="bg-black/5 text-black/40 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">Uniquement en montant fixe</span>
+                            </div>
+                            <p className="text-slate-500 text-[13px] font-medium mt-0.5">En cas de solde insuffisant, payer les premiers d'abord.</p>
+                          </div>
+                          <Switch disabled={!isPremium || mode !== "montant_fixe"} checked={mode === "montant_fixe" && priorityEnabled} onCheckedChange={setPriorityEnabled} />
                         </div>
-                        <p className="text-slate-500 text-[13px] font-medium mt-0.5">En cas de solde insuffisant, payer les premiers d'abord.</p>
-                      </div>
-                      <Switch disabled={!isPremium || mode !== "montant_fixe"} checked={mode === "montant_fixe" && priorityEnabled} onCheckedChange={setPriorityEnabled} />
-                    </div>
 
-                    {priorityEnabled && recipients.filter(r => r.name.trim() !== "").length > 0 && (
-                      <div className="mt-2 bg-white rounded-2xl p-4 border border-black/5">
-                        <label className="block text-[13px] font-bold text-slate-700 mb-3">Faites glisser pour définir l'ordre de priorité :</label>
-                        <div className="space-y-2">
-                          {priorityOrder.map((id, index) => {
-                            const recipient = recipients.find(r => r.id === id);
-                            if (!recipient || recipient.name.trim() === "") return null;
-                            
-                            return (
-                              <div
-                                key={id}
-                                draggable
-                                onDragStart={() => handlePriorityDragStart(index)}
-                                onDragEnter={() => handlePriorityDragEnter(index)}
-                                onDragEnd={handlePriorityDragEnd}
-                                onDragOver={(e) => e.preventDefault()}
-                                className={`flex items-center gap-3 bg-[#F5F5F7] hover:bg-black/5 p-3 rounded-xl border border-black/5 cursor-grab active:cursor-grabbing transition-transform ${draggedPriorityIdx === index ? 'opacity-50 scale-95' : ''}`}
-                              >
-                                <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-black text-[11px] flex items-center justify-center shrink-0">
-                                  {index + 1}
-                                </div>
-                                <GripVertical className="w-4 h-4 text-slate-400 shrink-0" />
-                                <div className="flex flex-col flex-1">
-                                  <span className="font-bold text-[14px] text-slate-800">{recipient.name}</span>
-                                  {recipient.phone && (
-                                    <div className="text-[12px] font-bold text-black/50 flex items-center gap-1.5">
-                                      <span className="uppercase text-black/40">{recipient.network}</span>
-                                      <span className="font-mono">{recipient.phone}</span>
+                        {priorityEnabled && recipients.filter(r => r.name.trim() !== "").length > 0 && (
+                          <div className="mt-2 bg-white rounded-2xl p-4 border border-black/5">
+                            <label className="block text-[13px] font-bold text-slate-700 mb-3">Faites glisser pour définir l'ordre de priorité :</label>
+                            <div className="space-y-2">
+                              {priorityOrder.map((id, index) => {
+                                const recipient = recipients.find(r => r.id === id);
+                                if (!recipient || recipient.name.trim() === "") return null;
+                                
+                                return (
+                                  <div
+                                    key={id}
+                                    draggable
+                                    onDragStart={() => handlePriorityDragStart(index)}
+                                    onDragEnter={() => handlePriorityDragEnter(index)}
+                                    onDragEnd={handlePriorityDragEnd}
+                                    onDragOver={(e) => e.preventDefault()}
+                                    className={`flex items-center gap-3 bg-[#F5F5F7] hover:bg-black/5 p-3 rounded-xl border border-black/5 cursor-grab active:cursor-grabbing transition-transform ${draggedPriorityIdx === index ? 'opacity-50 scale-95' : ''}`}
+                                  >
+                                    <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-black text-[11px] flex items-center justify-center shrink-0">
+                                      {index + 1}
                                     </div>
-                                  )}
-                                </div>
-                                <div className="text-[10px] font-black text-black/30 uppercase tracking-widest bg-black/5 px-2 py-1 rounded-md shrink-0">
-                                  Dest. {recipients.findIndex(r => r.id === id) + 1}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                                    <GripVertical className="w-4 h-4 text-slate-400 shrink-0" />
+                                    <div className="flex flex-col flex-1">
+                                      <span className="font-bold text-[14px] text-slate-800">{recipient.name}</span>
+                                      {recipient.phone && (
+                                        <div className="text-[12px] font-bold text-black/50 flex items-center gap-1.5">
+                                          <span className="uppercase text-black/40">{recipient.network}</span>
+                                          <span className="font-mono">{recipient.phone}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="text-[10px] font-black text-black/30 uppercase tracking-widest bg-black/5 px-2 py-1 rounded-md shrink-0">
+                                      Dest. {recipients.findIndex(r => r.id === id) + 1}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
 
                     {/* 3. Envoyer le reste */}
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h5 className="font-bold text-[16px] text-slate-800">3. Envoyer le reste (Le Reliquat)</h5>
+                          <h5 className="font-bold text-[16px] text-slate-800">{trigger === "manuel" ? "1." : "3."} Envoyer le reste (Le Reliquat)</h5>
                           <span className="bg-black/5 text-black/40 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md">Uniquement en montant fixe</span>
                         </div>
                         <p className="text-slate-500 text-[13px] font-medium mt-0.5">Tout l'argent non réparti ira à ce destinataire.</p>

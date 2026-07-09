@@ -2,10 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Link2, Plus, AlertCircle, CheckCircle2, ShieldCheck, X, Loader2, Trash2 } from "lucide-react";
+import { Link2, Plus, AlertCircle, CheckCircle2, ShieldCheck, X, Loader2, Trash2, MoreVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
-import { connectFedaPay, connectKkiapay, deleteConnection } from "@/app/actions/connections";
+import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { connectFedaPay, connectKkiapay, deleteConnection, toggleConnectionStatus } from "@/app/actions/connections";
 import { formatDateToBenin } from "@/lib/utils/format";
 
 const AVAILABLE_GATEWAYS = [
@@ -163,20 +170,26 @@ export default function ConnectionsPage() {
                 <div className={`absolute top-0 right-0 w-32 h-32 rounded-bl-full blur-2xl ${
                   conn.statut === "actif" ? "bg-money-in/5" : "bg-danger/10"
                 }`} />
-                
-                <button 
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    if (confirm("Voulez-vous vraiment supprimer cette connexion ?")) {
-                      await deleteConnection(conn.id);
-                      loadConnections();
-                    }
-                  }}
-                  className="absolute top-4 right-4 z-20 p-2 text-muted-foreground/30 hover:text-danger hover:bg-danger/10 rounded-full transition-colors"
-                  title="Supprimer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+                  <span className={`text-[10px] font-bold uppercase tracking-wide ${conn.statut === "actif" ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {conn.statut === "actif" ? 'Actif' : 'Pause'}
+                  </span>
+                  <Switch
+                    checked={conn.statut === "actif"}
+                    onCheckedChange={async () => {
+                      // Optimistic update
+                      const newStatus = conn.statut === "actif" ? "pause" : "actif";
+                      setConnections(connections.map(c => c.id === conn.id ? { ...c, statut: newStatus } : c));
+                      
+                      const res = await toggleConnectionStatus(conn.id, conn.statut);
+                      if (res.error) {
+                        // Revert silently on error
+                        setConnections(connections.map(c => c.id === conn.id ? { ...c, statut: conn.statut } : c));
+                      }
+                    }}
+                    className="data-[state=checked]:bg-money-in scale-90 mr-1"
+                  />
+                </div>
                 
                 <div className="relative z-10 flex flex-col mb-4">
                   <div className="flex items-center gap-3 pr-10">
@@ -190,9 +203,13 @@ export default function ConnectionsPage() {
                       <div className="flex items-center gap-2">
                         <p className="text-xs text-muted-foreground capitalize">{conn.passerelle}</p>
                         <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded flex-shrink-0 text-[9px] font-bold uppercase tracking-wider ${
-                          conn.statut === "actif" ? "text-money-in bg-money-in/10" : "text-danger bg-danger/10"
+                          conn.statut === "actif" ? "text-money-in bg-money-in/10" : 
+                          conn.statut === "pause" ? "text-muted-foreground bg-black/5" : 
+                          "text-danger bg-danger/10"
                         }`}>
-                          {conn.statut === "actif" ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertCircle className="w-2.5 h-2.5" />}
+                          {conn.statut === "actif" ? <CheckCircle2 className="w-2.5 h-2.5" /> : 
+                           conn.statut === "pause" ? <ShieldCheck className="w-2.5 h-2.5" /> : 
+                           <AlertCircle className="w-2.5 h-2.5" />}
                           {conn.statut}
                         </div>
                       </div>
@@ -213,13 +230,36 @@ export default function ConnectionsPage() {
                   <span className="text-[10px] font-medium text-muted-foreground uppercase">
                     Ajouté le {formatDateToBenin(conn.created_at).split(" à")[0]}
                   </span>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => openModal(conn.passerelle)}
-                    className="rounded-lg h-8 px-4 text-xs font-semibold hover:bg-black/5 hover:text-black transition-colors"
-                  >
-                    Gérer
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => openModal(conn.passerelle)}
+                      className="rounded-lg h-8 px-4 text-xs font-semibold hover:bg-black/5 hover:text-black transition-colors"
+                    >
+                      Gérer
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-black hover:bg-black/5 rounded-full ml-1">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40 rounded-xl">
+                        <DropdownMenuItem 
+                          className="text-danger focus:text-danger focus:bg-danger/10 cursor-pointer rounded-lg"
+                          onClick={async () => {
+                            if (confirm("Voulez-vous vraiment supprimer cette connexion ?")) {
+                              await deleteConnection(conn.id);
+                              loadConnections();
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Supprimer
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </motion.div>
             ))}

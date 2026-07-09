@@ -270,8 +270,10 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
 
   const totalPercent = isPercentageMode ? currentTargets.reduce((acc: number, t: any) => acc + (Number(t.percent) || 0), 0) : 0;
   
+  const hasMissingContact = currentTargets.length === 0 || currentTargets.some((t: any) => !t.number || typeof t.number !== 'string' || t.number.trim() === '');
+  
   // Faisabilité : en pourcentage ça doit faire 100%, en fixe ça ne doit pas dépasser le solde, ET le solde doit être > 0
-  const isExact = (isPercentageMode ? totalPercent === 100 : totalDistributedTargets <= toDistribute) && computedGross > 0 && totalAvailable >= 100;
+  const isExact = (isPercentageMode ? totalPercent === 100 : totalDistributedTargets <= toDistribute) && computedGross > 0 && totalAvailable >= 100 && !hasMissingContact;
 
   const isRuleOnly = modalMode === "quick" && saveRuleTrigger !== "manual";
 
