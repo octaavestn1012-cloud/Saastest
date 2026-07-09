@@ -21,20 +21,39 @@ export async function getFedaPayBalance(rawSecretKey: string) {
     }
 
     const data = await res.json();
-    // data.v1.balances is usually an array, return the first one or XOF
-    if (data && data.v1 && data.v1.balances && data.v1.balances.length > 0) {
-      return data.v1.balances[0].amount;
+    
+    // Pour aider au débogage local si le solde reste à 0
+    console.log("FedaPay Balance API Response:", JSON.stringify(data).substring(0, 200) + "...");
+
+    // Format 1: data.v1.balances
+    if (data && data.v1 && Array.isArray(data.v1.balances) && data.v1.balances.length > 0) {
+      const balanceObj = data.v1.balances[0];
+      return balanceObj?.amount || 0;
     }
     
-    // Si format différent (dépend des versions d'API)
-    if (data && data.data && data.data.length > 0) {
-        return data.data[0].amount;
+    // Format 2: data.balances
+    if (data && Array.isArray(data.balances) && data.balances.length > 0) {
+      const balanceObj = data.balances[0];
+      return balanceObj?.amount || 0;
     }
 
+    // Format 3: data.data (Standard JSON API)
+    if (data && Array.isArray(data.data) && data.data.length > 0) {
+      const balanceObj = data.data[0];
+      return balanceObj?.amount || 0;
+    }
+
+    // Format 4: Objet direct
+    if (data && typeof data.amount === 'number') {
+      return data.amount;
+    }
+
+    console.warn("Format de solde FedaPay non reconnu ou vide.");
     return 0;
   } catch (error) {
     console.error("Error fetching FedaPay balance:", error);
-    throw error;
+    // On retourne 0 au lieu de throw pour éviter de faire planter tout le dashboard
+    return 0;
   }
 }
 

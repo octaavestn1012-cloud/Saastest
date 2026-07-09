@@ -92,7 +92,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           const { data: rulesData } = await getRegles();
           if (rulesData) {
             // Transformer les règles pour correspondre au format attendu par la modale
-            const formattedRules = rulesData.filter((r:any) => r.actif).map((r: any) => ({
+            const formattedRules = rulesData.filter((r:any) => r.actif && r.declencheur === 'manuel').map((r: any) => ({
               id: r.id,
               name: r.nom,
               active: r.actif,
@@ -133,26 +133,59 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     if (customData) return customData;
     if (!activeRuleSource) return null;
 
-    const commissionAmount = totalAvailable * COMMISSION_RATE;
-    const toDistribute = totalAvailable - commissionAmount;
     const mode = (activeRuleSource.mode === "pourcentage" || activeRuleSource.mode === "percentage") ? "percentage" : "fixed";
     
-    return {
-      name: activeRuleSource.name,
-      totalAvailable: totalAvailable,
-      commission: commissionAmount,
-      toDistribute: toDistribute,
-      targets: (activeRuleSource.recipients || []).map((r: any, index: number) => {
-        const amount = mode === "percentage" ? (toDistribute * (Number(r.value) || 0)) / 100 : (Number(r.value) || 0);
+    let commissionAmount = 0;
+    let toDistribute = totalAvailable;
+    let sumAssigned = 0;
+    let targets: any[] = [];
+
+    if (mode === "percentage") {
+      commissionAmount = Math.floor(totalAvailable * COMMISSION_RATE);
+      toDistribute = totalAvailable - commissionAmount;
+
+      targets = (activeRuleSource.recipients || []).map((r: any, index: number) => {
+        const amount = Math.round((toDistribute * (Number(r.value) || 0)) / 100);
+        sumAssigned += amount;
         return {
           id: r.id,
           label: r.name || `Destinataire ${index + 1}`,
           method: r.network,
           number: r.phone,
           amount: amount,
-          percent: mode === "percentage" ? Number(r.value) : undefined
+          percent: Number(r.value)
         };
-      })
+      });
+
+      if (targets.length > 0) {
+        const diff = toDistribute - sumAssigned;
+        if (diff !== 0) {
+          targets[targets.length - 1].amount += diff;
+        }
+      }
+    } else {
+      // fixed mode
+      targets = (activeRuleSource.recipients || []).map((r: any, index: number) => {
+        const amount = Math.round(Number(r.value) || 0);
+        sumAssigned += amount;
+        return {
+          id: r.id,
+          label: r.name || `Destinataire ${index + 1}`,
+          method: r.network,
+          number: r.phone,
+          amount: amount,
+          percent: undefined
+        };
+      });
+      commissionAmount = Math.floor(sumAssigned * COMMISSION_RATE);
+    }
+
+    return {
+      name: activeRuleSource.name,
+      totalAvailable: totalAvailable,
+      commission: commissionAmount,
+      toDistribute: toDistribute,
+      targets
     };
   }, [activeRuleSource, customData, totalAvailable, COMMISSION_RATE]);
 
@@ -166,26 +199,58 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   }, [currentPreviewData, modalMode]);
 
   const quickPreviewData = useMemo(() => {
-    const commissionAmount = totalAvailable * COMMISSION_RATE;
-    const toDistribute = totalAvailable - commissionAmount;
-    return {
-      name: "Répartition rapide",
-      totalAvailable: totalAvailable,
-      commission: commissionAmount,
-      toDistribute: toDistribute,
-      targets: quickTargets.map((r: any, index: number) => {
-        const amount = quickMode === "percentage" ? (toDistribute * (Number(r.value) || 0)) / 100 : (Number(r.value) || 0);
+    let commissionAmount = 0;
+    let toDistribute = totalAvailable;
+    let sumAssigned = 0;
+    let targets: any[] = [];
+
+    if (quickMode === "percentage") {
+      commissionAmount = Math.floor(totalAvailable * COMMISSION_RATE);
+      toDistribute = totalAvailable - commissionAmount;
+
+      targets = quickTargets.map((r: any, index: number) => {
+        const amount = Math.round((toDistribute * (Number(r.value) || 0)) / 100);
+        sumAssigned += amount;
         return {
           id: r.id,
           label: r.name || `Destinataire ${index + 1}`,
           method: r.network,
           number: r.phone,
           amount: amount,
-          percent: quickMode === "percentage" ? Number(r.value) : undefined
+          percent: Number(r.value)
         };
-      })
+      });
+
+      if (targets.length > 0) {
+        const diff = toDistribute - sumAssigned;
+        if (diff !== 0) {
+          targets[targets.length - 1].amount += diff;
+        }
+      }
+    } else {
+      targets = quickTargets.map((r: any, index: number) => {
+        const amount = Math.round(Number(r.value) || 0);
+        sumAssigned += amount;
+        return {
+          id: r.id,
+          label: r.name || `Destinataire ${index + 1}`,
+          method: r.network,
+          number: r.phone,
+          amount: amount,
+          percent: undefined
+        };
+      });
+      commissionAmount = Math.floor(sumAssigned * COMMISSION_RATE);
+    }
+
+    return {
+      name: "Répartition rapide",
+      totalAvailable: totalAvailable,
+      commission: commissionAmount,
+      toDistribute: toDistribute,
+      targets
     };
-  }, [quickTargets, quickMode]);
+  }, [quickTargets, quickMode, totalAvailable, COMMISSION_RATE]);
 
   const activeData = modalMode === "rule" ? currentPreviewData : quickPreviewData;
   const currentTargets = modalMode === "rule" 
@@ -196,19 +261,17 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     ? currentTargets.some((t: any) => t.percent !== undefined)
     : quickMode === "percentage";
 
-  const toDistribute = totalAvailable - (totalAvailable * COMMISSION_RATE);
-  const totalDistributedTargets = currentTargets.reduce((acc: number, t: any) => acc + (isPercentageMode ? (toDistribute * (Number(t.percent) || 0)) / 100 : Number(t.amount) || 0), 0);
-  const totalDistributed = totalDistributedTargets + ((activeData as any)?.commission || 0);
+  const computedCommission = (activeData as any)?.commission || 0;
+  const toDistribute = totalAvailable - computedCommission;
+  const totalDistributedTargets = currentTargets.reduce((acc: number, t: any) => acc + (Number(t.amount) || 0), 0);
   
-  const computedGross = isPercentageMode 
-    ? totalAvailable 
-    : Math.ceil(totalDistributedTargets / (1 - COMMISSION_RATE));
-  const computedCommission = isPercentageMode 
-    ? totalAvailable * COMMISSION_RATE 
-    : computedGross - totalDistributedTargets;
+  // Total prelevé = Somme réelle des destinataires + Commission
+  const computedGross = totalDistributedTargets + computedCommission;
 
   const totalPercent = isPercentageMode ? currentTargets.reduce((acc: number, t: any) => acc + (Number(t.percent) || 0), 0) : 0;
-  const isExact = isPercentageMode ? totalPercent === 100 : totalDistributedTargets <= toDistribute;
+  
+  // Faisabilité : en pourcentage ça doit faire 100%, en fixe ça ne doit pas dépasser le solde, ET le solde doit être > 0
+  const isExact = (isPercentageMode ? totalPercent === 100 : totalDistributedTargets <= toDistribute) && computedGross > 0 && totalAvailable >= 100;
 
   const isRuleOnly = modalMode === "quick" && saveRuleTrigger !== "manual";
 

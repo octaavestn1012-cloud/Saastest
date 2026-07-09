@@ -27,6 +27,7 @@ export default function SignupPage() {
     setSuccess(false);
 
     const formData = new FormData(event.currentTarget);
+    const nom = formData.get("nom") as string;
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
@@ -47,6 +48,9 @@ export default function SignupPage() {
       email,
       password,
       options: {
+        data: {
+          full_name: nom,
+        },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
@@ -105,6 +109,11 @@ export default function SignupPage() {
           </div>
         ) : (
           <form onSubmit={onSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-black" htmlFor="nom">Nom Complet</label>
+              <Input id="nom" name="nom" placeholder="Ex: Octave D." type="text" required className="rounded-xl h-14 px-4 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-bold text-black" htmlFor="email">Email</label>
               <Input id="email" name="email" placeholder="octave@exemple.com" type="email" required className="rounded-xl h-14 px-4 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />

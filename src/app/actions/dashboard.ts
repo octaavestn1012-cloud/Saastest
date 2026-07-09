@@ -5,14 +5,13 @@ import { decryptKey } from "@/lib/encryption";
 import { getFedaPayBalance } from "@/lib/fedapay";
 import { getKkiapayBalance } from "@/lib/kkiapay";
 
-export async function getDashboardMetrics() {
+export async function getLiveTotalBalance() {
   try {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) return { error: "Non autorisé" };
 
-    // 1. Récupérer le solde de toutes les passerelles connectées
     let balance = 0;
     const { data: connexions } = await supabase
       .from("connexions")
@@ -37,6 +36,23 @@ export async function getDashboardMetrics() {
         }
       }
     }
+    return { success: true, balance };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getDashboardMetrics() {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return { error: "Non autorisé" };
+
+    // 1. Récupérer le solde de toutes les passerelles connectées
+    const balRes = await getLiveTotalBalance();
+    let balance = balRes.balance || 0;
+
 
     // 2. Calculer le total réparti (somme des montants des exécutions réussies ou partielles)
     // On somme les montant_total des executions

@@ -265,3 +265,36 @@ export async function getAdminFailedLogs() {
     return { success: false, error: err.message };
   }
 }
+
+export async function forceGodModePlan(newPlan: "gratuit" | "pro" | "business") {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user || !user.email || user.email.toLowerCase() !== "octaavestn1012@gmail.com") {
+      return { success: false, error: "Non autorisé. God Mode réservé au fondateur." };
+    }
+
+    let expiresAt = null;
+    if (newPlan !== "gratuit") {
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      expiresAt = d.toISOString();
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ 
+        plan: newPlan,
+        plan_expires_at: expiresAt
+      })
+      .eq("id", user.id);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("Erreur forceGodModePlan:", err);
+    return { success: false, error: err.message };
+  }
+}

@@ -15,7 +15,8 @@ const plans = [
       "1,9% de commission par répartition",
       "20 répartitions / mois maximum",
       "Plafond 500 000 FCFA / mois",
-      "1 seule règle active",
+      "Jusqu'à 3 règles actives",
+      "Max 3 destinataires/répartition",
       "Répartition manuelle"
     ],
     highlighted: false

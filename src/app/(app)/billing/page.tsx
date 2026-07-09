@@ -8,6 +8,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { getUserInvoices } from "@/app/actions/invoices";
 import { downloadInvoicePdf } from "@/lib/utils/invoiceGenerator";
+import { AdminGodMode } from "@/components/features/billing/AdminGodMode";
 
 export default function BillingPage() {
   const { user, plan: currentPlanRaw, refreshProfile } = useUser();
@@ -151,7 +152,11 @@ export default function BillingPage() {
                 </li>
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-                  1 seule règle active
+                  Jusqu'à 3 règles actives
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Max 3 destinataires/répartition
                 </li>
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
@@ -354,6 +359,10 @@ export default function BillingPage() {
             )}
           </div>
         </div>
+
+        {user?.email?.toLowerCase() === "octaavestn1012@gmail.com" && (
+          <AdminGodMode currentPlan={currentPlanRaw} />
+        )}
 
       </div>
     </div>

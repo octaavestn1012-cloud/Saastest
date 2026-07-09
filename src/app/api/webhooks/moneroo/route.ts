@@ -64,7 +64,7 @@ export async function POST(req: Request) {
         .from("profiles")
         .update({ 
           plan: purchasedPlan, 
-          // plan_expires_at: expirationDate.toISOString() 
+          plan_expires_at: expirationDate.toISOString() 
         })
         .eq("id", userId);
 

@@ -65,7 +65,7 @@ export async function POST(req: Request, { params }: { params: { userId: string 
       console.log(`[FedaPay Webhook] Paiement entrant de ${amount} FCFA détecté pour l'utilisateur ${userId}`);
       
       // Exécution asynchrone pour répondre rapidement à FedaPay
-      processPayoutsForUser(userId, amount, "a_chaque_entree", false)
+      processPayoutsForUser(userId, amount, "a_chaque_entree", false, true)
         .then(result => console.log("[FedaPay Webhook] Répartition terminée:", result))
         .catch(err => console.error("[FedaPay Webhook] Erreur de répartition:", err));
     }

@@ -80,6 +80,16 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
 
   // Options Avancées
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [priorityEnabled, setPriorityEnabled] = useState(initialData?.declencheur_config?.priorityEnabled || false);
+  const [conditionEnabled, setConditionEnabled] = useState(initialData?.declencheur_config?.conditionEnabled || false);
+  const [conditionAmount, setConditionAmount] = useState(initialData?.declencheur_config?.conditionAmount || "");
+  const [reliquatEnabled, setReliquatEnabled] = useState(initialData?.declencheur_config?.reliquatEnabled || false);
+  const [reliquatRecipientId, setReliquatRecipientId] = useState(initialData?.declencheur_config?.reliquatRecipientId || "");
+  const [notifyEmail, setNotifyEmail] = useState(initialData?.declencheur_config?.notifyEmail ?? true);
+  const [notifySms, setNotifySms] = useState(initialData?.declencheur_config?.notifySms || false);
+  const [priorityOrder, setPriorityOrder] = useState<string[]>([]);
+  const [draggedPriorityIdx, setDraggedPriorityIdx] = useState<number | null>(null);
+  
   const { plan } = useUser();
   const isPremium = plan === 'pro' || plan === 'business';
   
@@ -137,6 +147,45 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
       phone: "",
       isManual: false
     }]);
+  };
+
+  useEffect(() => {
+    const currentIds = recipients.map(r => r.id);
+    let newOrder = [...priorityOrder];
+    
+    // Initial setup from config
+    if (newOrder.length === 0 && initialData?.declencheur_config?.priorityOrder) {
+      newOrder = initialData.declencheur_config.priorityOrder.map((idx: number) => recipients[idx]?.id).filter(Boolean);
+    }
+
+    newOrder = newOrder.filter(id => currentIds.includes(id));
+    currentIds.forEach(id => {
+      if (!newOrder.includes(id)) {
+        newOrder.push(id);
+      }
+    });
+
+    if (newOrder.join(',') !== priorityOrder.join(',')) {
+      setPriorityOrder(newOrder);
+    }
+  }, [recipients, initialData]);
+
+  const handlePriorityDragStart = (idx: number) => {
+    setDraggedPriorityIdx(idx);
+  };
+
+  const handlePriorityDragEnter = (idx: number) => {
+    if (draggedPriorityIdx === null || draggedPriorityIdx === idx) return;
+    const newOrder = [...priorityOrder];
+    const draggedItem = newOrder[draggedPriorityIdx];
+    newOrder.splice(draggedPriorityIdx, 1);
+    newOrder.splice(idx, 0, draggedItem);
+    setPriorityOrder(newOrder);
+    setDraggedPriorityIdx(idx);
+  };
+
+  const handlePriorityDragEnd = () => {
+    setDraggedPriorityIdx(null);
   };
 
   const handleSaveRecipientInline = async (target: RecipientRow) => {
@@ -215,11 +264,19 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
       nom: ruleName,
       actif: initialData?.actif ?? true,
       declencheur: trigger,
-      declencheur_config: trigger !== "manuel" && trigger !== "a_chaque_entree" ? {
-        time: triggerTime,
-        dayOfWeek: triggerDayOfWeek,
-        dayOfMonth: triggerDayOfMonth
-      } : null,
+      declencheur_config: {
+        time: trigger !== "manuel" && trigger !== "a_chaque_entree" ? triggerTime : undefined,
+        dayOfWeek: trigger !== "manuel" && trigger !== "a_chaque_entree" ? triggerDayOfWeek : undefined,
+        dayOfMonth: trigger !== "manuel" && trigger !== "a_chaque_entree" ? triggerDayOfMonth : undefined,
+        priorityEnabled,
+        priorityOrder: priorityOrder.map(id => recipients.findIndex(r => r.id === id)).filter(idx => idx !== -1),
+        conditionEnabled,
+        conditionAmount: Number(conditionAmount) || 0,
+        reliquatEnabled,
+        reliquatRecipientId,
+        notifyEmail,
+        notifySms
+      },
       mode: mode,
       recipients: recipients.map(r => ({
         ...r,
@@ -610,12 +667,12 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                           <h5 className="font-bold text-[16px] text-slate-800">1. Condition de déclenchement (SI...)</h5>
                           <p className="text-slate-500 text-[13px] font-medium mt-0.5">La règle ne s'exécute que si le solde est suffisant.</p>
                         </div>
-                        <Switch disabled={!plan || plan === "gratuit"} checked={true} className="data-[state=checked]:bg-blue-600" />
+                        <Switch disabled={!isPremium} checked={conditionEnabled} onCheckedChange={setConditionEnabled} className="data-[state=checked]:bg-blue-600" />
                       </div>
                       <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 border border-black/5">
                         <span className="font-bold text-[14px] text-slate-700 shrink-0">Exécuter SEULEMENT SI le solde dépasse</span>
                         <div className="flex items-center gap-2 bg-[#F5F5F7] px-4 py-2.5 rounded-xl w-full sm:w-auto">
-                          <input type="text" disabled={!plan || plan === "gratuit"} placeholder="Ex: 50000" className="bg-transparent w-24 text-[14px] font-bold outline-none placeholder:text-black/30" />
+                          <input type="number" value={conditionAmount} onChange={(e) => setConditionAmount(e.target.value)} disabled={!isPremium || !conditionEnabled} placeholder="Ex: 50000" className="bg-transparent w-24 text-[14px] font-bold outline-none placeholder:text-black/30" />
                           <span className="text-[13px] font-bold text-black/50">FCFA</span>
                         </div>
                       </div>
@@ -630,8 +687,38 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                         </div>
                         <p className="text-slate-500 text-[13px] font-medium mt-0.5">En cas de solde insuffisant, payer les premiers d'abord.</p>
                       </div>
-                      <Switch disabled={!plan || plan === "gratuit"} checked={false} />
+                      <Switch disabled={!isPremium} checked={priorityEnabled} onCheckedChange={setPriorityEnabled} />
                     </div>
+
+                    {priorityEnabled && recipients.filter(r => r.name.trim() !== "").length > 0 && (
+                      <div className="mt-2 bg-white rounded-2xl p-4 border border-black/5">
+                        <label className="block text-[13px] font-bold text-slate-700 mb-3">Faites glisser pour définir l'ordre de priorité :</label>
+                        <div className="space-y-2">
+                          {priorityOrder.map((id, index) => {
+                            const recipient = recipients.find(r => r.id === id);
+                            if (!recipient || recipient.name.trim() === "") return null;
+                            
+                            return (
+                              <div
+                                key={id}
+                                draggable
+                                onDragStart={() => handlePriorityDragStart(index)}
+                                onDragEnter={() => handlePriorityDragEnter(index)}
+                                onDragEnd={handlePriorityDragEnd}
+                                onDragOver={(e) => e.preventDefault()}
+                                className={`flex items-center gap-3 bg-[#F5F5F7] hover:bg-black/5 p-3 rounded-xl border border-black/5 cursor-grab active:cursor-grabbing transition-transform ${draggedPriorityIdx === index ? 'opacity-50 scale-95' : ''}`}
+                              >
+                                <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-black text-[11px] flex items-center justify-center shrink-0">
+                                  {index + 1}
+                                </div>
+                                <GripVertical className="w-4 h-4 text-slate-400 shrink-0" />
+                                <span className="font-bold text-[14px] text-slate-800">{recipient.name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {/* 3. Envoyer le reste */}
                     <div className="flex items-start justify-between">
@@ -642,8 +729,24 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                         </div>
                         <p className="text-slate-500 text-[13px] font-medium mt-0.5">Tout l'argent non réparti ira à ce destinataire.</p>
                       </div>
-                      <Switch disabled={!plan || plan === "gratuit"} checked={false} />
+                      <Switch disabled={!isPremium} checked={reliquatEnabled} onCheckedChange={setReliquatEnabled} />
                     </div>
+                    
+                    {reliquatEnabled && (
+                      <div className="mt-2 bg-white rounded-2xl p-4 border border-black/5">
+                        <label className="block text-[13px] font-bold text-slate-700 mb-2">Choisir le destinataire du reliquat :</label>
+                        <select 
+                          value={reliquatRecipientId}
+                          onChange={(e) => setReliquatRecipientId(e.target.value)}
+                          className="w-full bg-[#F5F5F7] rounded-xl px-4 py-2.5 text-[14px] font-bold outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          <option value="">Sélectionner un destinataire...</option>
+                          {recipients.filter(r => r.name.trim() !== "").map(r => (
+                            <option key={r.id} value={r.id}>{r.name} - {r.phone}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     {/* 4. Notifications personnalisées */}
                     <div>
@@ -652,12 +755,12 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                         <p className="text-slate-500 text-[13px] font-medium mt-0.5">Recevez une alerte quand cette règle s'exécute.</p>
                       </div>
                       <div className="bg-white rounded-2xl p-4 flex flex-wrap items-center gap-6 border border-black/5">
-                        <label className={`flex items-center gap-2.5 ${(!plan || plan === "gratuit") ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                          <input type="checkbox" disabled={!plan || plan === "gratuit"} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
+                        <label className={`flex items-center gap-2.5 ${(!isPremium) ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                          <input type="checkbox" checked={notifyEmail} onChange={(e) => setNotifyEmail(e.target.checked)} disabled={!isPremium} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
                           <span className="font-bold text-[14px] text-slate-800">Par Email</span>
                         </label>
-                        <label className={`flex items-center gap-2.5 ${(!plan || plan === "gratuit") ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                          <input type="checkbox" disabled={!plan || plan === "gratuit"} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
+                        <label className={`flex items-center gap-2.5 ${(!isPremium) ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                          <input type="checkbox" checked={notifySms} onChange={(e) => setNotifySms(e.target.checked)} disabled={!isPremium} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600" />
                           <span className="font-bold text-[14px] text-slate-800">Par SMS</span>
                         </label>
                       </div>

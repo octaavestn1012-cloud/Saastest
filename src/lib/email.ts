@@ -127,3 +127,60 @@ export async function sendFailedPayoutEmail(userEmail: string, amount: number, d
     return { success: false };
   }
 }
+
+export async function sendAutomationReport(toEmail: string, report: any) {
+  try {
+    const isSuccess = report.status === "SUCCESS";
+    const isPartial = report.status === "PARTIAL";
+    const isFailed = report.status === "FAILED";
+
+    let subject = isSuccess ? "✅ Succès" : isPartial ? "⚠️ Partiel" : "❌ Échec";
+    subject += " - Exécution automatique Réparto";
+
+    const dateStr = new Date().toLocaleDateString("fr-FR", { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    let messageHtml = "";
+    if (isSuccess) {
+      messageHtml = `<p style="font-size: 16px;">✅ Réparto a réparti <strong>${report.totalAmount} FCFA</strong> automatiquement le ${dateStr}.</p>`;
+    } else if (isPartial) {
+      const paid = report.details.filter((d:any) => d.status === "SUCCESS" || d.status === "PENDING" || d.status === "reussi" || d.status === "en_cours");
+      const unpaid = report.details.filter((d:any) => d.status === "FAILED" || d.status === "echoue");
+      
+      messageHtml = `<p style="font-size: 16px;">⚠️ Ta répartition automatique du ${dateStr} est incomplète : solde insuffisant.</p>
+                     <p><strong>${paid.length} destinataire(s)</strong> ont reçu leur part.</p>
+                     <p><strong>${unpaid.length} destinataire(s)</strong> n'ont pas pu être payés cette fois.</p>`;
+    } else {
+      messageHtml = `<p style="font-size: 16px;">❌ Ta répartition automatique du ${dateStr} n'a pas pu être effectuée : solde insuffisant.</p>`;
+    }
+
+    const { data, error } = await resend.emails.send({
+      from: `Réparto <${SENDER}>`,
+      to: [toEmail],
+      subject: subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #111; border: 1px solid #eee; border-radius: 12px; overflow: hidden;">
+          <div style="background-color: #f9f9f9; padding: 20px; border-bottom: 1px solid #eee;">
+            <h2 style="margin: 0;">Rapport d'automatisation</h2>
+            <p style="margin: 5px 0 0 0; color: #666;">Règle : <strong>${report.ruleName}</strong></p>
+          </div>
+          <div style="padding: 20px;">
+            <p>Bonjour,</p>
+            ${messageHtml}
+            
+            <p style="margin-top: 30px; font-size: 14px; color: #666;">Vous pouvez consulter les détails complets dans votre <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://reparto.app'}/historique" style="color: #000;">Historique</a>.</p>
+            <br/>
+            <p>L'équipe Réparto</p>
+          </div>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("Erreur d'envoi d'email de rapport d'automatisation :", error);
+    }
+    return { success: !error, data, error };
+  } catch (err) {
+    console.error("Erreur inattendue email :", err);
+    return { success: false, error: err };
+  }
+}
