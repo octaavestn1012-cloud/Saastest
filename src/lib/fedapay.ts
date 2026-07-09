@@ -25,10 +25,10 @@ export async function getFedaPayBalance(rawSecretKey: string) {
     // Pour aider au débogage local si le solde reste à 0
     console.log("FedaPay Balance API Response:", JSON.stringify(data).substring(0, 200) + "...");
 
-    // Format 1: data.v1.balances
-    if (data && data.v1 && Array.isArray(data.v1.balances) && data.v1.balances.length > 0) {
+    // Format 1: data["v1/balances"]
+    if (data && data["v1/balances"] && Array.isArray(data["v1/balances"]) && data["v1/balances"].length > 0) {
       // Dans le cas de plusieurs devises ou comptes, on prend le premier solde > 0
-      const activeBalance = data.v1.balances.find((b: any) => b.amount > 0) || data.v1.balances[0];
+      const activeBalance = data["v1/balances"].find((b: any) => b.amount > 0) || data["v1/balances"][0];
       return activeBalance?.amount || 0;
     }
     
