@@ -268,12 +268,12 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
         time: trigger !== "manuel" && trigger !== "a_chaque_entree" ? triggerTime : undefined,
         dayOfWeek: trigger !== "manuel" && trigger !== "a_chaque_entree" ? triggerDayOfWeek : undefined,
         dayOfMonth: trigger !== "manuel" && trigger !== "a_chaque_entree" ? triggerDayOfMonth : undefined,
-        priorityEnabled,
-        priorityOrder: priorityOrder.map(id => recipients.findIndex(r => r.id === id)).filter(idx => idx !== -1),
+        priorityEnabled: mode === "montant_fixe" ? priorityEnabled : false,
+        priorityOrder: mode === "montant_fixe" ? priorityOrder.map(id => recipients.findIndex(r => r.id === id)).filter(idx => idx !== -1) : [],
         conditionEnabled,
         conditionAmount: Number(conditionAmount) || 0,
-        reliquatEnabled,
-        reliquatRecipientId,
+        reliquatEnabled: mode === "montant_fixe" ? reliquatEnabled : false,
+        reliquatRecipientId: mode === "montant_fixe" ? reliquatRecipientId : "",
         notifyEmail,
         notifySms
       },
@@ -687,7 +687,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                         </div>
                         <p className="text-slate-500 text-[13px] font-medium mt-0.5">En cas de solde insuffisant, payer les premiers d'abord.</p>
                       </div>
-                      <Switch disabled={!isPremium} checked={priorityEnabled} onCheckedChange={setPriorityEnabled} />
+                      <Switch disabled={!isPremium || mode !== "montant_fixe"} checked={mode === "montant_fixe" && priorityEnabled} onCheckedChange={setPriorityEnabled} />
                     </div>
 
                     {priorityEnabled && recipients.filter(r => r.name.trim() !== "").length > 0 && (
@@ -712,7 +712,18 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                                   {index + 1}
                                 </div>
                                 <GripVertical className="w-4 h-4 text-slate-400 shrink-0" />
-                                <span className="font-bold text-[14px] text-slate-800">{recipient.name}</span>
+                                <div className="flex flex-col flex-1">
+                                  <span className="font-bold text-[14px] text-slate-800">{recipient.name}</span>
+                                  {recipient.phone && (
+                                    <div className="text-[12px] font-bold text-black/50 flex items-center gap-1.5">
+                                      <span className="uppercase text-black/40">{recipient.network}</span>
+                                      <span className="font-mono">{recipient.phone}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="text-[10px] font-black text-black/30 uppercase tracking-widest bg-black/5 px-2 py-1 rounded-md shrink-0">
+                                  Dest. {recipients.findIndex(r => r.id === id) + 1}
+                                </div>
                               </div>
                             );
                           })}
@@ -729,22 +740,81 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                         </div>
                         <p className="text-slate-500 text-[13px] font-medium mt-0.5">Tout l'argent non réparti ira à ce destinataire.</p>
                       </div>
-                      <Switch disabled={!isPremium} checked={reliquatEnabled} onCheckedChange={setReliquatEnabled} />
+                      <Switch disabled={!isPremium || mode !== "montant_fixe"} checked={mode === "montant_fixe" && reliquatEnabled} onCheckedChange={setReliquatEnabled} />
                     </div>
                     
                     {reliquatEnabled && (
                       <div className="mt-2 bg-white rounded-2xl p-4 border border-black/5">
                         <label className="block text-[13px] font-bold text-slate-700 mb-2">Choisir le destinataire du reliquat :</label>
-                        <select 
-                          value={reliquatRecipientId}
-                          onChange={(e) => setReliquatRecipientId(e.target.value)}
-                          className="w-full bg-[#F5F5F7] rounded-xl px-4 py-2.5 text-[14px] font-bold outline-none focus:ring-1 focus:ring-primary"
-                        >
-                          <option value="">Sélectionner un destinataire...</option>
-                          {recipients.filter(r => r.name.trim() !== "").map(r => (
-                            <option key={r.id} value={r.id}>{r.name} - {r.phone}</option>
-                          ))}
-                        </select>
+                        <div className="relative custom-dropdown-container">
+                          <button 
+                            onClick={() => setOpenDropdownId(openDropdownId === 'reliquat' ? null : 'reliquat')}
+                            className="w-full flex items-center justify-between bg-[#F5F5F7] rounded-xl px-4 py-3 text-left transition-colors hover:bg-black/5"
+                          >
+                            {reliquatRecipientId ? (() => {
+                              const selected = contacts.find(c => c.id === reliquatRecipientId);
+                              if (selected) {
+                                return (
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-[14px] text-slate-800">{selected.name}</span>
+                                    {selected.phone && (
+                                      <div className="text-[12px] font-bold text-black/50 flex items-center gap-1.5 mt-0.5">
+                                        <span className="uppercase text-black/40">{selected.network}</span>
+                                        <span className="font-mono">{selected.phone}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return <span className="font-bold text-[14px] text-slate-800">Destinataire inconnu</span>;
+                            })() : (
+                              <span className="font-bold text-[14px] text-slate-500">Sélectionner un numéro enregistré...</span>
+                            )}
+                            <ChevronDown className={`w-5 h-5 text-black transition-transform ${openDropdownId === 'reliquat' ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          <AnimatePresence>
+                            {openDropdownId === 'reliquat' && (
+                              <motion.div 
+                                initial={{ opacity: 0, y: -10, scale: 0.95 }} 
+                                animate={{ opacity: 1, y: 0, scale: 1 }} 
+                                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute top-full left-0 mt-2 w-full bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.12)] border border-black/5 z-50 overflow-hidden py-2"
+                              >
+                                <div className="px-4 py-2 text-[10px] font-black text-black/30 uppercase tracking-widest">
+                                  Vos numéros enregistrés
+                                </div>
+                                <div className="max-h-[250px] overflow-y-auto">
+                                  {contacts.length === 0 ? (
+                                    <div className="px-4 py-4 text-center text-sm font-medium text-slate-500">
+                                      Aucun contact trouvé.
+                                    </div>
+                                  ) : (
+                                    contacts.map(c => (
+                                      <button
+                                        key={c.id}
+                                        onClick={() => {
+                                          setReliquatRecipientId(c.id);
+                                          setOpenDropdownId(null);
+                                        }}
+                                        className="w-full text-left px-4 py-3 hover:bg-[#F5F5F7] transition-colors border-b border-black/5 last:border-0 flex flex-col"
+                                      >
+                                        <span className="font-bold text-[14px] text-slate-800">{c.name}</span>
+                                        {c.phone && (
+                                          <div className="text-[12px] font-bold text-black/50 flex items-center gap-1.5 mt-0.5">
+                                            <span className="uppercase text-black/40">{c.network}</span>
+                                            <span className="font-mono">{c.phone}</span>
+                                          </div>
+                                        )}
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                       </div>
                     )}
 

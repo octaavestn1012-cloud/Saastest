@@ -11,10 +11,16 @@ import { getDashboardMetrics } from "@/app/actions/dashboard";
 import { getHistorique } from "@/app/actions/historique";
 import { RecentExecutionsList } from "@/components/features/dashboard/RecentExecutionsList";
 import { formatDateToBenin } from "@/lib/utils/format";
+import { createClient } from "@/utils/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: profile } = await supabase.from('profiles').select('nom').eq('id', user?.id).single();
+  const userName = profile?.nom && profile.nom !== "Utilisateur" ? profile.nom : user?.email?.split('@')[0] || "Utilisateur";
+
   const { data: metrics } = await getDashboardMetrics();
   const { data: historique } = await getHistorique();
   

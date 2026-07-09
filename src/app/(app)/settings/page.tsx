@@ -29,8 +29,11 @@ export default function SettingsPage() {
     async function loadProfile() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        const { data: dbProfile } = await supabase.from('profiles').select('nom').eq('id', user.id).single();
+        const dbName = dbProfile?.nom && dbProfile.nom !== "Utilisateur" ? dbProfile.nom : null;
+        
         setUserEmail(user.email || "");
-        setFullName(user.user_metadata?.full_name || "");
+        setFullName(dbName || user.user_metadata?.full_name || "");
         setPhone(user.user_metadata?.phone || "");
         setPayoutNumber(user.user_metadata?.payout_number || "");
         

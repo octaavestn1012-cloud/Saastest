@@ -32,6 +32,12 @@ export default function SignupPage() {
     const password = formData.get("password") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
 
+    if (!nom || nom.trim().length === 0) {
+      setError("Le nom complet est obligatoire.");
+      setIsLoading(false);
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Les mots de passe ne correspondent pas.");
       setIsLoading(false);
@@ -108,21 +114,21 @@ export default function SignupPage() {
             </Link>
           </div>
         ) : (
-          <form onSubmit={onSubmit} className="space-y-5">
-            <div className="space-y-2">
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div className="space-y-1.5">
               <label className="text-sm font-bold text-black" htmlFor="nom">Nom Complet</label>
-              <Input id="nom" name="nom" placeholder="Ex: Octave D." type="text" required className="rounded-xl h-14 px-4 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />
+              <Input id="nom" name="nom" placeholder="Ex: Octave D." type="text" required className="rounded-xl h-12 px-4 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-bold text-black" htmlFor="email">Email</label>
-              <Input id="email" name="email" placeholder="octave@exemple.com" type="email" required className="rounded-xl h-14 px-4 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />
+              <Input id="email" name="email" placeholder="octave@exemple.com" type="email" required className="rounded-xl h-12 px-4 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-bold text-black" htmlFor="password">Mot de passe</label>
               <div className="relative">
-                <Input id="password" name="password" placeholder="••••••••" type={showPassword ? "text" : "password"} required className="rounded-xl h-14 pl-4 pr-12 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />
+                <Input id="password" name="password" placeholder="••••••••" type={showPassword ? "text" : "password"} required className="rounded-xl h-12 pl-4 pr-12 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)}
@@ -133,10 +139,10 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-bold text-black" htmlFor="confirmPassword">Confirmer le mot de passe</label>
               <div className="relative">
-                <Input id="confirmPassword" name="confirmPassword" placeholder="••••••••" type={showConfirmPassword ? "text" : "password"} required className="rounded-xl h-14 pl-4 pr-12 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />
+                <Input id="confirmPassword" name="confirmPassword" placeholder="••••••••" type={showConfirmPassword ? "text" : "password"} required className="rounded-xl h-12 pl-4 pr-12 bg-[#F5F5F7] border-transparent focus:bg-white transition-colors text-base" />
                 <button 
                   type="button" 
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -154,7 +160,7 @@ export default function SignupPage() {
               </label>
             </div>
 
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl py-6 font-bold text-base mt-2" disabled={isLoading}>
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-12 font-bold text-base mt-2" disabled={isLoading}>
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Créer mon compte"}
             </Button>
           </form>

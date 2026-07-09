@@ -40,8 +40,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     redirect("/login");
   }
 
+  const { data: profile } = await supabase.from('profiles').select('nom').eq('id', user.id).single();
   const userEmail = user.email || "";
-  const baseName = user.user_metadata?.full_name || userEmail.split("@")[0];
+  const dbName = profile?.nom && profile.nom !== "Utilisateur" ? profile.nom : null;
+  const baseName = dbName || user.user_metadata?.full_name || userEmail.split("@")[0];
   const formattedName = baseName.charAt(0).toUpperCase() + baseName.slice(1);
 
   return (
