@@ -27,20 +27,21 @@ export async function getFedaPayBalance(rawSecretKey: string) {
 
     // Format 1: data.v1.balances
     if (data && data.v1 && Array.isArray(data.v1.balances) && data.v1.balances.length > 0) {
-      const balanceObj = data.v1.balances[0];
-      return balanceObj?.amount || 0;
+      // Dans le cas de plusieurs devises ou comptes, on prend le premier solde > 0
+      const activeBalance = data.v1.balances.find((b: any) => b.amount > 0) || data.v1.balances[0];
+      return activeBalance?.amount || 0;
     }
     
     // Format 2: data.balances
     if (data && Array.isArray(data.balances) && data.balances.length > 0) {
-      const balanceObj = data.balances[0];
-      return balanceObj?.amount || 0;
+      const activeBalance = data.balances.find((b: any) => b.amount > 0) || data.balances[0];
+      return activeBalance?.amount || 0;
     }
 
     // Format 3: data.data (Standard JSON API)
     if (data && Array.isArray(data.data) && data.data.length > 0) {
-      const balanceObj = data.data[0];
-      return balanceObj?.amount || 0;
+      const activeBalance = data.data.find((b: any) => b.amount > 0) || data.data[0];
+      return activeBalance?.amount || 0;
     }
 
     // Format 4: Objet direct

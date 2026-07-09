@@ -132,22 +132,31 @@ async function orchestratePayouts(
       }
     }
   } else {
-    // En mode fixe, on vérifie si on doit faire un paiement partiel (seulement en automatique)
+    // En mode fixe, on vérifie si on doit faire un paiement partiel
     let totalRequested = targets.reduce((acc, t) => acc + Math.round(t.value), 0);
     let requestedCommission = Math.floor(totalRequested * commissionRate);
     
-    if (isAutomatic && config?.priorityEnabled && (totalRequested + requestedCommission > verifiedTotalBalance)) {
-      // Tri par ordre de priorité personnalisé
-      const priorityOrderArray = config.priorityOrder || [];
-      const sortedTargets = [...targets].sort((a, b) => {
-        const indexA = priorityOrderArray.indexOf(a.ordre);
-        const indexB = priorityOrderArray.indexOf(b.ordre);
-        
-        const pA = indexA !== -1 ? indexA : (a.ordre || 999);
-        const pB = indexB !== -1 ? indexB : (b.ordre || 999);
-        
-        return pA - pB;
-      });
+    const isPremium = validatedPlan === "pro" || validatedPlan === "business";
+    
+    if (isPremium && (totalRequested + requestedCommission > verifiedTotalBalance)) {
+      // Tri par ordre de priorité personnalisé ou naturel
+      let sortedTargets = [...targets];
+      
+      if (config?.priorityEnabled && config?.priorityOrder) {
+        const priorityOrderArray = config.priorityOrder;
+        sortedTargets.sort((a, b) => {
+          const indexA = priorityOrderArray.indexOf(a.ordre);
+          const indexB = priorityOrderArray.indexOf(b.ordre);
+          
+          const pA = indexA !== -1 ? indexA : (a.ordre || 999);
+          const pB = indexB !== -1 ? indexB : (b.ordre || 999);
+          
+          return pA - pB;
+        });
+      } else {
+        // Ordre naturel (comme convenu pour les répartitions manuelles ou sans option spécifique cochée)
+        sortedTargets.sort((a, b) => (a.ordre || 999) - (b.ordre || 999));
+      }
       
       // On teste quelles cibles on peut financer
       let currentCommission = 0;
@@ -164,17 +173,14 @@ async function orchestratePayouts(
           sumAssigned = newSum;
           currentCommission = newCommission;
         } else {
-          // Si on n'a plus assez pour cette cible (et sa commission), on arrête là si on ne gère pas le partiel "au hasard".
-          // L'instruction dit : "payer les destinataires dans l'ordre de priorité jusqu'à épuisement du disponible. Les destinataires suivants ne sont PAS payés."
-          // Donc on ne donne rien au destinataire actuel et on passe aux suivants au cas où un tout petit passerait ? Non, "jusqu'à épuisement".
-          // Pour faire simple, si ça ne passe pas, on l'ignore (0).
+          // Solde insuffisant pour ce destinataire, on l'ignore (0)
           finalTargets.push({ ...t, amount: 0 });
         }
       }
       commissionAmount = currentCommission;
       
       if (sumAssigned === 0) {
-        return { success: false, error: "Solde insuffisant même pour le destinataire prioritaire." };
+        return { success: false, error: "Solde insuffisant même pour le premier destinataire de la liste." };
       }
       
     } else {
