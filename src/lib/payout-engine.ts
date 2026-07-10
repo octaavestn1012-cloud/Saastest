@@ -66,6 +66,10 @@ async function orchestratePayouts(
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+  // Charger les mappings de passerelles
+  const { data: mappingsData } = await supabaseAdmin.from("gateway_mappings").select("*").eq("actif", true);
+  const mappings = mappingsData || [];
+
   // 1. Lire les soldes réels
   const poolRes = await buildGatewayPool(supabaseAdmin, userId);
   if (!poolRes.success) return poolRes;
@@ -303,13 +307,59 @@ async function orchestratePayouts(
     let apiData = null;
 
     try {
-      if (gateway.conn.passerelle.toLowerCase() === "kkiapay") {
+      // 1. Chercher le mapping pour ce réseau et cette passerelle
+      let cleanPhone = target.phone.replace(/[^0-9+]/g, '');
+      const passerelleName = gateway.conn.passerelle.toLowerCase();
+      
+      let mapping = mappings.find(m => 
+        m.reparto_reseau.toLowerCase() === target.method.toLowerCase() && 
+        m.gateway.toLowerCase() === passerelleName
+      );
+
+      // Si PawaPay ou FedaPay, le mapping est OBLIGATOIRE (Kkiapay a sa propre logique)
+      if (!mapping && (passerelleName === "pawapay" || passerelleName === "fedapay")) {
+         throw new Error(`Réseau non supporté par ${passerelleName} : ${target.method}`);
+      }
+
+      // 2. Validation de la longueur du numéro (sans l'indicatif)
+      if (mapping && mapping.indicatif) {
+        let phoneWithoutIndicatif = cleanPhone;
+        const indicatifClean = mapping.indicatif.replace(/[^0-9+]/g, '');
+        
+        // Si le numéro inclut l'indicatif (ex: +22997... ou 22997...) on l'enlève pour vérifier la longueur
+        if (cleanPhone.startsWith(indicatifClean)) {
+          phoneWithoutIndicatif = cleanPhone.substring(indicatifClean.length);
+        } else if (cleanPhone.startsWith(indicatifClean.replace('+', ''))) {
+          phoneWithoutIndicatif = cleanPhone.substring(indicatifClean.replace('+', '').length);
+        }
+
+        if (mapping.phone_digits_count && phoneWithoutIndicatif.length !== mapping.phone_digits_count) {
+          throw new Error(`Le numéro ${target.phone} est invalide pour le pays cible (${mapping.phone_digits_count} chiffres attendus après l'indicatif).`);
+        }
+
+        // FedaPay et PawaPay demandent le numéro avec l'indicatif complet (ex: 22997...)
+        // On s'assure qu'il l'a bien
+        if (!cleanPhone.startsWith(indicatifClean) && !cleanPhone.startsWith(indicatifClean.replace('+', ''))) {
+           cleanPhone = indicatifClean.replace('+', '') + phoneWithoutIndicatif; // On force l'indicatif sans +
+        } else {
+           cleanPhone = cleanPhone.replace('+', ''); // On retire juste le +
+        }
+      }
+
+      // 3. Exécution
+      if (passerelleName === "kkiapay") {
         const keysObj = JSON.parse(gateway.decryptedKey);
         apiData = await createAndSendKkiapayPayout(keysObj, amount, target.method, target.phone, target.label);
         stepStatus = apiData?.status === "SUCCESS" ? "reussi" : apiData?.status === "FAILED" ? "echoue" : "en_cours";
         stepRef = apiData?.transactionId || apiData?.id?.toString() || "";
-      } else if (gateway.conn.passerelle.toLowerCase() === "pawapay") {
-        apiData = await createAndSendPawapayPayout(gateway.decryptedKey, amount, target.method, target.phone, target.label);
+      } else if (passerelleName === "pawapay" && mapping) {
+        apiData = await createAndSendPawapayPayout(
+          gateway.decryptedKey, 
+          amount, 
+          mapping.gateway_correspondent, 
+          mapping.gateway_currency, 
+          cleanPhone
+        );
         const extractedData = Array.isArray(apiData) ? apiData[0] : apiData;
         stepRef = extractedData?.payoutId || extractedData?.id || "";
         
@@ -330,8 +380,16 @@ async function orchestratePayouts(
         }
         stepStatus = pawaStatus === "FAILED" ? "echoue" : (pawaStatus === "COMPLETED" || pawaStatus === "SUCCESS") ? "reussi" : "en_cours";
 
-      } else {
-        apiData = await createAndSendPayout(gateway.decryptedKey, amount, target.method, target.phone, target.label);
+      } else if (passerelleName === "fedapay" && mapping) {
+        apiData = await createAndSendPayout(
+          gateway.decryptedKey, 
+          amount, 
+          mapping.gateway_correspondent, 
+          mapping.gateway_currency, 
+          mapping.gateway_country_code, 
+          cleanPhone, 
+          target.label
+        );
         stepRef = apiData?.v1?.payout?.reference || apiData?.v1?.payout?.id?.toString() || apiData?.id?.toString() || "";
         
         let fedapayStatus = apiData?.v1?.payout?.status || apiData?.status || "pending";
