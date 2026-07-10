@@ -69,29 +69,32 @@ export async function createAndSendPayout(rawSecretKey: string, amount: number, 
   const lowerMode = mode.toLowerCase();
 
   // Nettoyage robuste du numéro et détermination du pays
-  let cleanPhone = phone.replace(/[^0-9+]/g, '');
-  let countryCode = "BJ";
-  
-  if (cleanPhone.startsWith("+229")) {
-    cleanPhone = cleanPhone.replace("+229", "");
-    countryCode = "BJ";
-  } else if (cleanPhone.startsWith("+225")) {
-    cleanPhone = cleanPhone.replace("+225", "");
-    countryCode = "CI";
-  } else if (cleanPhone.startsWith("+221")) {
-    cleanPhone = cleanPhone.replace("+221", "");
-    countryCode = "SN";
-  } else if (cleanPhone.startsWith("+228")) {
-    cleanPhone = cleanPhone.replace("+228", "");
-    countryCode = "TG";
-  } else if (cleanPhone.startsWith("+237")) {
-    cleanPhone = cleanPhone.replace("+237", "");
-    countryCode = "CM";
-  } else if (cleanPhone.startsWith("+223")) {
-    cleanPhone = cleanPhone.replace("+223", "");
-    countryCode = "ML";
-  } else {
-    if (lowerMode.includes("wave") || lowerMode.includes("orange ci")) countryCode = "CI";
+  let cleanPhone = phone.replace(/[^0-9+]/g, ''); // Extraction de l'indicatif pour FedaPay (Code pays ISO)
+  let countryCode = "BJ"; // Par défaut
+  if (cleanPhone.startsWith("+229")) { cleanPhone = cleanPhone.replace("+229", ""); countryCode = "BJ"; }
+  else if (cleanPhone.startsWith("+226")) { cleanPhone = cleanPhone.replace("+226", ""); countryCode = "BF"; }
+  else if (cleanPhone.startsWith("+225")) { cleanPhone = cleanPhone.replace("+225", ""); countryCode = "CI"; }
+  else if (cleanPhone.startsWith("+245")) { cleanPhone = cleanPhone.replace("+245", ""); countryCode = "GW"; }
+  else if (cleanPhone.startsWith("+223")) { cleanPhone = cleanPhone.replace("+223", ""); countryCode = "ML"; }
+  else if (cleanPhone.startsWith("+227")) { cleanPhone = cleanPhone.replace("+227", ""); countryCode = "NE"; }
+  else if (cleanPhone.startsWith("+221")) { cleanPhone = cleanPhone.replace("+221", ""); countryCode = "SN"; }
+  else if (cleanPhone.startsWith("+228")) { cleanPhone = cleanPhone.replace("+228", ""); countryCode = "TG"; }
+  else if (cleanPhone.startsWith("+237")) { cleanPhone = cleanPhone.replace("+237", ""); countryCode = "CM"; }
+  else if (cleanPhone.startsWith("+236")) { cleanPhone = cleanPhone.replace("+236", ""); countryCode = "CF"; }
+  else if (cleanPhone.startsWith("+242")) { cleanPhone = cleanPhone.replace("+242", ""); countryCode = "CG"; }
+  else if (cleanPhone.startsWith("+241")) { cleanPhone = cleanPhone.replace("+241", ""); countryCode = "GA"; }
+  else if (cleanPhone.startsWith("+240")) { cleanPhone = cleanPhone.replace("+240", ""); countryCode = "GQ"; }
+  else if (cleanPhone.startsWith("+235")) { cleanPhone = cleanPhone.replace("+235", ""); countryCode = "TD"; }
+  else if (cleanPhone.startsWith("+243")) { cleanPhone = cleanPhone.replace("+243", ""); countryCode = "CD"; }
+  else if (cleanPhone.startsWith("+224")) { cleanPhone = cleanPhone.replace("+224", ""); countryCode = "GN"; }
+  else if (cleanPhone.startsWith("+261")) { cleanPhone = cleanPhone.replace("+261", ""); countryCode = "MG"; }
+  else if (cleanPhone.startsWith("+250")) { cleanPhone = cleanPhone.replace("+250", ""); countryCode = "RW"; }
+  else if (cleanPhone.startsWith("+234")) { cleanPhone = cleanPhone.replace("+234", ""); countryCode = "NG"; }
+  else if (cleanPhone.startsWith("+233")) { cleanPhone = cleanPhone.replace("+233", ""); countryCode = "GH"; }
+  else {
+    if (lowerMode.includes("wave") || lowerMode.includes("orange ci") || lowerMode.includes("mtn ci")) countryCode = "CI";
+    else if (lowerMode.includes("sn")) countryCode = "SN";
+    else if (lowerMode.includes("cm")) countryCode = "CM";
   }
 
   // Mapping des modes réseau pour FedaPay
@@ -103,10 +106,20 @@ export async function createAndSendPayout(rawSecretKey: string, amount: number, 
   else if (lowerMode.includes("free")) fedapayMode = "free";
   else if (lowerMode.includes("tmoney")) fedapayMode = "tmoney";
 
+  // Détermination de la devise
+  let currency = "XOF";
+  if (["CM", "CF", "CG", "GA", "GQ", "TD"].includes(countryCode)) currency = "XAF";
+  else if (countryCode === "CD") currency = "CDF";
+  else if (countryCode === "GN") currency = "GNF";
+  else if (countryCode === "MG") currency = "MGA";
+  else if (countryCode === "RW") currency = "RWF";
+  else if (countryCode === "NG") currency = "NGN";
+  else if (countryCode === "GH") currency = "GHS";
+
   try {
     const payload = {
       amount: Math.floor(amount),
-      currency: { iso: "XOF" },
+      currency: { iso: currency },
       mode: fedapayMode,
       customer: {
         firstname: name,

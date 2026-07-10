@@ -314,7 +314,6 @@ async function orchestratePayouts(
         stepRef = extractedData?.payoutId || extractedData?.id || "";
         
         let pawaStatus = extractedData?.status || "PENDING";
-        require("fs").appendFileSync("error_log.txt", "\n== PAWAPAY POST: " + JSON.stringify(apiData));
         // Polling up to 10 seconds (5 x 2s)
         if ((pawaStatus === "PENDING" || pawaStatus === "ACCEPTED") && stepRef) {
           const { getPawapayPayoutStatus } = await import("./pawapay");
@@ -322,7 +321,6 @@ async function orchestratePayouts(
             await new Promise(resolve => setTimeout(resolve, 2000));
             try {
               const statusData = await getPawapayPayoutStatus(gateway.decryptedKey, stepRef);
-              require("fs").appendFileSync("error_log.txt", "\n== PAWAPAY GET: " + JSON.stringify(statusData));
               const trueStatus = statusData?.data?.status || statusData?.status;
               const extractedStatus = Array.isArray(statusData) ? statusData[0]?.status : trueStatus;
               pawaStatus = extractedStatus || pawaStatus;
@@ -373,7 +371,7 @@ async function orchestratePayouts(
       montant: amount, 
       statut: stepStatus, 
       reference_transaction: stepRef,
-      erreur_message: stepError,
+      erreur_message: stepError ? stepError.substring(0, 500) : null,
       est_commission: target.isCommission || false
     });
   }

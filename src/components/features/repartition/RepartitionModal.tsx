@@ -342,6 +342,42 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     }
   };
 
+  // Polling in real-time when in RESULT step
+  useEffect(() => {
+    if (step !== "RESULT" || !currentExecutionId) return;
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/api/executions/${currentExecutionId}/status`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.execution && data.execution.execution_lignes) {
+          setResults((prev: any) => {
+            const next = { ...prev };
+            let hasChanges = false;
+            
+            currentTargets.forEach((t: any) => {
+              const ligne = data.execution.execution_lignes.find((l: any) => l.destinataire_numero === t.number || l.destinataire_libelle.startsWith(t.label));
+              if (ligne) {
+                const newStatus = ligne.statut === "reussi" ? "SUCCESS" : ligne.statut === "echoue" ? "FAILED" : "EN_COURS";
+                if (next[t.id] !== newStatus) {
+                  next[t.id] = newStatus;
+                  hasChanges = true;
+                }
+              }
+            });
+            
+            return hasChanges ? next : prev;
+          });
+        }
+      } catch(e) {}
+    };
+
+    const interval = setInterval(checkStatus, 3000);
+    return () => clearInterval(interval);
+  }, [step, currentExecutionId, currentTargets]);
+
   const updateAdjustedTarget = (id: string, value: string) => {
     const toDistribute = totalAvailable - (totalAvailable * COMMISSION_RATE);
     setAdjustedTargets(adjustedTargets.map((t: any) => {

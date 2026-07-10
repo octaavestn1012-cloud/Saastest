@@ -12,29 +12,71 @@ export type Recipient = {
 
 export const COUNTRIES_NETWORKS: Record<string, string[]> = {
   "Bénin": ["MTN BJ", "Moov BJ", "Celtiis BJ"],
+  "Burkina Faso": ["Orange BF", "Moov BF", "Telecel BF"],
   "Côte d'Ivoire": ["Wave CI", "Orange CI", "MTN CI", "Moov CI"],
+  "Guinée-Bissau": ["Orange GW", "MTN GW"],
+  "Mali": ["Orange ML", "Moov ML", "Telecel ML"],
+  "Niger": ["Airtel NE", "Moov NE", "Zamani NE"],
   "Sénégal": ["Wave SN", "Orange SN", "Free SN", "Expresso SN"],
   "Togo": ["TMoney TG", "Moov TG"],
   "Cameroun": ["Orange CM", "MTN CM"],
-  "Mali": ["Orange ML", "Moov ML", "Telecel ML"]
+  "Rép. Centrafricaine": ["Orange CF", "Telecel CF"],
+  "Congo (Brazzaville)": ["MTN CG", "Airtel CG"],
+  "Gabon": ["Airtel GA", "Moov GA"],
+  "Guinée équatoriale": ["Muni GQ", "Getesa GQ"],
+  "Tchad": ["Airtel TD", "Moov TD"],
+  "RDC": ["M-Pesa CD", "Airtel CD", "Orange CD", "Africell CD"],
+  "Guinée (Conakry)": ["Orange GN", "MTN GN", "Celcom GN"],
+  "Madagascar": ["MVola MG", "Airtel MG", "Orange MG"],
+  "Rwanda": ["MTN RW", "Airtel RW"],
+  "Nigeria": ["MTN NG", "Airtel NG", "Glo NG"],
+  "Ghana": ["MTN GH", "Telecel GH", "AirtelTigo GH"]
 };
 
 export const COUNTRY_CODES: Record<string, string> = {
   "Bénin": "+229",
+  "Burkina Faso": "+226",
   "Côte d'Ivoire": "+225",
+  "Guinée-Bissau": "+245",
+  "Mali": "+223",
+  "Niger": "+227",
   "Sénégal": "+221",
   "Togo": "+228",
   "Cameroun": "+237",
-  "Mali": "+223"
+  "Rép. Centrafricaine": "+236",
+  "Congo (Brazzaville)": "+242",
+  "Gabon": "+241",
+  "Guinée équatoriale": "+240",
+  "Tchad": "+235",
+  "RDC": "+243",
+  "Guinée (Conakry)": "+224",
+  "Madagascar": "+261",
+  "Rwanda": "+250",
+  "Nigeria": "+234",
+  "Ghana": "+233"
 };
 
 export const COUNTRY_PHONE_LENGTHS: Record<string, number> = {
   "Bénin": 10,
+  "Burkina Faso": 8,
   "Côte d'Ivoire": 10,
+  "Guinée-Bissau": 9,
+  "Mali": 8,
+  "Niger": 8,
   "Sénégal": 9,
   "Togo": 8,
   "Cameroun": 9,
-  "Mali": 8
+  "Rép. Centrafricaine": 8,
+  "Congo (Brazzaville)": 9,
+  "Gabon": 9,
+  "Guinée équatoriale": 9,
+  "Tchad": 8,
+  "RDC": 9,
+  "Guinée (Conakry)": 9,
+  "Madagascar": 9,
+  "Rwanda": 9,
+  "Nigeria": 10,
+  "Ghana": 9
 };
 
 interface RecipientModalProps {
