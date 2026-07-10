@@ -70,6 +70,10 @@ async function orchestratePayouts(
   const { data: mappingsData } = await supabaseAdmin.from("gateway_mappings").select("*").eq("actif", true);
   const mappings = mappingsData || [];
 
+  // Charger les mappings de statuts
+  const { data: statusMappingsData } = await supabaseAdmin.from("gateway_status_mappings").select("*");
+  const statusMappings = statusMappingsData || [];
+
   // 1. Lire les soldes réels
   const poolRes = await buildGatewayPool(supabaseAdmin, userId);
   if (!poolRes.success) return poolRes;
@@ -350,7 +354,11 @@ async function orchestratePayouts(
       if (passerelleName === "kkiapay") {
         const keysObj = JSON.parse(gateway.decryptedKey);
         apiData = await createAndSendKkiapayPayout(keysObj, amount, target.method, target.phone, target.label);
-        stepStatus = apiData?.status === "SUCCESS" ? "reussi" : apiData?.status === "FAILED" ? "echoue" : "en_cours";
+        
+        const currentKkiapayStatus = apiData?.status || "PENDING";
+        const foundStatus = statusMappings.find(m => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toUpperCase() === currentKkiapayStatus.toUpperCase());
+        stepStatus = foundStatus ? foundStatus.reparto_status : "en_cours";
+        
         stepRef = apiData?.transactionId || apiData?.id?.toString() || "";
       } else if (passerelleName === "pawapay" && mapping) {
         apiData = await createAndSendPawapayPayout(
@@ -374,11 +382,14 @@ async function orchestratePayouts(
               const trueStatus = statusData?.data?.status || statusData?.status;
               const extractedStatus = Array.isArray(statusData) ? statusData[0]?.status : trueStatus;
               pawaStatus = extractedStatus || pawaStatus;
-              if (pawaStatus === "COMPLETED" || pawaStatus === "SUCCESS" || pawaStatus === "FAILED") break;
+              
+              const currentMapping = statusMappings.find(m => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toUpperCase() === pawaStatus.toUpperCase());
+              if (currentMapping && (currentMapping.reparto_status === "reussi" || currentMapping.reparto_status === "echoue")) break;
             } catch(e) {}
           }
         }
-        stepStatus = pawaStatus === "FAILED" ? "echoue" : (pawaStatus === "COMPLETED" || pawaStatus === "SUCCESS") ? "reussi" : "en_cours";
+        const foundStatus = statusMappings.find(m => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toUpperCase() === pawaStatus.toUpperCase());
+        stepStatus = foundStatus ? foundStatus.reparto_status : "en_cours";
 
       } else if (passerelleName === "fedapay" && mapping) {
         apiData = await createAndSendPayout(
@@ -401,11 +412,14 @@ async function orchestratePayouts(
             try {
               const statusData = await getFedaPayPayoutStatus(gateway.decryptedKey, stepRef);
               fedapayStatus = statusData?.v1?.payout?.status || statusData?.status || fedapayStatus;
-              if (fedapayStatus === "sent" || fedapayStatus === "failed") break;
+              
+              const currentMapping = statusMappings.find(m => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toLowerCase() === fedapayStatus.toLowerCase());
+              if (currentMapping && (currentMapping.reparto_status === "reussi" || currentMapping.reparto_status === "echoue")) break;
             } catch(e) {}
           }
         }
-        stepStatus = fedapayStatus === "failed" ? "echoue" : fedapayStatus === "sent" ? "reussi" : "en_cours";
+        const foundStatus = statusMappings.find(m => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toLowerCase() === fedapayStatus.toLowerCase());
+        stepStatus = foundStatus ? foundStatus.reparto_status : "en_cours";
       }
     } catch (e: any) {
       stepStatus = "echoue";
