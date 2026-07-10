@@ -44,6 +44,22 @@ export async function POST(req: NextRequest) {
         console.error("Erreur mise à jour BDD (PawaPay Webhook):", error);
       } else {
         console.log(`Paiement ${payoutId} mis à jour avec le statut: ${finalStatus}`);
+        
+        // Mettre à jour l'exécution parente
+        const { data: ligne } = await supabaseAdmin.from("execution_lignes").select("execution_id").eq("reference_transaction", payoutId).single();
+        if (ligne) {
+          const { data: allLignes } = await supabaseAdmin.from("execution_lignes").select("statut").eq("execution_id", ligne.execution_id).neq("est_commission", true);
+          if (allLignes) {
+            const hasPending = allLignes.some(l => l.statut === "en_cours");
+            const hasFailed = allLignes.some(l => l.statut === "echoue");
+            const allFailed = allLignes.every(l => l.statut === "echoue");
+            let execStatus = "reussi";
+            if (hasPending) execStatus = "en_cours";
+            else if (allFailed) execStatus = "echoue";
+            else if (hasFailed) execStatus = "partiel";
+            await supabaseAdmin.from("executions").update({ statut: execStatus }).eq("id", ligne.execution_id);
+          }
+        }
       }
     }
 

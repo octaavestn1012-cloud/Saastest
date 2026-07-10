@@ -310,9 +310,11 @@ async function orchestratePayouts(
         stepRef = apiData?.transactionId || apiData?.id?.toString() || "";
       } else if (gateway.conn.passerelle.toLowerCase() === "pawapay") {
         apiData = await createAndSendPawapayPayout(gateway.decryptedKey, amount, target.method, target.phone, target.label);
-        stepRef = apiData?.payoutId || apiData?.id || "";
+        const extractedData = Array.isArray(apiData) ? apiData[0] : apiData;
+        stepRef = extractedData?.payoutId || extractedData?.id || "";
         
-        let pawaStatus = apiData?.status || "PENDING";
+        let pawaStatus = extractedData?.status || "PENDING";
+        require("fs").appendFileSync("error_log.txt", "\n== PAWAPAY POST: " + JSON.stringify(apiData));
         // Polling up to 10 seconds (5 x 2s)
         if ((pawaStatus === "PENDING" || pawaStatus === "ACCEPTED") && stepRef) {
           const { getPawapayPayoutStatus } = await import("./pawapay");
@@ -320,7 +322,10 @@ async function orchestratePayouts(
             await new Promise(resolve => setTimeout(resolve, 2000));
             try {
               const statusData = await getPawapayPayoutStatus(gateway.decryptedKey, stepRef);
-              pawaStatus = statusData?.status || pawaStatus;
+              require("fs").appendFileSync("error_log.txt", "\n== PAWAPAY GET: " + JSON.stringify(statusData));
+              const trueStatus = statusData?.data?.status || statusData?.status;
+              const extractedStatus = Array.isArray(statusData) ? statusData[0]?.status : trueStatus;
+              pawaStatus = extractedStatus || pawaStatus;
               if (pawaStatus === "COMPLETED" || pawaStatus === "SUCCESS" || pawaStatus === "FAILED") break;
             } catch(e) {}
           }
@@ -369,8 +374,7 @@ async function orchestratePayouts(
       statut: stepStatus, 
       reference_transaction: stepRef,
       erreur_message: stepError,
-      est_commission: target.isCommission || false,
-      passerelle: gateway.conn.passerelle
+      est_commission: target.isCommission || false
     });
   }
 
