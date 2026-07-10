@@ -96,6 +96,7 @@ async function orchestratePayouts(
       .from("executions")
       .select("montant_total")
       .eq("user_id", userId)
+      .in("statut", ["reussi", "partiel"])
       .gte("date_execution", startOfMonth.toISOString());
 
     if (monthExecs) {
@@ -114,11 +115,12 @@ async function orchestratePayouts(
   let commissionAmount = 0;
   let sumAssigned = 0;
   let finalTargets: any[] = [];
+  let availableAfterCommission = verifiedTotalBalance;
 
   if (mode === "pourcentage") {
     // En pourcentage, on prélève la commission sur le solde total global, puis on répartit le reste
     commissionAmount = Math.floor(verifiedTotalBalance * commissionRate);
-    const availableAfterCommission = verifiedTotalBalance - commissionAmount;
+    availableAfterCommission = verifiedTotalBalance - commissionAmount;
 
     for (let i = 0; i < targets.length; i++) {
       const t = targets[i];
@@ -283,7 +285,7 @@ async function orchestratePayouts(
   const { data: execution } = await supabaseAdmin.from("executions").insert({
     user_id: userId,
     regle_id: ruleId || null,
-    montant_total: verifiedTotalBalance,
+    montant_total: totalNeededWithCommission,
     statut: "en_cours",
     date_execution: new Date().toISOString()
   }).select().single();
@@ -345,9 +347,17 @@ async function orchestratePayouts(
   }
 
   // 7. Statut final
-  const hasFailed = results.some(r => r.status === "echoue");
-  const hasSuccess = results.some(r => r.status === "reussi" || r.status === "en_cours");
-  const finalStatus = !hasSuccess ? "echoue" : hasFailed ? "partiel" : results.every(r => r.status === "reussi") ? "reussi" : "en_cours";
+  const clientResults = results.filter(r => !r.target?.isCommission);
+  
+  const hasFailed = clientResults.some(r => r.status === "echoue");
+  const hasSuccess = clientResults.some(r => r.status === "reussi" || r.status === "en_cours");
+  const isAllSuccess = clientResults.every(r => r.status === "reussi");
+
+  let finalStatus = "en_cours";
+  if (clientResults.length === 0) finalStatus = "reussi"; // Cas extrême
+  else if (isAllSuccess) finalStatus = "reussi";
+  else if (!hasSuccess) finalStatus = "echoue";
+  else if (hasFailed) finalStatus = "partiel";
 
   await supabaseAdmin.from("executions").update({ statut: finalStatus }).eq("id", execution.id);
 

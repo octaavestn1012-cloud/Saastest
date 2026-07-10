@@ -38,6 +38,7 @@ export async function executeRepartitionAction(amountFcfa: number, ruleId?: stri
     if (ruleId) {
        result = await processPayoutsForUser(user.id, amountFcfa, ruleId, true);
     } else {
+       // Force Next.js recompile for payout-engine
        result = await processPayoutsForUser(user.id, amountFcfa, "manuel");
        if (!result.success && result.error?.includes("Aucune règle active")) {
          result = await processPayoutsForUser(user.id, amountFcfa, "a_chaque_entree");

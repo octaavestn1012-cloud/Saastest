@@ -32,13 +32,33 @@ export async function createAndSendPawapayPayout(
 
   // Déterminer le Provider ID (à ajuster selon la documentation exacte PawaPay pour chaque pays/réseau)
   const lowerMethod = method.toLowerCase();
-  let providerId = "MTN_MOMO_BEN"; // Exemple par défaut
-  
-  if (lowerMethod.includes("moov")) providerId = "MOOV_BEN";
-  else if (lowerMethod.includes("mtn")) providerId = "MTN_MOMO_BEN";
-  else if (lowerMethod.includes("orange") && lowerMethod.includes("ci")) providerId = "ORANGE_CI";
-  else if (lowerMethod.includes("wave")) providerId = "WAVE_CI";
-  else if (lowerMethod.includes("celtiis")) providerId = "CELTIIS_BEN";
+  let providerId = "MTN_MOMO_BEN"; // Par défaut
+
+  if (lowerMethod.includes("orange")) {
+    if (lowerMethod.includes("ci") || lowerMethod.includes("civ") || cleanPhone.startsWith("225")) providerId = "ORANGE_CIV";
+    else if (lowerMethod.includes("sn") || lowerMethod.includes("sen") || cleanPhone.startsWith("221")) providerId = "ORANGE_SEN";
+    else if (lowerMethod.includes("cm") || lowerMethod.includes("cmr") || cleanPhone.startsWith("237")) providerId = "ORANGE_CMR";
+    else providerId = "ORANGE_CIV";
+  }
+  else if (lowerMethod.includes("mtn")) {
+    if (lowerMethod.includes("ci") || lowerMethod.includes("civ") || cleanPhone.startsWith("225")) providerId = "MTN_MOMO_CIV";
+    else if (lowerMethod.includes("cm") || lowerMethod.includes("cmr") || cleanPhone.startsWith("237")) providerId = "MTN_MOMO_CMR";
+    else providerId = "MTN_MOMO_BEN";
+  }
+  else if (lowerMethod.includes("moov")) {
+    if (lowerMethod.includes("ci") || lowerMethod.includes("civ") || cleanPhone.startsWith("225")) providerId = "MOOV_CIV";
+    else providerId = "MOOV_BEN";
+  }
+  else if (lowerMethod.includes("wave")) {
+    if (lowerMethod.includes("sn") || lowerMethod.includes("sen") || cleanPhone.startsWith("221")) providerId = "WAVE_SEN";
+    else providerId = "WAVE_CIV";
+  }
+  else if (lowerMethod.includes("free")) {
+    providerId = "FREE_SEN";
+  }
+  else if (lowerMethod.includes("celtiis")) {
+    providerId = "CELTIIS_BEN";
+  }
 
   // Génération d'un UUID v4 pour payoutId (requis par PawaPay pour l'idempotence)
   const payoutId = crypto.randomUUID();
@@ -53,9 +73,7 @@ export async function createAndSendPawapayPayout(
         phoneNumber: cleanPhone,
         provider: providerId
       }
-    },
-    statementDescription: "Répartition via Réparto",
-    reason: recipientName
+    }
   };
 
   try {

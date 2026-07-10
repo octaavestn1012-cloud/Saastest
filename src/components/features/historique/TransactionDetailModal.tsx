@@ -108,7 +108,7 @@ export function TransactionDetailModal({
 
       doc.setFontSize(12);
       doc.setTextColor(0, 0, 0);
-      doc.text(`Solde déduit : ${selectedTx.totalAvailable} FCFA`, 14, 55);
+      doc.text(`Total prélevé : ${selectedTx.totalAvailable} FCFA`, 14, 55);
       doc.text(`Frais Réparto : ${selectedTx.commissionAmount} FCFA`, 14, 62);
       doc.setFont("helvetica", "bold");
       doc.text(`Total réparti : ${selectedTx.totalAmount} FCFA`, 14, 69);
@@ -210,7 +210,7 @@ export function TransactionDetailModal({
               {/* Recap */}
               <div className="bg-white rounded-[2rem] p-5 shadow-sm border border-black/5 space-y-3">
                  <div className="flex justify-between items-center text-muted-foreground">
-                    <span className="font-semibold text-[13px]">Solde déduit</span>
+                    <span className="font-semibold text-[13px]">Total prélevé</span>
                     <span className="font-bold tabular-nums text-[14px]">
                       <Amount value={selectedTx.totalAvailable} />
                     </span>

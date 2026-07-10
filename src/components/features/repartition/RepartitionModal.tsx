@@ -536,7 +536,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
               <div className="flex flex-col items-center justify-center pt-5 pb-5 bg-white rounded-[2rem] shadow-sm border border-black/[0.03]">
                 <span className="text-sm font-semibold text-muted-foreground mb-1 uppercase tracking-widest">{modalMode === "quick" ? "Total prélevé" : activeData.name}</span>
                 <div className="text-4xl sm:text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-black to-black/70 mb-2">
-                  <Amount value={activeData.totalAvailable} />
+                  <Amount value={computedGross} />
                 </div>
               </div>
             )}
