@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { connectFedaPay, connectKkiapay, deleteConnection, toggleConnectionStatus } from "@/app/actions/connections";
+import { connectFedaPay, connectKkiapay, connectPawapay, deleteConnection, toggleConnectionStatus } from "@/app/actions/connections";
 import { formatDateToBenin } from "@/lib/utils/format";
 
 const AVAILABLE_GATEWAYS = [
@@ -87,7 +87,7 @@ export default function ConnectionsPage() {
   };
 
   const handleConnect = async () => {
-    if (selectedGateway !== "FedaPay" && selectedGateway !== "Kkiapay") {
+    if (selectedGateway !== "FedaPay" && selectedGateway !== "Kkiapay" && selectedGateway !== "PawaPay") {
       setError("Cette passerelle n'est pas encore supportée dans cette version.");
       return;
     }
@@ -110,6 +110,10 @@ export default function ConnectionsPage() {
       formData.append("secretKey", secretKey);
       if (webhookSecret) formData.append("webhookSecret", webhookSecret);
       result = await connectKkiapay(formData);
+    } else if (selectedGateway === "PawaPay") {
+      formData.append("secretKey", secretKey); // secretKey holds the JWT Token
+      if (webhookSecret) formData.append("webhookSecret", webhookSecret);
+      result = await connectPawapay(formData);
     }
 
     if (result?.error) {
@@ -349,17 +353,19 @@ export default function ConnectionsPage() {
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-foreground ml-1">Clé Publique (Public Key)</label>
-                  <input 
-                    type="text" 
-                    value={publicKey}
-                    onChange={(e) => setPublicKey(e.target.value)}
-                    placeholder="Ex: pk_..." 
-                    disabled={isSubmitting}
-                    className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium disabled:opacity-50" 
-                  />
-                </div>
+                {selectedGateway !== "PawaPay" && (
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-semibold text-foreground ml-1">Clé Publique (Public Key)</label>
+                    <input 
+                      type="text" 
+                      value={publicKey}
+                      onChange={(e) => setPublicKey(e.target.value)}
+                      placeholder="Ex: pk_..." 
+                      disabled={isSubmitting}
+                      className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium disabled:opacity-50" 
+                    />
+                  </div>
+                )}
 
                 {selectedGateway === "Kkiapay" && (
                   <div className="space-y-1.5">
@@ -376,12 +382,14 @@ export default function ConnectionsPage() {
                 )}
 
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-foreground ml-1">Clé Secrète (Secret Key)</label>
+                  <label className="block text-sm font-semibold text-foreground ml-1">
+                    {selectedGateway === "PawaPay" ? "Token API (JWT Bearer)" : "Clé Secrète (Secret Key)"}
+                  </label>
                   <input 
                     type="password" 
                     value={secretKey}
                     onChange={(e) => setSecretKey(e.target.value)}
-                    placeholder={selectedGateway === "FedaPay" ? "sk_live_... ou sk_sandbox_..." : "Clé secrète"} 
+                    placeholder={selectedGateway === "FedaPay" ? "sk_live_... ou sk_sandbox_..." : selectedGateway === "PawaPay" ? "Token API PawaPay" : "Clé secrète"} 
                     disabled={isSubmitting}
                     className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium tracking-widest disabled:opacity-50" 
                   />
@@ -394,7 +402,7 @@ export default function ConnectionsPage() {
 
                 <div className="space-y-1.5 pt-2">
                   <div className="flex items-center justify-between">
-                    <label className="block text-sm font-semibold text-foreground ml-1">Clé Secrète Webhook <span className="font-bold text-danger">*</span></label>
+                    <label className="block text-sm font-semibold text-foreground ml-1">Clé Secrète Webhook {selectedGateway !== "PawaPay" && <span className="font-bold text-danger">*</span>}</label>
                   </div>
                   
                   <div className="bg-[#F5F5F7] rounded-xl p-3 border border-black/5 mb-3">
@@ -458,7 +466,7 @@ export default function ConnectionsPage() {
                 <Button 
                   className="w-full h-14 rounded-xl mt-4 bg-black hover:bg-black/80 text-white font-bold text-base shadow-lg shadow-black/10 transition-transform active:scale-95 disabled:opacity-70" 
                   onClick={handleConnect}
-                  disabled={isSubmitting || !nom || !secretKey || !webhookSecret}
+                  disabled={isSubmitting || !nom || !secretKey || (selectedGateway !== "PawaPay" && !webhookSecret)}
                 >
                   {isSubmitting ? (
                     <>

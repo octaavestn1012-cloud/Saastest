@@ -1,0 +1,45 @@
+[BEN] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[SEN] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[CIV] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[BEN] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[SEN] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[CIV] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[BEN] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[SEN] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[CIV] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[BEN] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[SEN] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[CIV] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[BEN] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[SEN] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+
+[CIV] Erreur HTTP: 401
+Data: {"failureReason":{"failureCode":"AUTHENTICATION_ERROR","failureMessage":"The API token in the request is invalid."}}
+

@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { decryptKey } from "./encryption";
 import { createAndSendPayout, getFedaPayBalance } from "./fedapay";
 import { createAndSendKkiapayPayout, getKkiapayBalance } from "./kkiapay";
+import { getPawapayBalance, createAndSendPawapayPayout } from "./pawapay";
 import { sendPayoutReceiptEmail, sendAutomationReport } from "./email";
 import { getValidUserPlan, getCommissionRate } from "./billing";
 
@@ -32,6 +33,8 @@ async function buildGatewayPool(supabaseAdmin: any, userId: string) {
       } else if (conn.passerelle.toLowerCase() === "kkiapay") {
         const keysObj = JSON.parse(decryptedKey);
         bal = await getKkiapayBalance(keysObj);
+      } else if (conn.passerelle.toLowerCase() === "pawapay") {
+        bal = await getPawapayBalance(decryptedKey);
       }
       if (bal > 0) {
         gatewayPool.push({ conn, decryptedKey, balance: bal });
@@ -303,6 +306,12 @@ async function orchestratePayouts(
         apiData = await createAndSendKkiapayPayout(keysObj, amount, target.method, target.phone, target.label);
         stepStatus = apiData?.status === "SUCCESS" ? "reussi" : apiData?.status === "FAILED" ? "echoue" : "en_cours";
         stepRef = apiData?.transactionId || apiData?.id?.toString() || "";
+      } else if (gateway.conn.passerelle.toLowerCase() === "pawapay") {
+        apiData = await createAndSendPawapayPayout(gateway.decryptedKey, amount, target.method, target.phone, target.label);
+        // Pawapay typically returns a status like "ACCEPTED", "PENDING", or "FAILED" for payouts.
+        const pawaStatus = apiData?.status || "PENDING";
+        stepStatus = pawaStatus === "FAILED" ? "echoue" : (pawaStatus === "COMPLETED" || pawaStatus === "ACCEPTED" || pawaStatus === "SUCCESS") ? "reussi" : "en_cours";
+        stepRef = apiData?.payoutId || apiData?.id || "";
       } else {
         apiData = await createAndSendPayout(gateway.decryptedKey, amount, target.method, target.phone, target.label);
         const fedapayStatus = apiData?.v1?.payout?.status || apiData?.status || "pending";

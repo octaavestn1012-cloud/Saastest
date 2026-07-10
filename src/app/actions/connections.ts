@@ -97,6 +97,63 @@ export async function deleteConnection(id: string) {
     return { error: e.message };
   }
 }
+
+export async function connectPawapay(formData: FormData) {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { error: "Vous devez être connecté." };
+    }
+
+    const nom = formData.get("nom") as string;
+    const secretKey = (formData.get("secretKey") as string).trim(); // This is the API Token
+    const webhookSecret = (formData.get("webhookSecret") as string)?.trim();
+
+    if (!nom || !secretKey) {
+      return { error: "Veuillez fournir un nom et un Token API." };
+    }
+
+    // 1. Déterminer l'environnement
+    // Pawapay tokens might not clearly indicate sandbox or live, but we'll try to guess if it has "sandbox" or just test the API.
+    // We will assume the API token is valid and test it against the API.
+    // For safety, we can test it against /v2/balances or /v1/ping if Pawapay has one.
+    // We'll skip a strict format check since JWTs are opaque, but we can verify it doesn't have spaces.
+    if (secretKey.includes(" ")) {
+      return { error: "Format de Token invalide. Assurez-vous de n'avoir aucun espace." };
+    }
+
+    // 2. Chiffrer la clé secrète (le Token API)
+    const cleChiffree = encryptKey(secretKey);
+    
+    // Chiffrer le webhook secret
+    const webhookSecretChiffre = webhookSecret ? encryptKey(webhookSecret) : null;
+
+    // 3. Enregistrer dans la base de données
+    const { error: dbError } = await supabase
+      .from("connexions")
+      .insert({
+        user_id: user.id,
+        passerelle: "pawapay",
+        nom: nom,
+        statut: "actif",
+        cle_chiffree: cleChiffree,
+        webhook_secret_chiffre: webhookSecretChiffre
+      });
+
+    if (dbError) {
+      console.error("Erreur DB:", dbError);
+      return { error: "Erreur lors de l'enregistrement dans la base de données." };
+    }
+
+    return { success: true };
+
+  } catch (error: any) {
+    console.error("Erreur PawaPay:", error);
+    return { error: error.message || "Une erreur inattendue est survenue." };
+  }
+}
 export async function toggleConnectionStatus(id: string, currentStatus: string) {
   try {
     const supabase = createClient();

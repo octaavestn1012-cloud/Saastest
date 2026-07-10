@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { decryptKey } from "@/lib/encryption";
 import { createAndSendPayout, getFedaPayBalance } from "@/lib/fedapay";
 import { getKkiapayBalance, createAndSendKkiapayPayout } from "@/lib/kkiapay";
+import { getPawapayBalance, createAndSendPawapayPayout } from "@/lib/pawapay";
 import { revalidatePath } from "next/cache";
 
 export async function getHistorique() {
@@ -89,6 +90,8 @@ export async function retryPayoutLigne(ligneId: string) {
         } else if (conn.passerelle.toLowerCase() === "kkiapay") {
           const keysObj = JSON.parse(decryptedKey);
           bal = await getKkiapayBalance(keysObj);
+        } else if (conn.passerelle.toLowerCase() === "pawapay") {
+          bal = await getPawapayBalance(decryptedKey);
         }
         if (bal > 0) {
           gatewayPool.push({ conn, decryptedKey, balance: bal });
@@ -128,6 +131,11 @@ export async function retryPayoutLigne(ligneId: string) {
           payoutRes = await createAndSendKkiapayPayout(keysObj, payoutAmount, ligne.destinataire_reseau, ligne.destinataire_numero, ligne.destinataire_libelle);
           ligneStatut = payoutRes?.status === "SUCCESS" ? "reussi" : payoutRes?.status === "FAILED" ? "echoue" : "en_cours";
           ref = payoutRes?.transactionId || payoutRes?.id?.toString() || "";
+        } else if (gateway.conn.passerelle.toLowerCase() === "pawapay") {
+          payoutRes = await createAndSendPawapayPayout(gateway.decryptedKey, payoutAmount, ligne.destinataire_reseau, ligne.destinataire_numero, ligne.destinataire_libelle);
+          const pawaStatus = payoutRes?.status || "PENDING";
+          ligneStatut = pawaStatus === "FAILED" ? "echoue" : (pawaStatus === "COMPLETED" || pawaStatus === "ACCEPTED" || pawaStatus === "SUCCESS") ? "reussi" : "en_cours";
+          ref = payoutRes?.payoutId || payoutRes?.id || "";
         } else {
           payoutRes = await createAndSendPayout(gateway.decryptedKey, payoutAmount, ligne.destinataire_reseau, ligne.destinataire_numero, ligne.destinataire_libelle);
           const fedapayStatus = payoutRes?.v1?.payout?.status || payoutRes?.status || "pending";

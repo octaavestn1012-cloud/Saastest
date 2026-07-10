@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { decryptKey } from "@/lib/encryption";
 import { getFedaPayBalance } from "@/lib/fedapay";
 import { getKkiapayBalance } from "@/lib/kkiapay";
+import { getPawapayBalance } from "@/lib/pawapay";
 
 export async function getLiveTotalBalance() {
   try {
@@ -29,6 +30,8 @@ export async function getLiveTotalBalance() {
             } else if (conn.passerelle.toLowerCase() === "kkiapay") {
               const keysObj = JSON.parse(decryptedKey);
               balance += await getKkiapayBalance(keysObj);
+            } else if (conn.passerelle.toLowerCase() === "pawapay") {
+              balance += await getPawapayBalance(decryptedKey);
             }
           } catch (e) {
             console.error(`Impossible de récupérer le solde pour ${conn.passerelle}:`, e);
