@@ -68,7 +68,7 @@ export const COUNTRY_PHONE_LENGTHS: Record<string, number> = {
   "Cameroun": 9,
   "Rép. Centrafricaine": 8,
   "Congo (Brazzaville)": 9,
-  "Gabon": 9,
+  "Gabon": 8,
   "Guinée équatoriale": 9,
   "Tchad": 8,
   "RDC": 9,

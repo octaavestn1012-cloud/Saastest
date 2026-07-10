@@ -85,12 +85,16 @@ export async function getDashboardMetrics() {
     // Pour l'instant on peut dire que la réserve c'est le solde actuel sur FedaPay
     const reserve = balance;
 
+    // 4. Récupérer le plan de l'utilisateur
+    const { data: profile } = await supabase.from("profiles").select("plan").eq("id", user.id).single();
+
     return { 
       data: {
         balance,
         totalDistributed,
         reserve,
-        transactions: transactions || []
+        transactions: transactions || [],
+        plan: profile?.plan || "gratuit"
       } 
     };
   } catch (error: any) {
