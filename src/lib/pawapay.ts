@@ -37,68 +37,68 @@ export async function createAndSendPawapayPayout(
   if (lowerMethod.includes("orange")) {
     if (cleanPhone.startsWith("221") || lowerMethod.includes("sn")) providerId = "ORANGE_SEN";
     else if (cleanPhone.startsWith("237") || lowerMethod.includes("cm")) providerId = "ORANGE_CMR";
-    else if (cleanPhone.startsWith("226") || lowerMethod.includes("bf")) providerId = "ORANGE_BF";
-    else if (cleanPhone.startsWith("223") || lowerMethod.includes("ml")) providerId = "ORANGE_ML";
-    else if (cleanPhone.startsWith("224") || lowerMethod.includes("gn")) providerId = "ORANGE_GN";
-    else if (cleanPhone.startsWith("243") || lowerMethod.includes("cd")) providerId = "ORANGE_CD";
-    else if (cleanPhone.startsWith("261") || lowerMethod.includes("mg")) providerId = "ORANGE_MG";
-    else if (cleanPhone.startsWith("236") || lowerMethod.includes("cf")) providerId = "ORANGE_CF";
+    else if (cleanPhone.startsWith("226") || lowerMethod.includes("bf")) providerId = "ORANGE_BFA";
+    else if (cleanPhone.startsWith("223") || lowerMethod.includes("ml")) providerId = "ORANGE_MLI";
+    else if (cleanPhone.startsWith("224") || lowerMethod.includes("gn")) providerId = "ORANGE_GIN";
+    else if (cleanPhone.startsWith("243") || lowerMethod.includes("cd")) providerId = "ORANGE_COD";
+    else if (cleanPhone.startsWith("261") || lowerMethod.includes("mg")) providerId = "ORANGE_MDG";
+    else if (cleanPhone.startsWith("236") || lowerMethod.includes("cf")) providerId = "ORANGE_CAF";
     else providerId = "ORANGE_CIV"; // Par défaut 225
   }
   else if (lowerMethod.includes("mtn")) {
     if (cleanPhone.startsWith("225") || lowerMethod.includes("ci")) providerId = "MTN_MOMO_CIV";
     else if (cleanPhone.startsWith("237") || lowerMethod.includes("cm")) providerId = "MTN_MOMO_CMR";
-    else if (cleanPhone.startsWith("242") || lowerMethod.includes("cg")) providerId = "MTN_MOMO_CG";
-    else if (cleanPhone.startsWith("224") || lowerMethod.includes("gn")) providerId = "MTN_MOMO_GN";
-    else if (cleanPhone.startsWith("250") || lowerMethod.includes("rw")) providerId = "MTN_MOMO_RW";
-    else if (cleanPhone.startsWith("234") || lowerMethod.includes("ng")) providerId = "MTN_MOMO_NG";
-    else if (cleanPhone.startsWith("233") || lowerMethod.includes("gh")) providerId = "MTN_MOMO_GH";
-    else if (cleanPhone.startsWith("245") || lowerMethod.includes("gw")) providerId = "MTN_MOMO_GW";
+    else if (cleanPhone.startsWith("242") || lowerMethod.includes("cg")) providerId = "MTN_MOMO_COG";
+    else if (cleanPhone.startsWith("224") || lowerMethod.includes("gn")) providerId = "MTN_MOMO_GIN";
+    else if (cleanPhone.startsWith("250") || lowerMethod.includes("rw")) providerId = "MTN_MOMO_RWA";
+    else if (cleanPhone.startsWith("234") || lowerMethod.includes("ng")) providerId = "MTN_MOMO_NGA";
+    else if (cleanPhone.startsWith("233") || lowerMethod.includes("gh")) providerId = "MTN_MOMO_GHA";
+    else if (cleanPhone.startsWith("245") || lowerMethod.includes("gw")) providerId = "MTN_MOMO_GNB";
     else providerId = "MTN_MOMO_BEN";
   }
   else if (lowerMethod.includes("moov")) {
     if (cleanPhone.startsWith("225") || lowerMethod.includes("ci")) providerId = "MOOV_CIV";
-    else if (cleanPhone.startsWith("223") || lowerMethod.includes("ml")) providerId = "MOOV_ML";
-    else if (cleanPhone.startsWith("227") || lowerMethod.includes("ne")) providerId = "MOOV_NE";
-    else if (cleanPhone.startsWith("228") || lowerMethod.includes("tg")) providerId = "MOOV_TG";
-    else if (cleanPhone.startsWith("241") || lowerMethod.includes("ga")) providerId = "MOOV_GA";
-    else if (cleanPhone.startsWith("235") || lowerMethod.includes("td")) providerId = "MOOV_TD";
-    else if (cleanPhone.startsWith("226") || lowerMethod.includes("bf")) providerId = "MOOV_BF";
+    else if (cleanPhone.startsWith("223") || lowerMethod.includes("ml")) providerId = "MOOV_MLI";
+    else if (cleanPhone.startsWith("227") || lowerMethod.includes("ne")) providerId = "MOOV_NER";
+    else if (cleanPhone.startsWith("228") || lowerMethod.includes("tg")) providerId = "MOOV_TGO";
+    else if (cleanPhone.startsWith("241") || lowerMethod.includes("ga")) providerId = "MOOV_GAB";
+    else if (cleanPhone.startsWith("235") || lowerMethod.includes("td")) providerId = "MOOV_TCD";
+    else if (cleanPhone.startsWith("226") || lowerMethod.includes("bf")) providerId = "MOOV_BFA";
     else providerId = "MOOV_BEN";
   }
   else if (lowerMethod.includes("airtel")) {
-    if (lowerMethod.includes("tigo")) providerId = "AIRTELTIGO_GH";
-    else if (cleanPhone.startsWith("242") || lowerMethod.includes("cg")) providerId = "AIRTEL_O_CG";
-    else if (cleanPhone.startsWith("241") || lowerMethod.includes("ga")) providerId = "AIRTEL_O_GA";
-    else if (cleanPhone.startsWith("235") || lowerMethod.includes("td")) providerId = "AIRTEL_O_TD";
-    else if (cleanPhone.startsWith("243") || lowerMethod.includes("cd")) providerId = "AIRTEL_O_CD";
-    else if (cleanPhone.startsWith("261") || lowerMethod.includes("mg")) providerId = "AIRTEL_O_MG";
-    else if (cleanPhone.startsWith("250") || lowerMethod.includes("rw")) providerId = "AIRTEL_O_RW";
-    else if (cleanPhone.startsWith("234") || lowerMethod.includes("ng")) providerId = "AIRTEL_O_NG";
-    else providerId = "AIRTEL_O_NE"; // Niger
+    if (lowerMethod.includes("tigo")) providerId = "AIRTELTIGO_GHA";
+    else if (cleanPhone.startsWith("242") || lowerMethod.includes("cg")) providerId = "AIRTEL_O_COG";
+    else if (cleanPhone.startsWith("241") || lowerMethod.includes("ga")) providerId = "AIRTEL_O_GAB";
+    else if (cleanPhone.startsWith("235") || lowerMethod.includes("td")) providerId = "AIRTEL_O_TCD";
+    else if (cleanPhone.startsWith("243") || lowerMethod.includes("cd")) providerId = "AIRTEL_O_COD";
+    else if (cleanPhone.startsWith("261") || lowerMethod.includes("mg")) providerId = "AIRTEL_O_MDG";
+    else if (cleanPhone.startsWith("250") || lowerMethod.includes("rw")) providerId = "AIRTEL_O_RWA";
+    else if (cleanPhone.startsWith("234") || lowerMethod.includes("ng")) providerId = "AIRTEL_O_NGA";
+    else providerId = "AIRTEL_O_NER"; // Niger
   }
   else if (lowerMethod.includes("wave")) {
     if (cleanPhone.startsWith("221") || lowerMethod.includes("sn")) providerId = "WAVE_SEN";
     else providerId = "WAVE_CIV";
   }
   else if (lowerMethod.includes("telecel")) {
-    if (cleanPhone.startsWith("223") || lowerMethod.includes("ml")) providerId = "TELECEL_ML";
-    else if (cleanPhone.startsWith("236") || lowerMethod.includes("cf")) providerId = "TELECEL_CF";
-    else if (cleanPhone.startsWith("233") || lowerMethod.includes("gh")) providerId = "VODAFONE_GH"; // Telecel GH ex-Vodafone
-    else providerId = "TELECEL_BF";
+    if (cleanPhone.startsWith("223") || lowerMethod.includes("ml")) providerId = "TELECEL_MLI";
+    else if (cleanPhone.startsWith("236") || lowerMethod.includes("cf")) providerId = "TELECEL_CAF";
+    else if (cleanPhone.startsWith("233") || lowerMethod.includes("gh")) providerId = "VODAFONE_GHA"; // Telecel GH ex-Vodafone
+    else providerId = "TELECEL_BFA";
   }
   else if (lowerMethod.includes("free")) providerId = "FREE_SEN";
   else if (lowerMethod.includes("celtiis")) providerId = "CELTIIS_BEN";
-  else if (lowerMethod.includes("zamani")) providerId = "ZAMANI_NE";
+  else if (lowerMethod.includes("zamani")) providerId = "ZAMANI_NER";
   else if (lowerMethod.includes("expresso")) providerId = "EXPRESSO_SEN";
-  else if (lowerMethod.includes("tmoney")) providerId = "TMONEY_TG";
-  else if (lowerMethod.includes("muni")) providerId = "MUNI_GQ";
-  else if (lowerMethod.includes("getesa")) providerId = "GETESA_GQ";
-  else if (lowerMethod.includes("m-pesa") || lowerMethod.includes("mpesa")) providerId = "MPESA_CD";
-  else if (lowerMethod.includes("africell")) providerId = "AFRICELL_CD";
-  else if (lowerMethod.includes("celcom")) providerId = "CELCOM_GN";
-  else if (lowerMethod.includes("mvola")) providerId = "MVOLA_MG";
-  else if (lowerMethod.includes("glo")) providerId = "GLO_NG";
+  else if (lowerMethod.includes("tmoney")) providerId = "TMONEY_TGO";
+  else if (lowerMethod.includes("muni")) providerId = "MUNI_GNQ";
+  else if (lowerMethod.includes("getesa")) providerId = "GETESA_GNQ";
+  else if (lowerMethod.includes("m-pesa") || lowerMethod.includes("mpesa") || lowerMethod.includes("vodacom")) providerId = "VODACOM_COD";
+  else if (lowerMethod.includes("africell")) providerId = "AFRICELL_COD";
+  else if (lowerMethod.includes("celcom")) providerId = "CELCOM_GIN";
+  else if (lowerMethod.includes("mvola")) providerId = "MVOLA_MDG";
+  else if (lowerMethod.includes("glo")) providerId = "GLO_NGA";
 
   // Génération d'un UUID v4 pour payoutId (requis par PawaPay pour l'idempotence)
   const payoutId = crypto.randomUUID();
