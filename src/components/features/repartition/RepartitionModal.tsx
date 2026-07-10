@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CheckCircle2, XCircle, Loader2, Edit2, RotateCcw, Plus, Trash2, Zap, SlidersHorizontal, BookOpen, Info, ChevronDown, User } from "lucide-react";
+import { X, CheckCircle2, XCircle, Loader2, Edit2, RotateCcw, Plus, Trash2, Zap, SlidersHorizontal, BookOpen, Info, ChevronDown, User, Clock } from "lucide-react";
 import { Amount } from "@/components/shared/Amount";
 import { useUser } from "@/context/UserContext";
 import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
@@ -32,6 +32,8 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [selectedRuleId, setSelectedRuleId] = useState<string>("");
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [adjustedTargets, setAdjustedTargets] = useState<any[]>([]);
+
+  const [executionError, setExecutionError] = useState<string | null>(null);
 
   // Par défaut sur 'quick' car c'est le flux principal
   const [modalMode, setModalMode] = useState<ModalMode>("quick");
@@ -310,18 +312,29 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
         setCurrentExecutionId(finalExecutionId);
       }
 
-      const finalStatus = res.status === 'completed' ? "SUCCESS" : "FAILED";
+      let overallUiStatus = "FAILED";
+      if (res.finalStatus === "reussi" || res.finalStatus === "en_cours" || res.finalStatus === "partiel") {
+         overallUiStatus = "SUCCESS";
+      }
       
       // Mettre à jour l'UI avec le statut
-      const finalResultsToSave: Record<string, "SUCCESS" | "FAILED"> = {};
+      const finalResultsToSave: Record<string, "SUCCESS" | "FAILED" | "PENDING" | "EN_COURS"> = {};
       currentTargets.forEach((t: any) => {
-        finalResultsToSave[t.id] = finalStatus;
+        const apiResult = res.results?.find((r: any) => r.dest === t.label || (r.target && r.target.phone === t.number));
+        if (apiResult) {
+          if (apiResult.status === "reussi") finalResultsToSave[t.id] = "SUCCESS";
+          else if (apiResult.status === "en_cours") finalResultsToSave[t.id] = "EN_COURS";
+          else finalResultsToSave[t.id] = "FAILED";
+        } else {
+          finalResultsToSave[t.id] = overallUiStatus as "SUCCESS" | "FAILED";
+        }
       });
       setResults(finalResultsToSave);
       setStep("RESULT");
 
     } catch (e: any) {
       console.error(e);
+      setExecutionError(e.message || "Erreur lors de l'exécution");
       const finalResultsToSave: Record<string, "SUCCESS" | "FAILED"> = {};
       currentTargets.forEach((t: any) => finalResultsToSave[t.id] = "FAILED");
       setResults(finalResultsToSave);
@@ -931,6 +944,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                           {results[target.id] === "PENDING" && <Loader2 className="w-6 h-6 animate-spin text-primary" />}
                           {results[target.id] === "SUCCESS" && <CheckCircle2 className="w-7 h-7 text-money-in" />}
                           {results[target.id] === "FAILED" && <XCircle className="w-7 h-7 text-danger" />}
+                          {results[target.id] === "EN_COURS" && <Clock className="w-7 h-7 text-blue-500" />}
                         </div>
                       )}
                     </div>
@@ -988,6 +1002,18 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
             {step === "RESULT" && (
               <div className="flex flex-col items-center justify-center pt-4">
                 
+                {executionError && (
+                  <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full bg-danger/10 border border-danger/20 rounded-[2rem] p-6 text-left shadow-lg mb-6">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-danger/20 flex items-center justify-center">
+                        <XCircle className="w-5 h-5 text-danger" />
+                      </div>
+                      <h4 className="font-extrabold text-danger text-lg tracking-tight">Échec de la répartition</h4>
+                    </div>
+                    <p className="text-[15px] font-medium text-danger/80 leading-relaxed">{executionError}</p>
+                  </motion.div>
+                )}
+
                 {/* PROPOSITION DE SAUVEGARDE (Uniquement si mode Quick) */}
                 {modalMode === "quick" && !ruleSaved && (
                   <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full bg-gradient-to-br from-[#FFF8E7] to-[#FFF1D0] border border-[#FDE1A9] rounded-[2rem] p-6 text-left shadow-lg shadow-[#A87211]/5">

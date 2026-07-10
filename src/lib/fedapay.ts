@@ -143,3 +143,31 @@ export async function createAndSendPayout(rawSecretKey: string, amount: number, 
     throw error;
   }
 }
+
+export async function getFedaPayPayoutStatus(rawSecretKey: string, payoutId: string) {
+  let secretKey = rawSecretKey;
+  if (rawSecretKey.trim().startsWith("{")) {
+    try { secretKey = JSON.parse(rawSecretKey).secretKey; } catch(e){}
+  }
+  const isSandbox = secretKey.includes("sandbox");
+  const baseUrl = isSandbox ? "https://sandbox-api.fedapay.com/v1" : "https://api.fedapay.com/v1";
+
+  try {
+    const res = await fetch(`${baseUrl}/payouts/${payoutId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${secretKey}`,
+        "Accept": "application/json"
+      }
+    });
+
+    if (!res.ok) {
+      throw new Error(`FedaPay Payout Status Error: ${res.statusText}`);
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error("Error checking FedaPay payout status:", error);
+    throw error;
+  }
+}

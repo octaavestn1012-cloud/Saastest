@@ -21,23 +21,26 @@ export async function getLiveTotalBalance() {
       .eq("statut", "actif");
 
     if (connexions && connexions.length > 0) {
-      for (const conn of connexions) {
-        if (conn.cle_chiffree) {
-          const decryptedKey = decryptKey(conn.cle_chiffree);
-          try {
-            if (conn.passerelle.toLowerCase() === "fedapay") {
-              balance += await getFedaPayBalance(decryptedKey);
-            } else if (conn.passerelle.toLowerCase() === "kkiapay") {
-              const keysObj = JSON.parse(decryptedKey);
-              balance += await getKkiapayBalance(keysObj);
-            } else if (conn.passerelle.toLowerCase() === "pawapay") {
-              balance += await getPawapayBalance(decryptedKey);
-            }
-          } catch (e) {
-            console.error(`Impossible de récupérer le solde pour ${conn.passerelle}:`, e);
+      const balancePromises = connexions.map(async (conn) => {
+        if (!conn.cle_chiffree) return 0;
+        const decryptedKey = decryptKey(conn.cle_chiffree);
+        try {
+          if (conn.passerelle.toLowerCase() === "fedapay") {
+            return await getFedaPayBalance(decryptedKey);
+          } else if (conn.passerelle.toLowerCase() === "kkiapay") {
+            const keysObj = JSON.parse(decryptedKey);
+            return await getKkiapayBalance(keysObj);
+          } else if (conn.passerelle.toLowerCase() === "pawapay") {
+            return await getPawapayBalance(decryptedKey);
           }
+        } catch (e) {
+          console.error(`Impossible de récupérer le solde pour ${conn.passerelle}:`, e);
         }
-      }
+        return 0;
+      });
+
+      const balances = await Promise.all(balancePromises);
+      balance = balances.reduce((sum, b) => sum + b, 0);
     }
     return { success: true, balance };
   } catch (error: any) {

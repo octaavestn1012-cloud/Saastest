@@ -42,15 +42,23 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
   const [targetRowToUpdate, setTargetRowToUpdate] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  const getCountryFromNetwork = (network: string) => {
+    for (const [country, networks] of Object.entries(COUNTRIES_NETWORKS)) {
+      if (networks.includes(network)) return country;
+    }
+    return "Bénin";
+  };
+
   useEffect(() => {
-    // Charger les contacts pour potentiellement l'auto-complétion (si on l'ajoute)
+    // Charger les contacts pour potentiellement l'auto-complétion
     getDestinataires().then(({data}) => {
       if (data) {
         setContacts(data.map(d => ({
           id: d.id,
           name: d.libelle,
           network: d.methode_mobile_money,
-          phone: d.numero
+          phone: d.numero,
+          country: getCountryFromNetwork(d.methode_mobile_money)
         })));
       }
     });
@@ -69,12 +77,13 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
       id: d.id,
       name: d.libelle,
       value: d.valeur,
-      network: d.destinataires?.methode_mobile_money || "MTN",
+      network: d.destinataires?.methode_mobile_money || "MTN BJ",
+      country: getCountryFromNetwork(d.destinataires?.methode_mobile_money || "MTN BJ"),
       phone: d.destinataires?.numero || "",
       destinataireId: d.destinataire_id,
       isManual: false
     })) || [
-      { id: "temp_1", name: "", value: 0, network: "MTN", phone: "", isManual: false }
+      { id: "temp_1", name: "", value: 0, network: "MTN BJ", country: "Bénin", phone: "", isManual: false }
     ]
   );
 
@@ -210,7 +219,8 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
           id: d.id,
           name: d.libelle,
           network: d.methode_mobile_money,
-          phone: d.numero
+          phone: d.numero,
+          country: getCountryFromNetwork(d.methode_mobile_money)
         })));
       }
     });
@@ -498,7 +508,7 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
                                   <button 
                                     key={d.id}
                                     onClick={() => {
-                                      setRecipients(targets => targets.map(t => t.id === target.id ? { ...t, destinataireId: d.id, name: d.name, network: d.network, phone: d.phone, isManual: false } : t));
+                                      setRecipients(targets => targets.map(t => t.id === target.id ? { ...t, destinataireId: d.id, name: d.name, network: d.network, phone: d.phone, country: d.country, isManual: false } : t));
                                       setOpenDropdownId(null);
                                     }}
                                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F5F5F7] transition-colors text-left"

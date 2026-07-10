@@ -292,7 +292,7 @@ async function orchestratePayouts(
 
   if (!execution) throw new Error("Impossible de créer l'historique d'exécution");
 
-  // 6. Exécution réelle des paiements
+  // 6. Exécution réelle des paiements (Séquentiel, un par un, pour respecter l'algorithme de base)
   const results: any[] = [];
 
   for (const step of executionPlan) {
@@ -310,15 +310,41 @@ async function orchestratePayouts(
         stepRef = apiData?.transactionId || apiData?.id?.toString() || "";
       } else if (gateway.conn.passerelle.toLowerCase() === "pawapay") {
         apiData = await createAndSendPawapayPayout(gateway.decryptedKey, amount, target.method, target.phone, target.label);
-        // Pawapay typically returns a status like "ACCEPTED", "PENDING", or "FAILED" for payouts.
-        const pawaStatus = apiData?.status || "PENDING";
-        stepStatus = pawaStatus === "FAILED" ? "echoue" : (pawaStatus === "COMPLETED" || pawaStatus === "ACCEPTED" || pawaStatus === "SUCCESS") ? "reussi" : "en_cours";
         stepRef = apiData?.payoutId || apiData?.id || "";
+        
+        let pawaStatus = apiData?.status || "PENDING";
+        // Polling up to 10 seconds (5 x 2s)
+        if ((pawaStatus === "PENDING" || pawaStatus === "ACCEPTED") && stepRef) {
+          const { getPawapayPayoutStatus } = await import("./pawapay");
+          for (let i = 0; i < 5; i++) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            try {
+              const statusData = await getPawapayPayoutStatus(gateway.decryptedKey, stepRef);
+              pawaStatus = statusData?.status || pawaStatus;
+              if (pawaStatus === "COMPLETED" || pawaStatus === "SUCCESS" || pawaStatus === "FAILED") break;
+            } catch(e) {}
+          }
+        }
+        stepStatus = pawaStatus === "FAILED" ? "echoue" : (pawaStatus === "COMPLETED" || pawaStatus === "SUCCESS") ? "reussi" : "en_cours";
+
       } else {
         apiData = await createAndSendPayout(gateway.decryptedKey, amount, target.method, target.phone, target.label);
-        const fedapayStatus = apiData?.v1?.payout?.status || apiData?.status || "pending";
-        stepStatus = fedapayStatus === "failed" ? "echoue" : fedapayStatus === "sent" || fedapayStatus === "approved" ? "reussi" : "en_cours";
         stepRef = apiData?.v1?.payout?.reference || apiData?.v1?.payout?.id?.toString() || apiData?.id?.toString() || "";
+        
+        let fedapayStatus = apiData?.v1?.payout?.status || apiData?.status || "pending";
+        // Polling up to 10 seconds (5 x 2s)
+        if ((fedapayStatus === "pending" || fedapayStatus === "approved" || fedapayStatus === "processing") && stepRef) {
+          const { getFedaPayPayoutStatus } = await import("./fedapay");
+          for (let i = 0; i < 5; i++) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            try {
+              const statusData = await getFedaPayPayoutStatus(gateway.decryptedKey, stepRef);
+              fedapayStatus = statusData?.v1?.payout?.status || statusData?.status || fedapayStatus;
+              if (fedapayStatus === "sent" || fedapayStatus === "failed") break;
+            } catch(e) {}
+          }
+        }
+        stepStatus = fedapayStatus === "failed" ? "echoue" : fedapayStatus === "sent" ? "reussi" : "en_cours";
       }
     } catch (e: any) {
       stepStatus = "echoue";
@@ -326,6 +352,7 @@ async function orchestratePayouts(
     }
 
     results.push({
+      target,
       dest: target.label,
       amount: amount,
       status: stepStatus,
@@ -342,7 +369,8 @@ async function orchestratePayouts(
       statut: stepStatus, 
       reference_transaction: stepRef,
       erreur_message: stepError,
-      est_commission: target.isCommission || false 
+      est_commission: target.isCommission || false,
+      passerelle: gateway.conn.passerelle
     });
   }
 

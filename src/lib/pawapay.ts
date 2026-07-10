@@ -101,6 +101,34 @@ export async function createAndSendPawapayPayout(
   }
 }
 
+export async function getPawapayPayoutStatus(apiToken: string, payoutId: string) {
+  const getBaseUrl = async (token: string) => {
+    const res = await fetch("https://api.sandbox.pawapay.io/v2/wallet-balances?country=BEN", { headers: { "Authorization": `Bearer ${token}` } });
+    if (res.status !== 401) return "https://api.sandbox.pawapay.io/v2";
+    return "https://api.pawapay.io/v2";
+  };
+  const baseUrl = await getBaseUrl(apiToken);
+
+  try {
+    const response = await fetch(`${baseUrl}/payouts/${payoutId}`, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "Authorization": `Bearer ${apiToken}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erreur PawaPay Status: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error("PawaPay status exception:", error);
+    throw error;
+  }
+}
+
 export async function getPawapayBalance(apiToken: string) {
   const getBaseUrl = async (token: string) => {
     const res = await fetch("https://api.sandbox.pawapay.io/v2/wallet-balances?country=BEN", { headers: { "Authorization": `Bearer ${token}` } });
