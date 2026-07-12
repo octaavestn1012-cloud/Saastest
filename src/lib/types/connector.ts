@@ -26,7 +26,7 @@ export interface PayoutResult {
 }
 
 export interface AggregatorConnector {
-  readonly provider: "kkiapay" | "fedapay" | "cinetpay" | "moneroo" | "mock";
+  readonly provider: "kkiapay" | "fedapay" | "cinetpay" | "moneroo" | "mock" | "magmaonepay";
   verifyCredentials(creds: AggregatorCredentials): Promise<{ valid: boolean; reason?: string }>;
   getAvailableBalance(creds: AggregatorCredentials): Promise<number>;
   listIncomingEntries(creds: AggregatorCredentials, since: string): Promise<IncomingEntry[]>;

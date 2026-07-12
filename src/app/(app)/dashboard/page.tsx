@@ -6,7 +6,6 @@ import { Amount } from "@/components/shared/Amount";
 import { DashboardChart } from "@/components/shared/DashboardChart";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { DashboardActionBtn } from "./DashboardActionBtn";
-import { ClientNextExecution } from "./ClientNextExecution";
 import { getDashboardMetrics } from "@/app/actions/dashboard";
 import { getHistorique } from "@/app/actions/historique";
 import { RecentExecutionsList } from "@/components/features/dashboard/RecentExecutionsList";
@@ -28,6 +27,7 @@ export default async function DashboardPage() {
   const totalReparti = metrics?.totalDistributed || 0;
   const latestTransactions = metrics?.transactions || [];
   const executions = historique || [];
+  const nextRepartition = metrics?.nextRepartition || { text: "Aucune règle", ruleName: "" };
 
   return (
     <div className="space-y-6 pb-20 sm:pb-8">
@@ -56,6 +56,51 @@ export default async function DashboardPage() {
           <div className="absolute -bottom-20 -right-10 w-[60%] h-[80%] bg-gradient-to-t from-primary/5 to-transparent pointer-events-none rounded-full blur-3xl opacity-50 transition-transform duration-700 group-hover:scale-105" />
         </div>
 
+        {/* Limites du plan Gratuit */}
+        {metrics?.plan === "gratuit" && (
+          <div className="bg-white rounded-3xl p-6 shadow-sm border border-black/5 flex flex-col md:flex-row gap-8 items-center">
+            <div className="md:w-1/3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl font-bold">Plan Gratuit</span>
+                <Link href="/billing" className="text-xs font-bold bg-primary/10 text-primary px-2 py-1 rounded-full uppercase hover:bg-primary/20 transition-colors">
+                  Passer Pro
+                </Link>
+              </div>
+              <p className="text-sm text-muted-foreground">Vous êtes limité à 20 répartitions et 500 000 FCFA par mois.</p>
+            </div>
+            
+            <div className="md:w-2/3 flex flex-col sm:flex-row gap-6 w-full">
+              {/* Jauge Répartitions */}
+              <div className="flex-1 space-y-2">
+                <div className="flex justify-between text-sm font-semibold">
+                  <span>Répartitions</span>
+                  <span>{metrics.monthlyExecutionsCount || 0} / 20</span>
+                </div>
+                <div className="h-3 w-full bg-black/5 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all ${((metrics.monthlyExecutionsCount || 0) >= 20) ? 'bg-danger' : 'bg-black'}`}
+                    style={{ width: `${Math.min(100, ((metrics.monthlyExecutionsCount || 0) / 20) * 100)}%` }}
+                  />
+                </div>
+              </div>
+              
+              {/* Jauge Volume */}
+              <div className="flex-1 space-y-2">
+                <div className="flex justify-between text-sm font-semibold">
+                  <span>Volume FCFA</span>
+                  <span>{((metrics.monthlyVolume || 0) / 1000).toFixed(0)}k / 500k</span>
+                </div>
+                <div className="h-3 w-full bg-black/5 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all ${((metrics.monthlyVolume || 0) >= 500000) ? 'bg-danger' : 'bg-primary'}`}
+                    style={{ width: `${Math.min(100, ((metrics.monthlyVolume || 0) / 500000) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Petites Cartes Alignées Horizontalement */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard
@@ -78,7 +123,21 @@ export default async function DashboardPage() {
 
           <StatCard
             title="Prochaine répartition"
-            customValueNode={<ClientNextExecution />}
+            customValueNode={
+              <div className="flex flex-col mt-1">
+                <span className="text-2xl sm:text-3xl font-black tracking-tight text-black">
+                  {nextRepartition.text}
+                </span>
+                <span className="text-sm font-semibold text-black mt-1">
+                  {nextRepartition.ruleName}
+                </span>
+                {nextRepartition.text !== "Aucune auto" && (
+                  <span className="text-[11px] font-medium text-muted-foreground mt-0.5">
+                    Répartition automatique
+                  </span>
+                )}
+              </div>
+            }
             icon={<CalendarClock className="w-6 h-6" />}
             iconBgColorClass="bg-accent-decorative/10 text-accent-decorative"
           />

@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAdminKPIs, getAdminUsers, getAdminFailedLogs } from "@/app/actions/admin";
-import { Loader2, TrendingUp, Users, Wallet, AlertOctagon, Activity, Search, BarChart3, Key, Settings2, Target } from "lucide-react";
+import { getAdminKPIs, getAdminUsers, getAdminFailedLogs, getGlobalGatewaysStatus, toggleGlobalGateway } from "@/app/actions/admin";
+import { Loader2, TrendingUp, Users, Wallet, AlertOctagon, Activity, Search, BarChart3, Key, Settings2, Target, X } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
 
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -94,13 +96,15 @@ export default function AdminDashboardPage() {
             icon={<Activity className="w-6 h-6 text-blue-500" />}
             gradient="from-blue-50 to-white"
           />
-          <KpiCard 
-            title="Commissions (Frais)" 
-            value={`${kpis?.totalCommissionsThisMonth?.toLocaleString("fr-FR") || 0} F (Mois)`} 
-            subtitle={`Total historique : ${kpis?.totalCommissionsHistory?.toLocaleString("fr-FR") || 0} F`}
-            icon={<Wallet className="w-6 h-6 text-emerald-500" />}
-            gradient="from-emerald-50 to-white"
-          />
+          <Link href="/admin/commissions" className="block transition-transform hover:scale-[1.02]">
+            <KpiCard 
+              title="Commissions (Frais)" 
+              value={`${kpis?.totalCommissionsThisMonth?.toLocaleString("fr-FR") || 0} F (Mois)`} 
+              subtitle={`Total historique : ${kpis?.totalCommissionsHistory?.toLocaleString("fr-FR") || 0} F`}
+              icon={<Wallet className="w-6 h-6 text-emerald-500" />}
+              gradient="from-emerald-50 to-white"
+            />
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -118,13 +122,15 @@ export default function AdminDashboardPage() {
             icon={<Target className={`w-6 h-6 ${kpis?.successRate >= 95 ? 'text-green-500' : 'text-red-500'}`} />}
             gradient={kpis?.successRate >= 95 ? "from-green-50 to-white" : "from-red-50 to-white"}
           />
-          <KpiCard 
-            title="Passerelles Actives" 
-            value={kpis?.activeGatewaysCount?.toString() || "0"} 
-            subtitle="Clés API branchées"
-            icon={<Key className="w-6 h-6 text-amber-500" />}
-            gradient="from-amber-50 to-white"
-          />
+          <Link href="/admin/passerelles" className="block transition-transform hover:scale-[1.02]">
+            <KpiCard 
+              title="Passerelles Actives" 
+              value={kpis?.activeGatewaysCount?.toString() || "0"} 
+              subtitle="Gérer les clés API (Cliquez)"
+              icon={<Key className="w-6 h-6 text-amber-500" />}
+              gradient="from-amber-50 to-white"
+            />
+          </Link>
           <KpiCard 
             title="Règles de Répartition" 
             value={kpis?.activeRulesCount?.toString() || "0"} 

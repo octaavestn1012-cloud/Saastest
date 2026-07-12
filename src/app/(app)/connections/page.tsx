@@ -12,7 +12,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { connectFedaPay, connectKkiapay, connectPawapay, deleteConnection, toggleConnectionStatus } from "@/app/actions/connections";
+import { connectFedaPay, connectKkiapay, connectPawapay, connectMagmaOnePay, deleteConnection, toggleConnectionStatus } from "@/app/actions/connections";
+import { getGlobalGatewaysStatus } from "@/app/actions/admin";
 import { formatDateToBenin } from "@/lib/utils/format";
 
 const AVAILABLE_GATEWAYS = [
@@ -41,6 +42,7 @@ export default function ConnectionsPage() {
   
   // États de données
   const [connections, setConnections] = useState<any[]>([]);
+  const [globalGateways, setGlobalGateways] = useState<any>({});
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -60,6 +62,9 @@ export default function ConnectionsPage() {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) setUserId(user.id);
+
+    const { data: globalData } = await getGlobalGatewaysStatus();
+    if (globalData) setGlobalGateways(globalData);
 
     const { data } = await supabase
       .from("connexions")
@@ -87,7 +92,7 @@ export default function ConnectionsPage() {
   };
 
   const handleConnect = async () => {
-    if (selectedGateway !== "FedaPay" && selectedGateway !== "Kkiapay" && selectedGateway !== "PawaPay") {
+    if (selectedGateway !== "FedaPay" && selectedGateway !== "Kkiapay" && selectedGateway !== "PawaPay" && selectedGateway !== "Magma OnePay") {
       setError("Cette passerelle n'est pas encore supportée dans cette version.");
       return;
     }
@@ -114,6 +119,11 @@ export default function ConnectionsPage() {
       formData.append("secretKey", secretKey); // secretKey holds the JWT Token
       if (webhookSecret) formData.append("webhookSecret", webhookSecret);
       result = await connectPawapay(formData);
+    } else if (selectedGateway === "Magma OnePay") {
+      formData.append("privateKey", privateKey);
+      formData.append("secretKey", secretKey);
+      if (webhookSecret) formData.append("webhookSecret", webhookSecret);
+      result = await connectMagmaOnePay(formData);
     }
 
     if (result?.error) {
@@ -161,17 +171,26 @@ export default function ConnectionsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {connections.map((conn, index) => (
+            {connections.map((conn, index) => {
+              const isGlobalActive = globalGateways[conn.passerelle.toLowerCase()] ?? true;
+              return (
               <motion.div 
                 key={conn.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className={`p-6 rounded-[1.5rem] shadow-sm border relative overflow-hidden flex flex-col group hover:shadow-md transition-all ${
+                  !isGlobalActive ? "bg-red-50/50 border-red-200 opacity-80" :
                   conn.statut === "actif" ? "bg-white border-black/[0.05]" : "bg-danger/5 border-danger/20"
                 }`}
               >
+                {!isGlobalActive && (
+                  <div className="absolute top-0 left-0 right-0 bg-red-500 text-white text-[10px] font-bold text-center py-1 uppercase tracking-wider z-30">
+                    Temporairement Indisponible
+                  </div>
+                )}
                 <div className={`absolute top-0 right-0 w-32 h-32 rounded-bl-full blur-2xl ${
+                  !isGlobalActive ? "bg-red-100" :
                   conn.statut === "actif" ? "bg-money-in/5" : "bg-danger/10"
                 }`} />
                 <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
@@ -266,7 +285,7 @@ export default function ConnectionsPage() {
                   </div>
                 </div>
               </motion.div>
-            ))}
+            )})}
           </div>
         )}
       </div>
@@ -275,16 +294,27 @@ export default function ConnectionsPage() {
       <div className="space-y-6">
         <h3 className="text-lg font-bold tracking-tight">Passerelles disponibles</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {AVAILABLE_GATEWAYS.map((gateway, i) => (
+          {AVAILABLE_GATEWAYS.map((gateway, i) => {
+            const isGlobalActive = globalGateways[gateway.name.toLowerCase()] ?? true;
+            return (
             <motion.div
               key={gateway.name}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 + (i * 0.02) }}
-              className="bg-white rounded-[1.5rem] p-6 border border-black/[0.05] shadow-sm hover:shadow-md transition-all flex flex-col hover:-translate-y-1"
+              className={`bg-white rounded-[1.5rem] p-6 border border-black/[0.05] shadow-sm transition-all flex flex-col relative overflow-hidden ${
+                isGlobalActive ? "hover:shadow-md hover:-translate-y-1" : "opacity-70 cursor-not-allowed"
+              }`}
             >
-              <div className="flex items-center gap-4 mb-3">
-                <div className={`w-12 h-12 rounded-[1rem] flex items-center justify-center text-white font-bold text-xl shadow-inner shrink-0 ${gateway.color}`}>
+              {!isGlobalActive && (
+                <div className="absolute top-0 left-0 right-0 bg-red-500 text-white text-[10px] font-bold text-center py-1 uppercase tracking-wider z-30">
+                  Maintenance
+                </div>
+              )}
+              <div className="flex items-center gap-4 mb-3 mt-2">
+                <div className={`w-12 h-12 rounded-[1rem] flex items-center justify-center text-white font-bold text-xl shadow-inner shrink-0 ${
+                  isGlobalActive ? gateway.color : "bg-gray-400"
+                }`}>
                   {gateway.name.charAt(0)}
                 </div>
                 <h4 className="font-bold text-[17px] tracking-tight">{gateway.name}</h4>
@@ -294,13 +324,14 @@ export default function ConnectionsPage() {
               </p>
               <Button 
                 variant="secondary"
-                onClick={() => openModal(gateway.name)}
+                disabled={!isGlobalActive}
+                onClick={() => isGlobalActive && openModal(gateway.name)}
                 className="w-full mt-auto h-11 bg-black/[0.03] hover:bg-black/[0.06] text-black font-semibold rounded-xl"
               >
-                Connecter
+                {isGlobalActive ? "Connecter" : "Indisponible"}
               </Button>
             </motion.div>
-          ))}
+          )})}
         </div>
       </div>
 
@@ -353,7 +384,7 @@ export default function ConnectionsPage() {
                   />
                 </div>
 
-                {selectedGateway !== "PawaPay" && (
+                {selectedGateway !== "PawaPay" && selectedGateway !== "Magma OnePay" && (
                   <div className="space-y-1.5">
                     <label className="block text-sm font-semibold text-foreground ml-1">Clé Publique (Public Key)</label>
                     <input 
@@ -367,9 +398,9 @@ export default function ConnectionsPage() {
                   </div>
                 )}
 
-                {selectedGateway === "Kkiapay" && (
+                {(selectedGateway === "Kkiapay" || selectedGateway === "Magma OnePay") && (
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-semibold text-foreground ml-1">Clé Privée (Private Key)</label>
+                    <label className="block text-sm font-semibold text-foreground ml-1">{selectedGateway === "Magma OnePay" ? "Clé Privée (Bearer Token)" : "Clé Privée (Private Key)"}</label>
                     <input 
                       type="password" 
                       value={privateKey}
@@ -383,7 +414,7 @@ export default function ConnectionsPage() {
 
                 <div className="space-y-1.5">
                   <label className="block text-sm font-semibold text-foreground ml-1">
-                    {selectedGateway === "PawaPay" ? "Token API (JWT Bearer)" : "Clé Secrète (Secret Key)"}
+                    {selectedGateway === "PawaPay" ? "Token API (JWT Bearer)" : (selectedGateway === "Magma OnePay" ? "Clé Secrète (X-User-Secret)" : "Clé Secrète (Secret Key)")}
                   </label>
                   <input 
                     type="password" 
@@ -414,7 +445,7 @@ export default function ConnectionsPage() {
                       <input 
                         type="text" 
                         readOnly 
-                        value={userId ? `${window.location.origin}/api/webhooks/${selectedGateway?.toLowerCase()}/${userId}` : ""} 
+                        value={userId ? `${window.location.origin}/api/webhooks/${selectedGateway?.toLowerCase().replace(" ", "")}/${userId}` : ""} 
                         className="flex-1 bg-transparent border-none p-0 focus:ring-0 text-muted-foreground truncate font-mono text-[10px]"
                       />
                       <Button 
@@ -424,7 +455,7 @@ export default function ConnectionsPage() {
                         onClick={(e) => {
                           e.preventDefault();
                           if (userId) {
-                            navigator.clipboard.writeText(`${window.location.origin}/api/webhooks/${selectedGateway?.toLowerCase()}/${userId}`);
+                            navigator.clipboard.writeText(`${window.location.origin}/api/webhooks/${selectedGateway?.toLowerCase().replace(" ", "")}/${userId}`);
                             setCopied(true);
                             setTimeout(() => setCopied(false), 2000);
                           }

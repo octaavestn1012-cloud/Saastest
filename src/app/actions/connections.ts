@@ -225,3 +225,50 @@ export async function connectKkiapay(formData: FormData) {
     return { error: error.message || "Une erreur inattendue est survenue." };
   }
 }
+
+export async function connectMagmaOnePay(formData: FormData) {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { error: "Vous devez être connecté." };
+    }
+
+    const nom = formData.get("nom") as string;
+    const privateKey = (formData.get("privateKey") as string).trim();
+    const secretKey = (formData.get("secretKey") as string).trim();
+    const webhookSecret = (formData.get("webhookSecret") as string)?.trim();
+
+    if (!nom || !privateKey || !secretKey || !webhookSecret) {
+      return { error: "Veuillez fournir toutes les clés requises (Bearer Token, X-User-Secret et Webhook)." };
+    }
+
+    const keysObj = { privateKey, secretKey };
+    const cleChiffree = encryptKey(JSON.stringify(keysObj));
+    const webhookSecretChiffre = encryptKey(webhookSecret);
+
+    const { error: dbError } = await supabase
+      .from("connexions")
+      .insert({
+        user_id: user.id,
+        passerelle: "Magma OnePay",
+        nom: nom,
+        statut: "actif",
+        cle_chiffree: cleChiffree,
+        webhook_secret_chiffre: webhookSecretChiffre
+      });
+
+    if (dbError) {
+      console.error("Erreur DB:", dbError);
+      return { error: "Erreur lors de l'enregistrement dans la base de données." };
+    }
+
+    return { success: true };
+
+  } catch (error: any) {
+    console.error("Erreur MagmaOnePay:", error);
+    return { error: error.message || "Une erreur inattendue est survenue." };
+  }
+}
+

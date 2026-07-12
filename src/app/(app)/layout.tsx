@@ -10,6 +10,7 @@ import { UserDropdown } from "@/components/shared/UserDropdown";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { TimezoneUpdater } from "@/components/TimezoneUpdater";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const cookieStore = cookies();
@@ -50,6 +51,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <UserProvider>
       <RepartitionProvider>
         <MigrationProvider>
+          <TimezoneUpdater />
           <AppShell userName={formattedName} userEmail={userEmail}>
             <header className="hidden md:flex justify-between items-center mb-8">
               <GreetingHeader formattedName={formattedName} />

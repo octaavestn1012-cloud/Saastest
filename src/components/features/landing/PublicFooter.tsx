@@ -47,9 +47,9 @@ export function PublicFooter() {
             © {currentYear} Réparto. Tous droits réservés.
           </p>
           <div className="flex items-center gap-6">
-            <a href="#" className="text-white/40 hover:text-white font-bold text-sm transition-colors">TikTok</a>
-            <a href="#" className="text-white/40 hover:text-white font-bold text-sm transition-colors">Instagram</a>
-            <a href="#" className="text-white/40 hover:text-white font-bold text-sm transition-colors">X (Twitter)</a>
+            <a href="https://tiktok.com/@monreparto" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-white font-bold text-sm transition-colors">TikTok</a>
+            <a href="https://instagram.com/monreparto" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-white font-bold text-sm transition-colors">Instagram</a>
+            <a href="https://x.com/monreparto" target="_blank" rel="noopener noreferrer" className="text-white/40 hover:text-white font-bold text-sm transition-colors">X (Twitter)</a>
           </div>
         </div>
       </div>

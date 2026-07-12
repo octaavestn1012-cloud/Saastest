@@ -20,6 +20,8 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState("");
   const [payoutNumber, setPayoutNumber] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [resetMsg, setResetMsg] = useState("");
+  const [resetError, setResetError] = useState("");
 
   const [notifSuccess, setNotifSuccess] = useState(true);
   const [notifError, setNotifError] = useState(true);
@@ -84,14 +86,17 @@ export default function SettingsPage() {
 
   const handleResetPassword = async () => {
     if (!userEmail) return;
+    setResetMsg("");
+    setResetError("");
+    
     const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
       redirectTo: `${window.location.origin}/update-password`,
     });
     
     if (error) {
-      alert("Erreur lors de l'envoi de l'email : " + error.message);
+      setResetError("Erreur lors de l'envoi de l'email : " + error.message);
     } else {
-      alert("Un véritable lien de réinitialisation vous a été envoyé par email !");
+      setResetMsg("Un lien de réinitialisation vous a été envoyé par email !");
     }
   };
 
@@ -224,6 +229,8 @@ export default function SettingsPage() {
               <div>
                 <h3 className="font-bold text-black mb-1">Mot de passe</h3>
                 <p className="text-sm text-muted-foreground">Il est conseillé de changer votre mot de passe régulièrement.</p>
+                {resetMsg && <p className="text-sm text-money-in mt-2 font-medium flex items-center gap-1"><CheckCircle2 className="w-4 h-4" />{resetMsg}</p>}
+                {resetError && <p className="text-sm text-danger mt-2 font-medium flex items-center gap-1"><AlertTriangle className="w-4 h-4" />{resetError}</p>}
               </div>
               <Button onClick={handleResetPassword} variant="outline" className="rounded-xl font-bold h-11 border-black/10 hover:bg-[#F5F5F7]">
                 Changer le mot de passe
@@ -346,7 +353,7 @@ export default function SettingsPage() {
               <h3 className="font-bold text-black mb-1">Supprimer mon compte</h3>
               <p className="text-sm text-muted-foreground">Cette action supprimera définitivement vos règles et votre historique.</p>
             </div>
-            <Button variant="outline" className="rounded-xl font-bold h-11 border-danger/20 text-danger hover:bg-danger hover:text-white transition-colors">
+            <Button onClick={() => alert("Pour supprimer votre compte, veuillez contacter le support.")} variant="outline" className="rounded-xl font-bold h-11 border-danger/20 text-danger hover:bg-danger hover:text-white transition-colors">
               Supprimer mon compte
             </Button>
           </div>

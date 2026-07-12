@@ -147,6 +147,10 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
 
   // Actions
   const addRecipient = () => {
+    if (!isPremium && recipients.length >= 3) {
+      alert("Le plan Gratuit est limité à 3 destinataires par répartition. Passez au plan Pro pour en ajouter davantage.");
+      return;
+    }
     setRecipients([...recipients, { 
       id: "temp_" + Math.random().toString(), 
       name: "", 
@@ -330,14 +334,20 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
         <div className="space-y-4">
           <select 
             value={trigger}
-            onChange={(e) => setTrigger(e.target.value)}
+            onChange={(e) => {
+              if (!isPremium && e.target.value !== "manuel") {
+                alert("Les règles automatiques sont réservées au plan Pro.");
+                return;
+              }
+              setTrigger(e.target.value);
+            }}
             className="w-full max-w-full bg-[#F5F5F7] border-transparent rounded-2xl px-6 py-4 text-lg font-medium outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none cursor-pointer truncate pr-12"
           >
             <option value="manuel">Manuel (Je lance moi-même)</option>
-            <option value="a_chaque_entree">Automatique : À chaque entrée d'argent</option>
-            <option value="quotidien">Automatique : Quotidien</option>
-            <option value="hebdo">Automatique : Hebdomadaire</option>
-            <option value="mensuel">Automatique : Mensuel</option>
+            <option value="a_chaque_entree">Automatique : À chaque entrée d'argent {!isPremium && '🔒'}</option>
+            <option value="quotidien">Automatique : Quotidien {!isPremium && '🔒'}</option>
+            <option value="hebdo">Automatique : Hebdomadaire {!isPremium && '🔒'}</option>
+            <option value="mensuel">Automatique : Mensuel {!isPremium && '🔒'}</option>
           </select>
 
           {/* Champs conditionnels */}
@@ -624,9 +634,10 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
 
         <button 
           onClick={addRecipient}
-          className="w-full bg-white border-dashed border-2 border-black/5 hover:border-black/20 rounded-[1.5rem] h-14 font-bold text-[15px] text-muted-foreground hover:text-black flex items-center justify-center transition-all hover:bg-black/[0.01]"
+          className={`w-full bg-white border-dashed border-2 border-black/5 hover:border-black/20 rounded-[1.5rem] h-14 font-bold text-[15px] text-muted-foreground flex items-center justify-center transition-all ${!isPremium && recipients.length >= 3 ? 'opacity-50 cursor-not-allowed' : 'hover:text-black hover:bg-black/[0.01]'}`}
         >
-          <Plus className="w-5 h-5 mr-2" /> Ajouter un destinataire
+          {!isPremium && recipients.length >= 3 ? <Lock className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
+          {!isPremium && recipients.length >= 3 ? "Limite gratuite atteinte (3 max)" : "Ajouter un destinataire"}
         </button>
       </section>
 

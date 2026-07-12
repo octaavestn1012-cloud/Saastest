@@ -298,3 +298,62 @@ export async function forceGodModePlan(newPlan: "gratuit" | "pro" | "business") 
     return { success: false, error: err.message };
   }
 }
+
+// --- GESTION GLOBALE DES PASSERELLES ---
+
+export async function getGlobalGatewaysStatus() {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createAdminClient(supabaseUrl, supabaseServiceKey);
+
+    const { data, error } = await supabaseAdmin
+      .from("admin_settings")
+      .select("config_value")
+      .eq("config_key", "global_gateways_status")
+      .single();
+
+    if (error || !data) {
+      // Valeurs par défaut si non trouvé
+      return { success: true, data: { fedapay: true, kkiapay: true, pawapay: true, "magma onepay": true } };
+    }
+
+    return { success: true, data: data.config_value };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function toggleGlobalGateway(gatewayName: string, isActive: boolean) {
+  try {
+    await verifyAdminAccess();
+    
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createAdminClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: currentData } = await supabaseAdmin
+      .from("admin_settings")
+      .select("config_value")
+      .eq("config_key", "global_gateways_status")
+      .single();
+
+    const currentStatus = currentData?.config_value || { fedapay: true, kkiapay: true, pawapay: true, "magma onepay": true };
+    currentStatus[gatewayName.toLowerCase()] = isActive;
+
+    const { error } = await supabaseAdmin
+      .from("admin_settings")
+      .upsert({ 
+        config_key: "global_gateways_status", 
+        config_value: currentStatus 
+      });
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

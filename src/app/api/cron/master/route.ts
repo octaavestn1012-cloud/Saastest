@@ -15,10 +15,10 @@ export async function GET(req: Request) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Charger toutes les règles planifiées
+    // Charger toutes les règles planifiées avec le fuseau horaire de l'utilisateur
     const { data: rules, error } = await supabaseAdmin
       .from('regles')
-      .select('user_id, id, declencheur, declencheur_config')
+      .select('user_id, id, declencheur, declencheur_config, profiles!inner(timezone)')
       .in('declencheur', ['quotidien', 'hebdomadaire', 'mensuel'])
       .eq('actif', true);
 
@@ -28,31 +28,36 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: 'Aucune règle planifiée' }, { status: 200 });
     }
 
-    // Heure courante (serveur)
+    // Heure courante (serveur) - Repère UTC
     const now = new Date();
-    // On travaille en heure locale ou UTC. Faisons simple : heure UTC + 1 (pour le fuseau d'Afrique de l'Ouest / Paris par défaut pour l'exemple)
-    // Mais pour la précision, on utilise l'heure UTC. L'utilisateur a saisi une heure dans son fuseau local, on va supposer que c'est l'heure du navigateur.
-    // Idéalement on devrait gérer les fuseaux horaires (timezone).
-    // Pour l'instant on compare simplement l'heure courante (hh:mm) avec une petite marge (ex: 15 minutes).
-    // Si le master cron tourne à 14:00, et que rule.time = "14:00", on exécute.
     
-    // Obtenir la date au format YYYY-MM-DD
+    // Obtenir la date du jour du serveur pour le contrôle d'idempotence
     const todayStr = now.toISOString().split('T')[0];
-    
-    // Obtenir l'heure au format HH:mm
-    // On prend l'heure courante, on arrondit à la dizaine la plus proche pour éviter les décalages de secondes.
-    // Ou bien on parse et on voit si la différence en minutes est <= 15.
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const currentDayOfWeek = now.getDay(); // 0 = Dimanche, 1 = Lundi, ...
-    
-    const isLastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() === now.getDate();
-    const currentDayOfMonth = now.getDate();
 
     const rulesToExecute = [];
 
     for (const rule of rules) {
       const config = rule.declencheur_config || {};
       if (!config.time) continue;
+      
+      const userTimezone = (rule.profiles as any)?.timezone || 'UTC';
+
+      // Conversion de l'heure courante (now) dans le fuseau horaire de l'utilisateur
+      let tzDate;
+      try {
+        const tzString = now.toLocaleString("en-US", { timeZone: userTimezone });
+        tzDate = new Date(tzString);
+      } catch (e) {
+        console.warn(`Timezone invalide pour user ${rule.user_id}: ${userTimezone}. Fallback sur UTC.`);
+        const tzString = now.toLocaleString("en-US", { timeZone: 'UTC' });
+        tzDate = new Date(tzString);
+      }
+
+      // Extraire les composantes de temps LOCALES pour cet utilisateur
+      const currentMinutes = tzDate.getHours() * 60 + tzDate.getMinutes();
+      const currentDayOfWeek = tzDate.getDay(); // 0 = Dimanche
+      const currentDayOfMonth = tzDate.getDate();
+      const isLastDayOfMonth = new Date(tzDate.getFullYear(), tzDate.getMonth() + 1, 0).getDate() === tzDate.getDate();
 
       const [ruleHours, ruleMins] = config.time.split(':').map(Number);
       const ruleTotalMinutes = ruleHours * 60 + ruleMins;
