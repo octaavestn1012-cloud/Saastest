@@ -281,7 +281,7 @@ export default function ConnectionsPage() {
                 key={gateway.name}
                 className={`p-6 rounded-[1.5rem] flex flex-col justify-between group transition-all duration-300 min-h-[250px] ${
                   isGlobalActive 
-                    ? "bg-[#FAFAFA] border-[1.5px] border-dashed border-black/[0.08] shadow-none hover:bg-white hover:border-solid hover:border-black/15 hover:shadow-xl hover:-translate-y-1" 
+                    ? "bg-[#FAFAFA] border-[1.5px] border-solid border-black/15 shadow-sm hover:bg-white hover:border-black/20 hover:shadow-xl hover:-translate-y-1" 
                     : "bg-gray-50 border border-black/5 opacity-75"
                 }`}
               >
@@ -309,11 +309,15 @@ export default function ConnectionsPage() {
                   onClick={() => isGlobalActive ? openModal(gateway.name) : undefined}
                   className={`w-full font-bold rounded-xl h-11 transition-all ${
                     isGlobalActive 
-                      ? "bg-black/[0.04] text-black hover:bg-black hover:text-white" 
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      ? "bg-primary/10 text-primary hover:bg-primary hover:text-white shadow-none hover:shadow-lg hover:shadow-primary/20" 
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
                   }`}
                 >
-                  {isGlobalActive ? "Connecter" : "Indisponible"}
+                  {isGlobalActive ? (
+                    <div className="flex items-center justify-center">
+                      Connecter <Plus className="w-4 h-4 ml-1.5 stroke-[3]" />
+                    </div>
+                  ) : "Indisponible"}
                 </Button>
               </div>
             );
