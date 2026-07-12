@@ -183,66 +183,89 @@ export default function ConnectionsPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className={`p-6 rounded-2xl shadow-sm border flex items-center justify-between group hover:shadow-md transition-all h-[100px] ${
+                className={`p-6 rounded-[1.5rem] shadow-sm border relative overflow-hidden flex flex-col group hover:shadow-md transition-all ${
                   !isGlobalActive ? "bg-red-50/50 border-red-200 opacity-80" :
-                  conn.statut === "actif" ? "bg-white border-black/[0.06]" : "bg-white border-danger/20"
+                  conn.statut === "actif" ? "bg-white border-black/[0.05]" : "bg-danger/5 border-danger/20"
                 }`}
               >
-                {/* Info Gauche */}
-                <div className="flex items-center gap-4">
-                  <div className="relative">
+                {!isGlobalActive && (
+                  <div className="absolute top-0 left-0 right-0 bg-red-500 text-white text-[10px] font-bold text-center py-1 uppercase tracking-wider z-30">
+                    Temporairement Indisponible
+                  </div>
+                )}
+                <div className={`absolute top-0 right-0 w-32 h-32 rounded-bl-full blur-2xl ${
+                  !isGlobalActive ? "bg-red-100" :
+                  conn.statut === "actif" ? "bg-money-in/5" : "bg-danger/10"
+                }`} />
+                <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+                  <span className={`text-[10px] font-bold uppercase tracking-wide ${conn.statut === "actif" ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {conn.statut === "actif" ? 'Actif' : 'Pause'}
+                  </span>
+                  <Switch
+                    checked={conn.statut === "actif"}
+                    onCheckedChange={async () => {
+                      const newStatus = conn.statut === "actif" ? "pause" : "actif";
+                      setConnections(connections.map(c => c.id === conn.id ? { ...c, statut: newStatus } : c));
+                      const res = await toggleConnectionStatus(conn.id, conn.statut);
+                      if (res.error) setConnections(connections.map(c => c.id === conn.id ? { ...c, statut: conn.statut } : c));
+                    }}
+                    className="data-[state=checked]:bg-money-in scale-90 mr-1"
+                  />
+                </div>
+                
+                <div className="relative z-10 flex flex-col mb-4">
+                  <div className="flex items-center gap-3 pr-10">
                     {(() => {
                       const gatewayInfo = AVAILABLE_GATEWAYS.find(g => g.name.toLowerCase() === conn.passerelle.toLowerCase());
                       if (gatewayInfo?.logo) {
                         return (
-                          <img src={`/gateways/${gatewayInfo.logo}`} alt={conn.passerelle} className={`w-12 h-12 object-contain shrink-0 drop-shadow-sm ${conn.statut !== "actif" && "grayscale opacity-50"}`} />
+                          <div className={`w-11 h-11 rounded-full overflow-hidden border border-black/5 shadow-sm shrink-0 flex items-center justify-center bg-white ${conn.statut !== "actif" && "grayscale opacity-50"}`}>
+                            <img src={`/gateways/${gatewayInfo.logo}`} alt={conn.passerelle} className="w-[120%] h-[120%] max-w-none object-cover" />
+                          </div>
                         );
                       }
                       return (
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
                           conn.statut === "actif" ? "bg-money-in/10 text-money-in" : "bg-danger/10 text-danger"
                         }`}>
                           <Link2 className="w-5 h-5" />
                         </div>
                       );
                     })()}
-                    {/* Pastille de statut sur l'image */}
-                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${
-                      conn.statut === "actif" ? "bg-money-in text-white" : "bg-danger text-white"
-                    }`}>
-                      {conn.statut === "actif" ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertCircle className="w-2.5 h-2.5" />}
+                    <div>
+                      <h3 className="font-bold text-[16px] leading-tight mb-1.5 capitalize">{conn.nom}</h3>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground capitalize">{conn.passerelle}</p>
+                        <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded flex-shrink-0 text-[9px] font-bold uppercase tracking-wider ${
+                          conn.statut === "actif" ? "text-money-in bg-money-in/10" : 
+                          conn.statut === "pause" ? "text-muted-foreground bg-black/5" : 
+                          "text-danger bg-danger/10"
+                        }`}>
+                          {conn.statut === "actif" ? <CheckCircle2 className="w-2.5 h-2.5" /> : 
+                           conn.statut === "pause" ? <ShieldCheck className="w-2.5 h-2.5" /> : 
+                           <AlertCircle className="w-2.5 h-2.5" />}
+                          {conn.statut}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col">
-                    <h3 className="font-bold text-[16px] text-foreground leading-tight mb-0.5 capitalize">{conn.nom}</h3>
-                    <p className="text-[13px] text-muted-foreground capitalize">{conn.passerelle}</p>
-                  </div>
                 </div>
-
-                {/* Actions Droite */}
-                <div className="flex items-center gap-6">
-                  {/* Switch */}
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[11px] font-bold uppercase tracking-wider ${conn.statut === "actif" ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {conn.statut === "actif" ? 'Actif' : 'Pause'}
-                    </span>
-                    <Switch
-                      checked={conn.statut === "actif"}
-                      onCheckedChange={async () => {
-                        const newStatus = conn.statut === "actif" ? "pause" : "actif";
-                        setConnections(connections.map(c => c.id === conn.id ? { ...c, statut: newStatus } : c));
-                        const res = await toggleConnectionStatus(conn.id, conn.statut);
-                        if (res.error) setConnections(connections.map(c => c.id === conn.id ? { ...c, statut: conn.statut } : c));
-                      }}
-                      className="data-[state=checked]:bg-money-in scale-90"
-                    />
+                
+                {conn.statut === "erreur" && (
+                  <div className="mt-2 text-xs text-danger flex items-start gap-1.5 p-2 bg-danger/5 rounded-lg border border-danger/10">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <p>La clé semble invalide ou expirée.</p>
                   </div>
+                )}
 
-                  {/* Menu */}
+                <div className="flex items-center justify-between mt-auto pt-4 border-t border-black/[0.03] relative z-10">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Ajouté le {formatDateToBenin(conn.created_at).split(" à")[0]}
+                  </div>
+                  
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-9 px-4 rounded-xl font-semibold border-black/10 hover:bg-black/5 text-[13px]">
+                      <Button variant="secondary" className="h-8 px-4 rounded-full font-bold text-xs bg-[#F5F5F7] hover:bg-black/5 text-foreground">
                         Gérer
                       </Button>
                     </DropdownMenuTrigger>
