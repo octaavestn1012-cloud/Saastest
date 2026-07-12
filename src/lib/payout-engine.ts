@@ -3,7 +3,7 @@ import { decryptKey } from "./encryption";
 import { createAndSendPayout, getFedaPayBalance } from "./fedapay";
 import { createAndSendKkiapayPayout, getKkiapayBalance } from "./kkiapay";
 import { getPawapayBalance, createAndSendPawapayPayout } from "./pawapay";
-import { sendPayoutReceiptEmail, sendAutomationReport } from "./email";
+import { sendPayoutReceiptEmail, sendAutomationReport, sendPlanLimitReachedEmail } from "./email";
 import { getValidUserPlan, getCommissionRate } from "./billing";
 
 /**
@@ -123,6 +123,9 @@ async function orchestratePayouts(
 
     if (monthExecs) {
       if (monthExecs.length >= 20) {
+        if (isAutomatic && userEmail) {
+          await sendPlanLimitReachedEmail(userEmail, "count");
+        }
         return { success: false, error: "Limite de 20 répartitions par mois atteinte. Veuillez passer au plan Pro." };
       }
       const totalVolume = monthExecs.reduce((acc: number, ex: any) => acc + (ex.montant_total || 0), 0);
@@ -254,6 +257,9 @@ async function orchestratePayouts(
   if (validatedPlan === "gratuit") {
     const totalVolume = (global as any).__tempTotalVolume || 0;
     if (totalVolume + totalNeededWithCommission > 500000) {
+      if (isAutomatic && userEmail) {
+        await sendPlanLimitReachedEmail(userEmail, "volume");
+      }
       return { success: false, error: "Plafond mensuel de 500 000 FCFA dépassé. Veuillez passer au plan Pro." };
     }
   }

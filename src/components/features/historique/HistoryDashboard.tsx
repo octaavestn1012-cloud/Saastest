@@ -62,6 +62,14 @@ export function HistoryDashboard({ initialData, plan = "gratuit", initialTxId }:
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTx, setSelectedTx] = useState<TransactionHistory | null>(null);
   const [historyData, setHistoryData] = useState<TransactionHistory[]>([]);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+  
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  
+  const [searchQuery, setSearchQuery] = useState("");
 
   const commissionRateStr = plan === "pro" ? "0,8" : plan === "business" ? "0,4" : "1,9";
 
@@ -122,26 +130,80 @@ export function HistoryDashboard({ initialData, plan = "gratuit", initialTxId }:
     }
   }, [initialData, initialTxId]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterPeriod, filterStatus, customStartDate, customEndDate, searchQuery]);
+
   const filteredData = historyData.filter(tx => {
     if (filterStatus !== "all" && tx.status !== filterStatus.toUpperCase()) return false;
+    
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchRuleName = tx.ruleName.toLowerCase().includes(q);
+      const matchDetails = tx.details.some(d => 
+        (d.name && d.name.toLowerCase().includes(q)) || 
+        (d.phone && d.phone.toLowerCase().includes(q))
+      );
+      if (!matchRuleName && !matchDetails) return false;
+    }
+    
+    const txDate = new Date(tx.date);
+    const now = new Date();
+    
+    if (filterPeriod === "today") {
+      if (txDate.toDateString() !== now.toDateString()) return false;
+    } else if (filterPeriod === "30d") {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      if (txDate < thirtyDaysAgo) return false;
+    } else if (filterPeriod === "this_month") {
+      if (txDate.getMonth() !== now.getMonth() || txDate.getFullYear() !== now.getFullYear()) return false;
+    } else if (filterPeriod === "custom") {
+      if (customStartDate) {
+        const start = new Date(customStartDate);
+        start.setHours(0, 0, 0, 0);
+        if (txDate < start) return false;
+      }
+      if (customEndDate) {
+        const end = new Date(customEndDate);
+        end.setHours(23, 59, 59, 999);
+        if (txDate > end) return false;
+      }
+    }
+    
     return true;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
 
 
   return (
     <div className="space-y-6 pb-20 md:pb-0">
-      {/* FILTERS */}
-      <div className="flex flex-col sm:flex-row gap-4 bg-white p-2 rounded-2xl border border-black/[0.05] shadow-sm items-center overflow-x-auto">
+      {/* FILTERS & SEARCH */}
+      <div className="flex flex-col xl:flex-row gap-4 bg-white p-2 rounded-2xl border border-black/[0.05] shadow-sm items-center xl:justify-between">
+        <div className="flex flex-col sm:flex-row gap-4 items-center w-full xl:w-auto overflow-x-auto">
          <select 
            value={filterPeriod} 
            onChange={(e) => setFilterPeriod(e.target.value)}
            className="bg-[#F5F5F7] px-4 py-3 rounded-xl font-medium outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto text-sm shrink-0"
          >
            <option value="all">Toutes les dates</option>
+           <option value="today">Aujourd'hui</option>
            <option value="30d">30 derniers jours</option>
            <option value="this_month">Ce mois</option>
+           <option value="custom">Personnalisé</option>
          </select>
+
+         {filterPeriod === "custom" && (
+           <div className="flex items-center gap-2 shrink-0">
+             <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="bg-[#F5F5F7] px-3 py-2.5 rounded-xl font-medium outline-none text-sm border-none" />
+             <span className="text-muted-foreground">-</span>
+             <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="bg-[#F5F5F7] px-3 py-2.5 rounded-xl font-medium outline-none text-sm border-none" />
+           </div>
+         )}
          
          <div className="w-px h-8 bg-black/5 hidden sm:block shrink-0"></div>
 
@@ -152,6 +214,21 @@ export function HistoryDashboard({ initialData, plan = "gratuit", initialTxId }:
            <button onClick={() => setFilterStatus("partial")} className={`px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${filterStatus === "partial" ? "bg-[#FFF8E7] text-[#B9811C]" : "bg-[#F5F5F7] text-muted-foreground hover:text-black"}`}>Partiel</button>
            <button onClick={() => setFilterStatus("failed")} className={`px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${filterStatus === "failed" ? "bg-danger/10 text-danger" : "bg-[#F5F5F7] text-muted-foreground hover:text-black"}`}>Échoué</button>
          </div>
+        </div>
+
+        {/* SEARCH BAR */}
+        <div className="w-full xl:w-auto flex-1 max-w-sm px-2 pb-2 xl:p-0">
+          <div className="relative flex items-center w-full">
+            <Search className="absolute left-4 w-4 h-4 text-muted-foreground" />
+            <input 
+              type="text" 
+              placeholder="Rechercher une règle, un nom ou un numéro..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#F5F5F7] pl-10 pr-4 py-3 rounded-xl text-sm font-medium outline-none focus:ring-1 focus:ring-primary transition-all placeholder:text-muted-foreground"
+            />
+          </div>
+        </div>
       </div>
 
       {/* LIST */}
@@ -163,7 +240,7 @@ export function HistoryDashboard({ initialData, plan = "gratuit", initialTxId }:
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredData.map(tx => (
+          {paginatedData.map(tx => (
             <div 
               key={tx.id} 
               onClick={() => setSelectedTx(tx)}
@@ -192,6 +269,30 @@ export function HistoryDashboard({ initialData, plan = "gratuit", initialTxId }:
               </div>
             </div>
           ))}
+          
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-6 px-2">
+              <span className="text-sm text-muted-foreground font-medium">
+                Page {currentPage} sur {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 rounded-xl bg-white border border-black/10 text-sm font-bold hover:bg-black/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Précédent
+                </button>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 rounded-xl bg-white border border-black/10 text-sm font-bold hover:bg-black/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Suivant
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

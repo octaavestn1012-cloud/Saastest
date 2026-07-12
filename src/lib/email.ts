@@ -184,3 +184,53 @@ export async function sendAutomationReport(toEmail: string, report: any) {
     return { success: false, error: err };
   }
 }
+
+export async function sendPlanLimitReachedEmail(toEmail: string, reason: "count" | "volume") {
+  try {
+    const reasonText = reason === "count" 
+      ? "Vous avez atteint la limite de 20 répartitions mensuelles." 
+      : "Vous avez dépassé le plafond de 500 000 FCFA de volume mensuel.";
+
+    const { data, error } = await resend.emails.send({
+      from: `Alerte Réparto <${SENDER}>`,
+      to: [toEmail],
+      subject: `⚠️ Répartition bloquée - Limites du plan Gratuit atteintes`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #111; border: 1px solid #eee; border-radius: 12px; overflow: hidden;">
+          <div style="background-color: #fef2f2; padding: 20px; border-bottom: 1px solid #fecaca;">
+            <h2 style="margin: 0; color: #dc2626;">Action requise : Répartition bloquée</h2>
+          </div>
+          <div style="padding: 20px;">
+            <p>Bonjour,</p>
+            <p>L'une de vos règles de répartition automatique vient d'être bloquée par notre système.</p>
+            
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+              <strong>Raison du blocage :</strong><br/>
+              ${reasonText}
+            </div>
+
+            <p>Pour continuer à profiter de l'automatisation sans interruption et faire sauter ces limites, nous vous invitons à passer au <strong>Plan Pro</strong>.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://reparto.app'}/billing" style="background-color: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                Mettre à niveau mon plan
+              </a>
+            </div>
+
+            <p style="font-size: 14px; color: #666;">Si vous avez des questions, n'hésitez pas à contacter notre support.</p>
+            <br/>
+            <p>L'équipe Réparto</p>
+          </div>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("Erreur d'envoi email limite plan :", error);
+    }
+    return { success: !error };
+  } catch (err) {
+    console.error("Erreur inattendue email limite plan :", err);
+    return { success: false };
+  }
+}

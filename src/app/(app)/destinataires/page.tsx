@@ -209,6 +209,7 @@ export default function DestinatairesPage() {
             recipient={editingRecipient} 
             onClose={() => !isSaving && setIsModalOpen(false)} 
             onSave={handleSaveRecipient} 
+            isSaving={isSaving}
           />
         </div>
       )}

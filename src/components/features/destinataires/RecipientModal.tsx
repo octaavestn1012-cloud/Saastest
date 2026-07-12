@@ -83,11 +83,13 @@ interface RecipientModalProps {
   recipient?: Recipient;
   onClose: () => void;
   onSave: (recipient: Recipient) => void;
+  isSaving?: boolean;
 }
 
 import { useScrollLock } from "@/hooks/useScrollLock";
+import { Loader2 } from "lucide-react";
 
-export function RecipientModal({ recipient, onClose, onSave }: RecipientModalProps) {
+export function RecipientModal({ recipient, onClose, onSave, isSaving = false }: RecipientModalProps) {
   const [name, setName] = useState(recipient?.name || "");
   const [country, setCountry] = useState(recipient?.country || "Bénin");
   const [network, setNetwork] = useState(recipient?.network || "MTN BJ");
@@ -109,7 +111,7 @@ export function RecipientModal({ recipient, onClose, onSave }: RecipientModalPro
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone) return;
+    if (!name || !phone || isSaving) return;
     setError("");
 
     const expectedLength = COUNTRY_PHONE_LENGTHS[country] || 8;
@@ -220,10 +222,10 @@ export function RecipientModal({ recipient, onClose, onSave }: RecipientModalPro
           <div className="pt-4">
             <button 
               type="submit"
-              disabled={!name || !phone}
-              className="w-full bg-black text-white hover:bg-black/80 disabled:opacity-50 disabled:pointer-events-none rounded-[1rem] h-14 font-semibold shadow-md transition-transform active:scale-95"
+              disabled={!name || !phone || isSaving}
+              className="w-full bg-black text-white hover:bg-black/80 disabled:opacity-50 disabled:pointer-events-none rounded-[1rem] h-14 font-semibold shadow-md transition-transform active:scale-95 flex items-center justify-center"
             >
-              Enregistrer
+              {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Enregistrer"}
             </button>
           </div>
         </form>

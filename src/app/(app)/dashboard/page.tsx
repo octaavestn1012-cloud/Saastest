@@ -161,6 +161,21 @@ export default async function DashboardPage() {
         {/* BLOCS INFÉRIEURS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
           
+          {/* BLOC B: Récemment Réparti (Historique complet) */}
+          <div className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-black/[0.03] flex flex-col h-full">
+            <h3 className="text-lg font-bold mb-6 text-foreground">Répartitions récentes</h3>
+            <div className="flex-1 flex flex-col justify-between">
+              <div className="space-y-4">
+                <RecentExecutionsList executions={executions} plan={metrics?.plan || "gratuit"} />
+              </div>
+              <div className="pt-6 mt-4 border-t border-black/[0.05]">
+                <Link href="/historique" className="text-sm font-semibold text-primary hover:underline flex items-center justify-center">
+                  Voir toutes les répartitions →
+                </Link>
+              </div>
+            </div>
+          </div>
+
           {/* BLOC A: Dernières Entrées */}
           <div className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-black/[0.03] flex flex-col h-full">
             <h3 className="text-lg font-bold mb-6 text-foreground">Dernières entrées</h3>
@@ -199,21 +214,6 @@ export default async function DashboardPage() {
               <div className="pt-6 mt-4 border-t border-black/[0.05]">
                 <Link href="/historique" className="text-sm font-semibold text-primary hover:underline flex items-center justify-center">
                   Voir toutes les entrées →
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* BLOC B: Récemment Réparti (Historique complet) */}
-          <div className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-black/[0.03] flex flex-col h-full">
-            <h3 className="text-lg font-bold mb-6 text-foreground">Répartitions récentes</h3>
-            <div className="flex-1 flex flex-col justify-between">
-              <div className="space-y-4">
-                <RecentExecutionsList executions={executions} plan={metrics?.plan || "gratuit"} />
-              </div>
-              <div className="pt-6 mt-4 border-t border-black/[0.05]">
-                <Link href="/historique" className="text-sm font-semibold text-primary hover:underline flex items-center justify-center">
-                  Voir toutes les répartitions →
                 </Link>
               </div>
             </div>

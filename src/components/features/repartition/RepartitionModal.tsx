@@ -32,6 +32,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
   const [selectedRuleId, setSelectedRuleId] = useState<string>("");
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [adjustedTargets, setAdjustedTargets] = useState<any[]>([]);
+  const [savingInlineIds, setSavingInlineIds] = useState<string[]>([]);
 
   const [executionError, setExecutionError] = useState<string | null>(null);
 
@@ -405,19 +406,24 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
     const cleanPhone = target.phone.replace(/[^0-9]/g, '');
     if (cleanPhone.length !== expectedLen) return;
 
-    const fd = new FormData();
-    fd.append("libelle", target.name);
-    fd.append("reseau", target.network);
-    fd.append("pays", target.country || "Bénin");
-    fd.append("numero", `${COUNTRY_CODES[target.country || "Bénin"] || "+229"} ${cleanPhone}`);
+    setSavingInlineIds(prev => [...prev, target.id]);
+    try {
+      const fd = new FormData();
+      fd.append("libelle", target.name);
+      fd.append("reseau", target.network);
+      fd.append("pays", target.country || "Bénin");
+      fd.append("numero", `${COUNTRY_CODES[target.country || "Bénin"] || "+229"} ${cleanPhone}`);
 
-    await saveDestinataire(fd);
-    
-    getDestinataires().then(({data}) => {
-      if (data) setSavedDestinataires(data);
-    });
+      await saveDestinataire(fd);
+      
+      getDestinataires().then(({data}) => {
+        if (data) setSavedDestinataires(data);
+      });
 
-    updateQuickTarget(target.id, "isManual", false);
+      updateQuickTarget(target.id, "isManual", false);
+    } finally {
+      setSavingInlineIds(prev => prev.filter(id => id !== target.id));
+    }
   };
   
   const handleNameChange = (id: string, newName: string) => {
@@ -903,10 +909,10 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                               {/* Enregistrer: Horizontal (w-full) */}
                               <button 
                                 onClick={() => handleSaveQuickTargetInline(target)} 
-                                disabled={target.name.trim() === "" || (target.phone && target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8))}
-                                className="w-full py-3 bg-black text-white hover:bg-black/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-[15px] transition-colors"
+                                disabled={savingInlineIds.includes(target.id) || target.name.trim() === "" || (target.phone && target.phone.replace(/[^0-9]/g, '').length !== (COUNTRY_PHONE_LENGTHS[target.country || "Bénin"] || 8))}
+                                className="w-full py-3 bg-black text-white hover:bg-black/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl font-bold text-[15px] transition-colors flex items-center justify-center"
                               >
-                                Enregistrer ce destinataire
+                                {savingInlineIds.includes(target.id) ? <Loader2 className="w-5 h-5 animate-spin" /> : "Enregistrer ce destinataire"}
                               </button>
                             </div>
                             {target.phone && target.phone.replace(/[^0-9]/g, '').length > 0 && 
