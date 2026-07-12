@@ -69,9 +69,10 @@ export async function GET(req: Request) {
       // Gérer le passage à minuit (si current=00:05 et rule=23:55)
       if (diff < 0) diff += 24 * 60; 
 
-      // On déclenche si on est dans la fenêtre de 5 minutes SUIVANT l'heure programmée
-      // (Car le cron tourne toutes les 5 minutes, ex: 00, 05, 10, 15).
-      if (diff >= 0 && diff < 6) {
+      // On déclenche si on est dans la fenêtre de 45 minutes SUIVANT l'heure programmée
+      // (Github Actions peut avoir beaucoup de retard, on compense avec une large fenêtre. 
+      // L'idempotence empêchera les doubles exécutions).
+      if (diff >= 0 && diff <= 45) {
         
         // Vérifier les jours selon le déclencheur
         if (rule.declencheur === "hebdomadaire") {
