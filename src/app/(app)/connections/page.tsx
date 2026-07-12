@@ -174,7 +174,7 @@ export default function ConnectionsPage() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {connections.map((conn, index) => {
               const isGlobalActive = globalGateways[conn.passerelle.toLowerCase()] ?? true;
               return (
@@ -183,7 +183,7 @@ export default function ConnectionsPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className={`p-4 pr-5 rounded-2xl shadow-sm border flex items-center justify-between group hover:shadow-md transition-all ${
+                className={`p-6 rounded-2xl shadow-sm border flex items-center justify-between group hover:shadow-md transition-all h-[100px] ${
                   !isGlobalActive ? "bg-red-50/50 border-red-200 opacity-80" :
                   conn.statut === "actif" ? "bg-white border-black/[0.06]" : "bg-white border-danger/20"
                 }`}
@@ -195,9 +195,7 @@ export default function ConnectionsPage() {
                       const gatewayInfo = AVAILABLE_GATEWAYS.find(g => g.name.toLowerCase() === conn.passerelle.toLowerCase());
                       if (gatewayInfo?.logo) {
                         return (
-                          <div className={`w-12 h-12 rounded-full border border-black/5 bg-white flex items-center justify-center p-1.5 shadow-sm ${conn.statut !== "actif" && "grayscale opacity-50"}`}>
-                            <img src={`/gateways/${gatewayInfo.logo}`} alt={conn.passerelle} className="w-full h-full object-contain" />
-                          </div>
+                          <img src={`/gateways/${gatewayInfo.logo}`} alt={conn.passerelle} className={`w-12 h-12 object-contain shrink-0 drop-shadow-sm ${conn.statut !== "actif" && "grayscale opacity-50"}`} />
                         );
                       }
                       return (
