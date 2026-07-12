@@ -88,25 +88,6 @@ async function orchestratePayouts(
   const { data: statusMappingsData } = await supabaseAdmin.from("gateway_status_mappings").select("*");
   const statusMappings = statusMappingsData || [];
 
-  // Idempotence : Empêcher les doubles exécutions le même jour pour les règles automatiques planifiées
-  if (isAutomatic && ruleId) {
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    
-    // On ajoute un bypass cache au niveau SDK en ajoutant un param bidon (si besoin, ou on s'appuie sur le POST/GET de Supabase)
-    const { data: pastExec } = await supabaseAdmin
-      .from("executions")
-      .select("id")
-      .eq("regle_id", ruleId)
-      .gte("date_execution", today.toISOString())
-      .limit(1);
-      
-    if (pastExec && pastExec.length > 0) {
-      console.log(`[Idempotence Engine] Règle ${ruleId} déjà exécutée aujourd'hui. On bloque.`);
-      return { success: false, error: "Cette règle a déjà été exécutée automatiquement aujourd'hui." };
-    }
-  }
-
   // 1. Lire les soldes réels
   const poolRes = await buildGatewayPool(supabaseAdmin, userId);
   if (!poolRes.success) return poolRes;
