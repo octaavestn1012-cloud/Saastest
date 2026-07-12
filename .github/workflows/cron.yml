@@ -2,11 +2,8 @@ name: CRON Jobs (Réparto)
 
 on:
   schedule:
-    # Exécution Quotidienne (à minuit UTC tous les jours)
-    - cron: '0 0 * * *'
-    
-    # Exécution Mensuelle (le 1er du mois à 00:30 UTC)
-    - cron: '30 0 1 * *'
+    # Exécution toutes les 5 minutes
+    - cron: '*/5 * * * *'
   
   # Permet aussi de déclencher manuellement le CRON depuis Github
   workflow_dispatch:
@@ -37,6 +34,6 @@ jobs:
       - name: Ping API
         run: |
           echo "Lancement du CRON : ${{ env.endpoint }}"
-          curl -X GET "${{ secrets.PROD_URL }}/api/cron/${{ env.endpoint }}" \
+          curl -X GET "${{ secrets.PROD_URL }}/api/cron/master" \
           -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
           -f || { echo "Le CRON a échoué"; exit 1; }

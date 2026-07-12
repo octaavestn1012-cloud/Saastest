@@ -28,7 +28,9 @@ export async function getHistorique() {
           statut,
           erreur_message,
           reference_transaction,
-          est_commission
+          est_commission,
+          commission_associee,
+          commission_statut
         )
       `)
       .eq("user_id", user.id)

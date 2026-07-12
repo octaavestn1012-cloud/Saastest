@@ -438,7 +438,7 @@ async function orchestratePayouts(
     });
 
     const ligneCommission = Math.floor(amount * commissionRate);
-    const ligneCommissionStatut = (stepStatus === "reussi" || stepStatus === "en_cours") ? "due" : "non_applicable";
+    const ligneCommissionStatut = stepStatus === "reussi" ? "due" : "en_attente";
 
     await supabaseAdmin.from("execution_lignes").insert({ 
       execution_id: execution.id, 
@@ -505,18 +505,31 @@ async function orchestratePayouts(
 
   // 9. Déclenchement Asynchrone de la collecte des commissions DUE
   // Ne pas bloquer la réponse, on laisse tourner en arrière-plan
-  const commissionMsisdn = process.env.REPARTO_COMMISSION_MSISDN;
-  const commissionOperateur = process.env.REPARTO_COMMISSION_OPERATEUR;
-  
-  if (commissionMsisdn && commissionOperateur && hasSuccess) {
-    collectPendingCommissions(
-      supabaseAdmin,
-      userId,
-      [{ network: commissionOperateur, phone: commissionMsisdn }],
-      gatewayPool,
-      mappings,
-      statusMappings
-    ).catch(e => console.error("Erreur background collecte commissions:", e));
+  if (hasSuccess) {
+    let commissionFallbacks: any[] = [];
+    try {
+      const { data: adminSettings } = await supabaseAdmin.from("admin_settings").select("config_value").eq("config_key", "commission_numbers").single();
+      if (adminSettings?.config_value && Array.isArray(adminSettings.config_value)) {
+        commissionFallbacks = adminSettings.config_value.filter((n: any) => n.phone && n.network);
+      }
+    } catch(e) {}
+    
+    if (commissionFallbacks.length === 0) {
+      if (process.env.REPARTO_COMMISSION_MSISDN && process.env.REPARTO_COMMISSION_OPERATEUR) {
+        commissionFallbacks.push({ phone: process.env.REPARTO_COMMISSION_MSISDN, network: process.env.REPARTO_COMMISSION_OPERATEUR });
+      }
+    }
+
+    if (commissionFallbacks.length > 0) {
+      collectPendingCommissions(
+        supabaseAdmin,
+        userId,
+        commissionFallbacks,
+        gatewayPool,
+        mappings,
+        statusMappings
+      ).catch(e => console.error("Erreur background collecte commissions:", e));
+    }
   }
 
   return { success: true, finalStatus, results, executionId: execution.id };

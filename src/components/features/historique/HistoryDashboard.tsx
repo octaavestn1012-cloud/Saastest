@@ -76,11 +76,12 @@ export function HistoryDashboard({ initialData, plan = "gratuit", initialTxId }:
         amount: Number(ligne.montant),
         status: ligne.statut === "reussi" ? "SUCCESS" : ligne.statut === "en_cours" ? "PENDING" : "FAILED",
         errorReason: ligne.erreur_message,
-        reference: ligne.reference_transaction,
-        isCommission: ligne.est_commission
+        isCommission: ligne.est_commission,
+        commission_associee: Number(ligne.commission_associee || 0),
+        commission_statut: ligne.commission_statut,
+        reference: ligne.reference_transaction
       })) || [];
 
-      const commissionLigne = allDetails.find((d: any) => d.isCommission);
       const details = allDetails.filter((d: any) => !d.isCommission);
 
       let finalRuleName = "Répartition";
@@ -104,7 +105,7 @@ export function HistoryDashboard({ initialData, plan = "gratuit", initialTxId }:
         ruleName: finalRuleName,
         triggerType,
         totalAvailable: Number(exec.montant_total),
-        commissionAmount: commissionLigne ? commissionLigne.amount : 0,
+        commissionAmount: details.reduce((acc: number, d: any) => acc + (d.status === "SUCCESS" || d.status === "PENDING" ? d.commission_associee || 0 : 0), 0),
         totalAmount: details.reduce((acc: number, d: any) => acc + d.amount, 0),
         recipientCount: details.length,
         status: (exec.statut === "reussi" ? "SUCCESS" : exec.statut === "partiel" ? "PARTIAL" : exec.statut === "en_cours" ? "PENDING" : "FAILED") as any,
