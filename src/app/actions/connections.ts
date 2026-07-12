@@ -267,8 +267,58 @@ export async function connectMagmaOnePay(formData: FormData) {
     return { success: true };
 
   } catch (error: any) {
-    console.error("Erreur MagmaOnePay:", error);
+    console.error("Erreur Magma OnePay:", error);
     return { error: error.message || "Une erreur inattendue est survenue." };
   }
 }
 
+export async function connectFeexPay(formData: FormData) {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { error: "Vous devez être connecté." };
+    }
+
+    const nom = formData.get("nom") as string;
+    const publicKey = (formData.get("publicKey") as string)?.trim(); // Shop ID
+    const secretKey = (formData.get("secretKey") as string)?.trim(); // API Token
+    const webhookSecret = (formData.get("webhookSecret") as string)?.trim();
+
+    if (!nom || !publicKey || !secretKey) {
+      return { error: "Veuillez fournir un nom, un Identifiant et une Clé Publique (API)." };
+    }
+
+    if (secretKey.includes(" ") || publicKey.includes(" ")) {
+      return { error: "Format invalide. Assurez-vous de n'avoir aucun espace." };
+    }
+
+    // Payload de clés à sauvegarder
+    const keyPayload = JSON.stringify({ shopId: publicKey, token: secretKey });
+    const cleChiffree = encryptKey(keyPayload);
+    const webhookSecretChiffre = webhookSecret ? encryptKey(webhookSecret) : null;
+
+    const { error: dbError } = await supabase
+      .from("connexions")
+      .insert({
+        user_id: user.id,
+        passerelle: "feexpay",
+        nom: nom,
+        statut: "actif",
+        cle_chiffree: cleChiffree,
+        webhook_secret_chiffre: webhookSecretChiffre
+      });
+
+    if (dbError) {
+      console.error("Erreur DB:", dbError);
+      return { error: "Erreur lors de l'enregistrement dans la base de données." };
+    }
+
+    return { success: true };
+
+  } catch (error: any) {
+    console.error("Erreur FeexPay:", error);
+    return { error: error.message || "Une erreur inattendue est survenue." };
+  }
+}

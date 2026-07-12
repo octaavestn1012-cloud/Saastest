@@ -107,14 +107,19 @@ export function HistoryDashboard({ initialData, plan = "gratuit", initialTxId }:
         triggerType = "Manuelle";
       }
 
+      const validDetails = details.filter((d: any) => d.status === "SUCCESS" || d.status === "PENDING");
+      const dynCommissionAmount = validDetails.reduce((acc: number, d: any) => acc + (d.commission_associee || 0), 0);
+      const dynTotalAmount = validDetails.reduce((acc: number, d: any) => acc + d.amount, 0);
+      const dynTotalAvailable = dynTotalAmount + dynCommissionAmount;
+
       return {
         id: exec.id,
         date: exec.date_execution,
         ruleName: finalRuleName,
         triggerType,
-        totalAvailable: Number(exec.montant_total),
-        commissionAmount: details.reduce((acc: number, d: any) => acc + (d.status === "SUCCESS" || d.status === "PENDING" ? d.commission_associee || 0 : 0), 0),
-        totalAmount: details.reduce((acc: number, d: any) => acc + d.amount, 0),
+        totalAvailable: dynTotalAvailable,
+        commissionAmount: dynCommissionAmount,
+        totalAmount: dynTotalAmount,
         recipientCount: details.length,
         status: (exec.statut === "reussi" ? "SUCCESS" : exec.statut === "partiel" ? "PARTIAL" : exec.statut === "en_cours" ? "PENDING" : "FAILED") as any,
         details

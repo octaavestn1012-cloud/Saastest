@@ -787,14 +787,49 @@ export async function retryExecutionLigne(ligneId: string) {
         const payoutRes = await createAndSendPawapayPayout(gateway.decryptedKey, payoutAmount, mapping.gateway_correspondent, mapping.gateway_currency, cleanPhone);
         const extractedData = Array.isArray(payoutRes) ? payoutRes[0] : payoutRes;
         ref = extractedData?.payoutId || "";
-        ligneStatut = "en_cours"; 
+        
+        let pawaStatus = extractedData?.status || "PENDING";
+        // Polling up to 10 seconds (5 x 2s)
+        if ((pawaStatus === "PENDING" || pawaStatus === "ACCEPTED") && ref) {
+          const { getPawapayPayoutStatus } = await import("./pawapay");
+          for (let i = 0; i < 5; i++) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            try {
+              const statusData = await getPawapayPayoutStatus(gateway.decryptedKey, ref);
+              const trueStatus = statusData?.data?.status || statusData?.status;
+              const extractedStatus = Array.isArray(statusData) ? statusData[0]?.status : trueStatus;
+              pawaStatus = extractedStatus || pawaStatus;
+              
+              const currentMapping = statusMappings.find((m:any) => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toUpperCase() === pawaStatus.toUpperCase());
+              if (currentMapping && (currentMapping.reparto_status === "reussi" || currentMapping.reparto_status === "echoue")) break;
+            } catch(e) {}
+          }
+        }
+        const foundStatus = statusMappings.find((m:any) => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toUpperCase() === pawaStatus.toUpperCase());
+        ligneStatut = foundStatus ? foundStatus.reparto_status : "en_cours";
+        
       } else if (passerelleName === "fedapay" && mapping) {
         const { createAndSendPayout } = await import("./fedapay");
         const payoutRes = await createAndSendPayout(gateway.decryptedKey, payoutAmount, mapping.gateway_correspondent, mapping.gateway_currency, mapping.gateway_country_code, cleanPhone, ligne.destinataire_libelle);
-        const fst = payoutRes?.v1?.payout?.status || payoutRes?.status || "pending";
-        const foundStatus = statusMappings.find((m:any) => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toLowerCase() === fst.toLowerCase());
+        ref = payoutRes?.v1?.payout?.reference || payoutRes?.v1?.payout?.id?.toString() || payoutRes?.id?.toString() || "";
+        
+        let fedapayStatus = payoutRes?.v1?.payout?.status || payoutRes?.status || "pending";
+        // Polling up to 10 seconds (5 x 2s)
+        if ((fedapayStatus === "pending" || fedapayStatus === "approved" || fedapayStatus === "processing") && ref) {
+          const { getFedaPayPayoutStatus } = await import("./fedapay");
+          for (let i = 0; i < 5; i++) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            try {
+              const statusData = await getFedaPayPayoutStatus(gateway.decryptedKey, ref);
+              fedapayStatus = statusData?.v1?.payout?.status || statusData?.status || fedapayStatus;
+              
+              const currentMapping = statusMappings.find((m:any) => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toLowerCase() === fedapayStatus.toLowerCase());
+              if (currentMapping && (currentMapping.reparto_status === "reussi" || currentMapping.reparto_status === "echoue")) break;
+            } catch(e) {}
+          }
+        }
+        const foundStatus = statusMappings.find((m:any) => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toLowerCase() === fedapayStatus.toLowerCase());
         ligneStatut = foundStatus ? foundStatus.reparto_status : "en_cours";
-        ref = payoutRes?.v1?.payout?.reference || "";
       } else if (passerelleName === "magma onepay" && mapping) {
         const keysObj = JSON.parse(gateway.decryptedKey);
         const { createAndSendMagmaOnePayPayout } = await import("./magmaonepay");

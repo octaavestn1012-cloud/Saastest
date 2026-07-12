@@ -12,28 +12,27 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { connectFedaPay, connectKkiapay, connectPawapay, connectMagmaOnePay, deleteConnection, toggleConnectionStatus } from "@/app/actions/connections";
+import { connectFedaPay, connectKkiapay, connectPawapay, connectMagmaOnePay, connectFeexPay, deleteConnection, toggleConnectionStatus } from "@/app/actions/connections";
 import { getGlobalGatewaysStatus } from "@/app/actions/admin";
 import { formatDateToBenin } from "@/lib/utils/format";
 
 const AVAILABLE_GATEWAYS = [
-  { name: "Kkiapay", desc: "Passerelle locale très populaire au Bénin.", color: "bg-blue-500" },
-  { name: "FedaPay", desc: "Paiement Mobile Money et cartes bancaires.", color: "bg-indigo-500" },
-  { name: "CinetPay", desc: "Couverture sur plus de 9 pays francophones.", color: "bg-emerald-500" },
-  { name: "PawaPay", desc: "Spécialiste Mobile Money en Afrique de l'Ouest et de l'Est.", color: "bg-orange-500" },
-  { name: "FeexPay", desc: "Solution de paiement simple et sécurisée.", color: "bg-sky-500" },
-  { name: "iPay Financial", desc: "Paiements rapides et intégration facile.", color: "bg-teal-500" },
-  { name: "PayTech", desc: "Technologie de paiement avancée.", color: "bg-cyan-500" },
-  { name: "MonetBill", desc: "Facturation et paiements récurrents.", color: "bg-purple-500" },
-  { name: "Flutterwave", desc: "Couverture mondiale pour vos encaissements.", color: "bg-yellow-500" },
-  { name: "PayPlus", desc: "Optimisé pour les petits commerçants.", color: "bg-pink-500" },
-  { name: "Magma OnePay", desc: "Paiements unifiés et fluides.", color: "bg-red-500" },
-  { name: "PayStack", desc: "Le Stripe de l'Afrique. Cartes et Mobile Money.", color: "bg-blue-600" },
-  { name: "Stripe", desc: "Leader mondial des paiements en ligne.", color: "bg-indigo-600" },
-  { name: "PayPal", desc: "Paiements internationaux simplifiés.", color: "bg-blue-400" },
-  { name: "PayDunya", desc: "Excellente couverture au Sénégal et environ.", color: "bg-green-600" },
-  { name: "NotchPay", desc: "Paiements modernes en Afrique centrale.", color: "bg-violet-500" },
-  { name: "Lengo Pay", desc: "Solution locale émergente et dynamique.", color: "bg-rose-500" },
+  { name: "Kkiapay", desc: "Passerelle locale très populaire au Bénin.", color: "bg-blue-500", logo: "kkiapay.svg" },
+  { name: "FedaPay", desc: "Paiement Mobile Money et cartes bancaires.", color: "bg-indigo-500", logo: "fedapay.svg" },
+  { name: "CinetPay", desc: "Couverture sur plus de 9 pays francophones.", color: "bg-emerald-500", logo: "cinetpay.svg" },
+  { name: "PawaPay", desc: "Spécialiste Mobile Money en Afrique de l'Ouest et de l'Est.", color: "bg-orange-500", logo: "pawapay.svg" },
+  { name: "FeexPay", desc: "Solution de paiement simple et sécurisée.", color: "bg-sky-500", logo: "feexpay.svg" },
+  { name: "iPay Financial", desc: "Paiements rapides et intégration facile.", color: "bg-teal-500", logo: "ipayfinancial.svg" },
+  { name: "PayTech", desc: "Technologie de paiement avancée.", color: "bg-cyan-500", logo: "paytech.svg" },
+  { name: "MonetBill", desc: "Facturation et paiements récurrents.", color: "bg-purple-500", logo: "monetbill.svg" },
+  { name: "Flutterwave", desc: "Couverture mondiale pour vos encaissements.", color: "bg-yellow-500", logo: "flutterwave.svg" },
+  { name: "PayPlus", desc: "Optimisé pour les petits commerçants.", color: "bg-pink-500", logo: "payplus.svg" },
+  { name: "Magma OnePay", desc: "Paiements unifiés et fluides.", color: "bg-red-500", logo: "magmaonepay.svg" },
+  { name: "PayStack", desc: "Le Stripe de l'Afrique. Cartes et Mobile Money.", color: "bg-blue-600", logo: "paystack.svg" },
+  { name: "Stripe", desc: "Leader mondial des paiements en ligne.", color: "bg-indigo-600", logo: "stripe.svg" },
+  { name: "PayDunya", desc: "Excellente couverture au Sénégal et environ.", color: "bg-green-600", logo: "paydunya.svg" },
+  { name: "NotchPay", desc: "Paiements modernes en Afrique centrale.", color: "bg-violet-500", logo: "notchpay.svg" },
+  { name: "Lengo Pay", desc: "Solution locale émergente et dynamique.", color: "bg-rose-500", logo: "lengopay.svg" },
 ];
 
 export default function ConnectionsPage() {
@@ -92,7 +91,7 @@ export default function ConnectionsPage() {
   };
 
   const handleConnect = async () => {
-    if (selectedGateway !== "FedaPay" && selectedGateway !== "Kkiapay" && selectedGateway !== "PawaPay" && selectedGateway !== "Magma OnePay") {
+    if (selectedGateway !== "FedaPay" && selectedGateway !== "Kkiapay" && selectedGateway !== "PawaPay" && selectedGateway !== "Magma OnePay" && selectedGateway !== "FeexPay") {
       setError("Cette passerelle n'est pas encore supportée dans cette version.");
       return;
     }
@@ -124,6 +123,11 @@ export default function ConnectionsPage() {
       formData.append("secretKey", secretKey);
       if (webhookSecret) formData.append("webhookSecret", webhookSecret);
       result = await connectMagmaOnePay(formData);
+    } else if (selectedGateway === "FeexPay") {
+      formData.append("publicKey", publicKey); // Using publicKey for Shop ID
+      formData.append("secretKey", secretKey); // Using secretKey for Token
+      if (webhookSecret) formData.append("webhookSecret", webhookSecret);
+      result = await connectFeexPay(formData);
     }
 
     if (result?.error) {
@@ -170,7 +174,7 @@ export default function ConnectionsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex flex-col gap-3">
             {connections.map((conn, index) => {
               const isGlobalActive = globalGateways[conn.passerelle.toLowerCase()] ?? true;
               return (
@@ -179,110 +183,86 @@ export default function ConnectionsPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className={`p-6 rounded-[1.5rem] shadow-sm border relative overflow-hidden flex flex-col group hover:shadow-md transition-all ${
+                className={`p-4 pr-5 rounded-2xl shadow-sm border flex items-center justify-between group hover:shadow-md transition-all ${
                   !isGlobalActive ? "bg-red-50/50 border-red-200 opacity-80" :
-                  conn.statut === "actif" ? "bg-white border-black/[0.05]" : "bg-danger/5 border-danger/20"
+                  conn.statut === "actif" ? "bg-white border-black/[0.06]" : "bg-white border-danger/20"
                 }`}
               >
-                {!isGlobalActive && (
-                  <div className="absolute top-0 left-0 right-0 bg-red-500 text-white text-[10px] font-bold text-center py-1 uppercase tracking-wider z-30">
-                    Temporairement Indisponible
-                  </div>
-                )}
-                <div className={`absolute top-0 right-0 w-32 h-32 rounded-bl-full blur-2xl ${
-                  !isGlobalActive ? "bg-red-100" :
-                  conn.statut === "actif" ? "bg-money-in/5" : "bg-danger/10"
-                }`} />
-                <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-                  <span className={`text-[10px] font-bold uppercase tracking-wide ${conn.statut === "actif" ? 'text-primary' : 'text-muted-foreground'}`}>
-                    {conn.statut === "actif" ? 'Actif' : 'Pause'}
-                  </span>
-                  <Switch
-                    checked={conn.statut === "actif"}
-                    onCheckedChange={async () => {
-                      // Optimistic update
-                      const newStatus = conn.statut === "actif" ? "pause" : "actif";
-                      setConnections(connections.map(c => c.id === conn.id ? { ...c, statut: newStatus } : c));
-                      
-                      const res = await toggleConnectionStatus(conn.id, conn.statut);
-                      if (res.error) {
-                        // Revert silently on error
-                        setConnections(connections.map(c => c.id === conn.id ? { ...c, statut: conn.statut } : c));
+                {/* Info Gauche */}
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    {(() => {
+                      const gatewayInfo = AVAILABLE_GATEWAYS.find(g => g.name.toLowerCase() === conn.passerelle.toLowerCase());
+                      if (gatewayInfo?.logo) {
+                        return (
+                          <div className={`w-12 h-12 rounded-full border border-black/5 bg-white flex items-center justify-center p-1.5 shadow-sm ${conn.statut !== "actif" && "grayscale opacity-50"}`}>
+                            <img src={`/gateways/${gatewayInfo.logo}`} alt={conn.passerelle} className="w-full h-full object-contain" />
+                          </div>
+                        );
                       }
-                    }}
-                    className="data-[state=checked]:bg-money-in scale-90 mr-1"
-                  />
-                </div>
-                
-                <div className="relative z-10 flex flex-col mb-4">
-                  <div className="flex items-center gap-3 pr-10">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                      conn.statut === "actif" ? "bg-money-in/10 text-money-in" : "bg-danger/10 text-danger"
-                    }`}>
-                      <Link2 className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-[16px] leading-tight mb-1.5 capitalize">{conn.nom}</h3>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-muted-foreground capitalize">{conn.passerelle}</p>
-                        <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded flex-shrink-0 text-[9px] font-bold uppercase tracking-wider ${
-                          conn.statut === "actif" ? "text-money-in bg-money-in/10" : 
-                          conn.statut === "pause" ? "text-muted-foreground bg-black/5" : 
-                          "text-danger bg-danger/10"
+                      return (
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${
+                          conn.statut === "actif" ? "bg-money-in/10 text-money-in" : "bg-danger/10 text-danger"
                         }`}>
-                          {conn.statut === "actif" ? <CheckCircle2 className="w-2.5 h-2.5" /> : 
-                           conn.statut === "pause" ? <ShieldCheck className="w-2.5 h-2.5" /> : 
-                           <AlertCircle className="w-2.5 h-2.5" />}
-                          {conn.statut}
+                          <Link2 className="w-5 h-5" />
                         </div>
-                      </div>
+                      );
+                    })()}
+                    {/* Pastille de statut sur l'image */}
+                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${
+                      conn.statut === "actif" ? "bg-money-in text-white" : "bg-danger text-white"
+                    }`}>
+                      {conn.statut === "actif" ? <CheckCircle2 className="w-2.5 h-2.5" /> : <AlertCircle className="w-2.5 h-2.5" />}
                     </div>
                   </div>
+                  
+                  <div className="flex flex-col">
+                    <h3 className="font-bold text-[16px] text-foreground leading-tight mb-0.5 capitalize">{conn.nom}</h3>
+                    <p className="text-[13px] text-muted-foreground capitalize">{conn.passerelle}</p>
+                  </div>
                 </div>
-                
-                {conn.statut === "erreur" && (
-                  <div className="mt-2 text-xs text-danger flex items-start gap-1.5 p-2 bg-danger/5 rounded-lg border border-danger/10">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <p>La clé semble invalide ou expirée.</p>
+
+                {/* Actions Droite */}
+                <div className="flex items-center gap-6">
+                  {/* Switch */}
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-bold uppercase tracking-wider ${conn.statut === "actif" ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {conn.statut === "actif" ? 'Actif' : 'Pause'}
+                    </span>
+                    <Switch
+                      checked={conn.statut === "actif"}
+                      onCheckedChange={async () => {
+                        const newStatus = conn.statut === "actif" ? "pause" : "actif";
+                        setConnections(connections.map(c => c.id === conn.id ? { ...c, statut: newStatus } : c));
+                        const res = await toggleConnectionStatus(conn.id, conn.statut);
+                        if (res.error) setConnections(connections.map(c => c.id === conn.id ? { ...c, statut: conn.statut } : c));
+                      }}
+                      className="data-[state=checked]:bg-money-in scale-90"
+                    />
                   </div>
-                )}
-                
-                <div className={`relative z-10 mt-auto pt-5 border-t flex justify-between items-center ${
-                  conn.statut === "actif" ? "border-black/[0.05]" : "border-danger/10"
-                }`}>
-                  <span className="text-[10px] font-medium text-muted-foreground uppercase">
-                    Ajouté le {formatDateToBenin(conn.created_at).split(" à")[0]}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => openModal(conn.passerelle)}
-                      className="rounded-lg h-8 px-4 text-xs font-semibold hover:bg-black/5 hover:text-black transition-colors"
-                    >
-                      Gérer
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-black hover:bg-black/5 rounded-full ml-1">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                        <DropdownMenuItem 
-                          className="text-danger focus:text-danger focus:bg-danger/10 cursor-pointer rounded-lg"
-                          onClick={async () => {
-                            if (confirm("Voulez-vous vraiment supprimer cette connexion ?")) {
-                              await deleteConnection(conn.id);
-                              loadConnections();
-                            }
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Supprimer
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+
+                  {/* Menu */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="h-9 px-4 rounded-xl font-semibold border-black/10 hover:bg-black/5 text-[13px]">
+                        Gérer
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48 rounded-xl p-2 border-black/5 shadow-xl">
+                      <DropdownMenuItem 
+                        className="text-danger focus:bg-danger/10 focus:text-danger rounded-lg cursor-pointer flex items-center p-2 font-medium"
+                        onClick={async () => {
+                          if(confirm("Voulez-vous vraiment supprimer cette connexion ?")) {
+                            await deleteConnection(conn.id);
+                            loadConnections();
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Supprimer
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </motion.div>
             )})}
@@ -293,45 +273,51 @@ export default function ConnectionsPage() {
       {/* ZONE 2 : Passerelles disponibles */}
       <div className="space-y-6">
         <h3 className="text-lg font-bold tracking-tight">Passerelles disponibles</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {AVAILABLE_GATEWAYS.map((gateway, i) => {
             const isGlobalActive = globalGateways[gateway.name.toLowerCase()] ?? true;
             return (
-            <motion.div
-              key={gateway.name}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + (i * 0.02) }}
-              className={`bg-white rounded-[1.5rem] p-6 border border-black/[0.05] shadow-sm transition-all flex flex-col relative overflow-hidden ${
-                isGlobalActive ? "hover:shadow-md hover:-translate-y-1" : "opacity-70 cursor-not-allowed"
-              }`}
-            >
-              {!isGlobalActive && (
-                <div className="absolute top-0 left-0 right-0 bg-red-500 text-white text-[10px] font-bold text-center py-1 uppercase tracking-wider z-30">
-                  Maintenance
-                </div>
-              )}
-              <div className="flex items-center gap-4 mb-3 mt-2">
-                <div className={`w-12 h-12 rounded-[1rem] flex items-center justify-center text-white font-bold text-xl shadow-inner shrink-0 ${
-                  isGlobalActive ? gateway.color : "bg-gray-400"
-                }`}>
-                  {gateway.name.charAt(0)}
-                </div>
-                <h4 className="font-bold text-[17px] tracking-tight">{gateway.name}</h4>
-              </div>
-              <p className="text-[14px] text-muted-foreground mb-6 leading-relaxed">
-                {gateway.desc}
-              </p>
-              <Button 
-                variant="secondary"
-                disabled={!isGlobalActive}
-                onClick={() => isGlobalActive && openModal(gateway.name)}
-                className="w-full mt-auto h-11 bg-black/[0.03] hover:bg-black/[0.06] text-black font-semibold rounded-xl"
+              <div 
+                key={gateway.name}
+                className={`p-6 rounded-[1.5rem] flex flex-col justify-between group transition-all duration-300 min-h-[250px] ${
+                  isGlobalActive 
+                    ? "bg-[#FAFAFA] border-[1.5px] border-dashed border-black/[0.08] shadow-none hover:bg-white hover:border-solid hover:border-black/15 hover:shadow-xl hover:-translate-y-1" 
+                    : "bg-gray-50 border border-black/5 opacity-75"
+                }`}
               >
-                {isGlobalActive ? "Connecter" : "Indisponible"}
-              </Button>
-            </motion.div>
-          )})}
+                {!isGlobalActive && (
+                  <div className="absolute top-0 left-0 right-0 bg-red-500 text-white text-[10px] font-bold text-center py-1 uppercase tracking-wider z-30">
+                    Maintenance
+                  </div>
+                )}
+                <div className="flex items-center gap-4 mb-4">
+                  {gateway.logo ? (
+                    <img src={`/gateways/${gateway.logo}`} alt={gateway.name} className={`w-12 h-12 object-contain shrink-0 drop-shadow-sm ${!isGlobalActive && "grayscale opacity-50"}`} />
+                  ) : (
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm shrink-0 ${
+                      isGlobalActive ? gateway.color : "bg-gray-400"
+                    }`}>
+                      {gateway.name.charAt(0)}
+                    </div>
+                  )}
+                  <h4 className="font-bold text-[16px] tracking-tight">{gateway.name}</h4>
+                </div>
+                <p className="text-[13px] text-muted-foreground mb-6 leading-relaxed flex-1">
+                  {gateway.desc}
+                </p>
+                <Button 
+                  onClick={() => isGlobalActive ? openModal(gateway.name) : undefined}
+                  className={`w-full font-bold rounded-xl h-11 transition-all ${
+                    isGlobalActive 
+                      ? "bg-black/[0.04] text-black hover:bg-black hover:text-white" 
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  {isGlobalActive ? "Connecter" : "Indisponible"}
+                </Button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -386,12 +372,14 @@ export default function ConnectionsPage() {
 
                 {selectedGateway !== "PawaPay" && selectedGateway !== "Magma OnePay" && (
                   <div className="space-y-1.5">
-                    <label className="block text-sm font-semibold text-foreground ml-1">Clé Publique (Public Key)</label>
+                    <label className="block text-sm font-semibold text-foreground ml-1">
+                      {selectedGateway === "FeexPay" ? "Identifiant" : "Clé Publique (Public Key)"}
+                    </label>
                     <input 
                       type="text" 
                       value={publicKey}
                       onChange={(e) => setPublicKey(e.target.value)}
-                      placeholder="Ex: pk_..." 
+                      placeholder={selectedGateway === "FeexPay" ? "Ex: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" : "Ex: pk_..."} 
                       disabled={isSubmitting}
                       className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium disabled:opacity-50" 
                     />
@@ -414,13 +402,16 @@ export default function ConnectionsPage() {
 
                 <div className="space-y-1.5">
                   <label className="block text-sm font-semibold text-foreground ml-1">
-                    {selectedGateway === "PawaPay" ? "Token API (JWT Bearer)" : (selectedGateway === "Magma OnePay" ? "Clé Secrète (X-User-Secret)" : "Clé Secrète (Secret Key)")}
+                    {selectedGateway === "PawaPay" ? "Token API (JWT Bearer)" : 
+                     selectedGateway === "Magma OnePay" ? "Clé Secrète (X-User-Secret)" : 
+                     selectedGateway === "FeexPay" ? "Clé Publique (API Key)" : 
+                     "Clé Secrète (Secret Key)"}
                   </label>
                   <input 
                     type="password" 
                     value={secretKey}
                     onChange={(e) => setSecretKey(e.target.value)}
-                    placeholder={selectedGateway === "FedaPay" ? "sk_live_... ou sk_sandbox_..." : selectedGateway === "PawaPay" ? "Token API PawaPay" : "Clé secrète"} 
+                    placeholder={selectedGateway === "FedaPay" ? "sk_live_... ou sk_sandbox_..." : selectedGateway === "PawaPay" ? "Token API" : selectedGateway === "FeexPay" ? "Clé publique" : "Clé secrète"} 
                     disabled={isSubmitting}
                     className="w-full bg-[#F5F5F7] border border-black/5 rounded-xl px-4 py-3.5 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-medium tracking-widest disabled:opacity-50" 
                   />
@@ -433,13 +424,13 @@ export default function ConnectionsPage() {
 
                 <div className="space-y-1.5 pt-2">
                   <div className="flex items-center justify-between">
-                    <label className="block text-sm font-semibold text-foreground ml-1">Clé Secrète Webhook {selectedGateway !== "PawaPay" && <span className="font-bold text-danger">*</span>}</label>
+                    <label className="block text-sm font-semibold text-foreground ml-1">Clé Secrète Webhook {selectedGateway !== "PawaPay" && selectedGateway !== "FeexPay" && <span className="font-bold text-danger">*</span>}</label>
                   </div>
                   
                   <div className="bg-[#F5F5F7] rounded-xl p-3 border border-black/5 mb-3">
                     <p className="text-[11px] text-muted-foreground mb-2 leading-tight">
                       1. Copiez cette URL et collez-la dans la section Webhooks de {selectedGateway}.<br/>
-                      2. {selectedGateway} vous donnera une Clé Secrète Webhook. Collez-la ci-dessous.
+                      2. {selectedGateway === "FeexPay" ? "Si FeexPay vous donne une clé, collez-la (Optionnel)." : `${selectedGateway} vous donnera une Clé Secrète Webhook. Collez-la ci-dessous.`}
                     </p>
                     <div className="flex gap-2 items-center bg-white p-2 rounded-lg border border-black/5">
                       <input 
