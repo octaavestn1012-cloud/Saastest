@@ -61,6 +61,17 @@ export async function POST(req: Request, { params }: { params: { userId: string 
     if (isSuccess && amount && amount > 0) {
       console.log(`[Kkiapay Webhook] Paiement entrant de ${amount} FCFA détecté pour l'utilisateur ${userId}`);
       
+      // Sauvegarder la transaction en base de données pour l'historique des entrées
+      const { error: txError } = await supabaseAdmin.from('transactions').insert({
+        user_id: userId,
+        montant: amount,
+        source: 'Kkiapay',
+      });
+
+      if (txError) {
+        console.error(`[Kkiapay Webhook] Erreur lors de l'enregistrement de la transaction:`, txError);
+      }
+      
       // Exécution asynchrone pour répondre rapidement à Kkiapay
       processPayoutsForUser(userId, amount, "a_chaque_entree", false)
         .then(result => console.log("[Kkiapay Webhook] Répartition terminée:", result))

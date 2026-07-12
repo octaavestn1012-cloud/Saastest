@@ -64,6 +64,17 @@ export async function POST(req: Request, { params }: { params: { userId: string 
     if (isApproved && amount && amount > 0) {
       console.log(`[FedaPay Webhook] Paiement entrant de ${amount} FCFA détecté pour l'utilisateur ${userId}`);
       
+      // Sauvegarder la transaction en base de données pour l'historique des entrées
+      const { error: txError } = await supabaseAdmin.from('transactions').insert({
+        user_id: userId,
+        montant: amount,
+        source: 'FedaPay',
+      });
+
+      if (txError) {
+        console.error(`[FedaPay Webhook] Erreur lors de l'enregistrement de la transaction:`, txError);
+      }
+      
       // Exécution asynchrone pour répondre rapidement à FedaPay
       processPayoutsForUser(userId, amount, "a_chaque_entree", false, true)
         .then(result => console.log("[FedaPay Webhook] Répartition terminée:", result))

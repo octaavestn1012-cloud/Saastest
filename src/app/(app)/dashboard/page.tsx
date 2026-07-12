@@ -12,6 +12,26 @@ import { RecentExecutionsList } from "@/components/features/dashboard/RecentExec
 import { formatDateToBenin } from "@/lib/utils/format";
 import { createClient } from "@/utils/supabase/server";
 
+const GATEWAYS_COLORS: Record<string, string> = {
+  "kkiapay": "bg-blue-500",
+  "fedapay": "bg-indigo-500",
+  "cinetpay": "bg-emerald-500",
+  "pawapay": "bg-orange-500",
+  "feexpay": "bg-sky-500",
+  "ipay financial": "bg-teal-500",
+  "paytech": "bg-cyan-500",
+  "monetbill": "bg-purple-500",
+  "flutterwave": "bg-yellow-500",
+  "payplus": "bg-pink-500",
+  "magma onepay": "bg-red-500",
+  "paystack": "bg-blue-600",
+  "stripe": "bg-indigo-600",
+  "paypal": "bg-blue-400",
+  "paydunya": "bg-green-600",
+  "notchpay": "bg-violet-500",
+  "lengo pay": "bg-rose-500",
+};
+
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
@@ -128,14 +148,9 @@ export default async function DashboardPage() {
                 <span className="text-2xl sm:text-3xl font-black tracking-tight text-black">
                   {nextRepartition.text}
                 </span>
-                <span className="text-sm font-semibold text-black mt-1">
+                <span className="text-sm font-medium text-muted-foreground mt-1">
                   {nextRepartition.ruleName}
                 </span>
-                {nextRepartition.text !== "Aucune auto" && (
-                  <span className="text-[11px] font-medium text-muted-foreground mt-0.5">
-                    Répartition automatique
-                  </span>
-                )}
               </div>
             }
             icon={<CalendarClock className="w-6 h-6" />}
@@ -154,24 +169,36 @@ export default async function DashboardPage() {
                 {latestTransactions.length === 0 ? (
                   <p className="text-muted-foreground text-sm text-center py-6">Aucune entrée récente enregistrée.</p>
                 ) : (
-                  latestTransactions.map((tx: any) => (
-                    <div key={tx.id} className="flex justify-between items-center p-3 hover:bg-black/[0.02] rounded-xl transition-colors">
-                      <div>
-                        <p className="font-semibold text-sm">{tx.source || "FedaPay"}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {formatDateToBenin(tx.date_reception)}
-                        </p>
+                  latestTransactions.map((tx: any) => {
+                    const sourceName = tx.source || "FedaPay";
+                    const normalizedName = sourceName.toLowerCase();
+                    const bgColor = GATEWAYS_COLORS[normalizedName] || 'bg-primary';
+                    const initial = sourceName.charAt(0).toUpperCase();
+
+                    return (
+                      <div key={tx.id} className="flex justify-between items-center p-3 hover:bg-black/[0.02] rounded-xl transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl ${bgColor} flex items-center justify-center text-white font-bold shadow-sm`}>
+                            {initial}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">{sourceName}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {formatDateToBenin(tx.date_reception)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="font-bold tabular-nums text-money-in">
+                          + <Amount value={tx.montant} variant="in" />
+                        </div>
                       </div>
-                      <div className="font-bold tabular-nums text-money-in">
-                        + <Amount value={tx.montant} variant="in" />
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
               <div className="pt-6 mt-4 border-t border-black/[0.05]">
-                <Link href="/rapports" className="text-sm font-semibold text-primary hover:underline flex items-center justify-center">
-                  Voir tout l'historique →
+                <Link href="/historique" className="text-sm font-semibold text-primary hover:underline flex items-center justify-center">
+                  Voir toutes les entrées →
                 </Link>
               </div>
             </div>

@@ -73,15 +73,28 @@ export async function getDashboardMetrics() {
 
 
     // 2. Calculer le total réparti (uniquement les distributions vraiment réussies)
-    const { data: distributions } = await supabase
-      .from("distributions_history")
-      .select("montant")
-      .eq("user_id", user.id)
-      .eq("statut", "reussi");
+    const { data: executions } = await supabase
+      .from("executions")
+      .select(`
+        id,
+        execution_lignes (
+          montant,
+          statut
+        )
+      `)
+      .eq("user_id", user.id);
 
     let totalDistributed = 0;
-    if (distributions) {
-      totalDistributed = distributions.reduce((sum, dist) => sum + (Number(dist.montant) || 0), 0);
+    if (executions) {
+      executions.forEach(exec => {
+        if (exec.execution_lignes) {
+          exec.execution_lignes.forEach((ligne: any) => {
+            if (ligne.statut === "reussi") {
+              totalDistributed += (Number(ligne.montant) || 0);
+            }
+          });
+        }
+      });
     }
 
     // 3. Récupérer les dernières transactions (entrées)
@@ -130,7 +143,7 @@ export async function getDashboardMetrics() {
     if (activeRules && activeRules.length > 0) {
       const aChaqueEntreeRule = activeRules.find(r => r.declencheur === "a_chaque_entree");
       if (aChaqueEntreeRule) {
-        nextRepartition = { text: "À chaque entrée", ruleName: aChaqueEntreeRule.nom };
+        nextRepartition = { text: "À chaque entrée", ruleName: "Répartition automatique" };
       } else {
         let closestDate: Date | null = null;
         let closestRuleName = "";
@@ -192,7 +205,7 @@ export async function getDashboardMetrics() {
           }
           
           const timeText = closestDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-          nextRepartition = { text: `${dateText} à ${timeText}`, ruleName: closestRuleName };
+          nextRepartition = { text: `${dateText} à ${timeText}`, ruleName: "Répartition automatique" };
         } else {
           nextRepartition = { text: "Aucune auto", ruleName: "Règles manuelles uniquement" };
         }
