@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     // Charger toutes les règles planifiées avec le fuseau horaire de l'utilisateur
     const { data: rules, error } = await supabaseAdmin
       .from('regles')
-      .select('user_id, id, declencheur, declencheur_config, profiles!inner(timezone)')
+      .select('user_id, id, declencheur, declencheur_config')
       .in('declencheur', ['quotidien', 'hebdomadaire', 'mensuel'])
       .eq('actif', true);
 
@@ -40,7 +40,16 @@ export async function GET(req: Request) {
       const config = rule.declencheur_config || {};
       if (!config.time) continue;
       
-      const userTimezone = (rule.profiles as any)?.timezone || 'UTC';
+      let userTimezone = 'UTC';
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('timezone')
+        .eq('id', rule.user_id)
+        .maybeSingle();
+      
+      if (profile && profile.timezone) {
+        userTimezone = profile.timezone;
+      }
 
       // Conversion de l'heure courante (now) dans le fuseau horaire de l'utilisateur
       let tzDate;
