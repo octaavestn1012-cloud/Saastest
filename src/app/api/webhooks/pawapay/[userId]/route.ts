@@ -65,6 +65,8 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
         user_id: userId,
         montant: amount,
         source: "PawaPay",
+        statut: "reussi",
+        type_transaction: "entree"
       });
 
       if (txError) {
