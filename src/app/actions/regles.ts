@@ -187,6 +187,10 @@ export async function saveRegle(payload: any) {
       });
     }
 
+    // Revalidate paths to update UI instantly
+    revalidatePath("/dashboard");
+    revalidatePath("/rules");
+
     return { success: true, id: regleId };
   } catch (e: any) {
     return { error: e.message };
@@ -201,6 +205,10 @@ export async function deleteRegle(id: string) {
 
     const { error } = await supabase.from("regles").delete().eq("id", id).eq("user_id", user.id);
     if (error) return { error: error.message };
+    
+    revalidatePath("/dashboard");
+    revalidatePath("/rules");
+    
     return { success: true };
   } catch (e: any) {
     return { error: e.message };
@@ -215,6 +223,10 @@ export async function toggleRegle(id: string, actif: boolean) {
 
     const { error } = await supabase.from("regles").update({ actif }).eq("id", id).eq("user_id", user.id);
     if (error) return { error: error.message };
+    
+    revalidatePath("/dashboard");
+    revalidatePath("/rules");
+    
     return { success: true };
   } catch (e: any) {
     return { error: e.message };
