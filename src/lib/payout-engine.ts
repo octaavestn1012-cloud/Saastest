@@ -611,7 +611,8 @@ export async function collectPendingCommissions(
 ) {
   const { data: userDueCommissions } = await supabaseAdmin
     .from("execution_lignes")
-    .select("*")
+    .select("*, executions!inner(user_id)")
+    .eq("executions.user_id", userId)
     .eq("commission_statut", "due")
     .in("statut", ["reussi", "partiel"])
     .order("created_at", { ascending: true });
@@ -715,7 +716,26 @@ export async function collectPendingCommissions(
           idsToUpdate.push(line.id);
           amountToMarkAsCollected -= lineCom;
         } else if (amountToMarkAsCollected > 0 && lineCom > 0) {
+          // On marque la ligne entière comme collectée
           idsToUpdate.push(line.id);
+          
+          // Mais on calcule ce qu'il reste à payer sur cette ligne
+          const remainder = lineCom - amountToMarkAsCollected;
+          
+          // On crée une nouvelle ligne de dette (IOU) pour le reliquat non payé
+          await supabaseAdmin.from("execution_lignes").insert({
+            execution_id: line.execution_id,
+            destinataire_libelle: "Dette Commission Restante",
+            destinataire_numero: line.destinataire_numero,
+            destinataire_reseau: line.destinataire_reseau,
+            montant: 0,
+            statut: "reussi",
+            est_commission: false,
+            passerelle: line.passerelle,
+            commission_associee: remainder,
+            commission_statut: 'due'
+          });
+          
           amountToMarkAsCollected = 0;
         }
       }

@@ -347,16 +347,6 @@ export default function AdminCommissionsPage() {
                     <th className="p-4 font-bold whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-3">
                         <span>Actions</span>
-                        {filteredHistory.some(h => h.status === "echoue") && (
-                          <button
-                            onClick={handleRetryAll}
-                            disabled={retryingAll}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-black text-white hover:bg-black/80 transition-all disabled:opacity-50"
-                          >
-                            {retryingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                            Relancer tout
-                          </button>
-                        )}
                       </div>
                     </th>
                   </tr>
@@ -373,7 +363,7 @@ export default function AdminCommissionsPage() {
                           ) : item.status === "en_cours" ? (
                             <span className="flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full"><Clock className="w-3 h-3"/> En cours</span>
                           ) : (
-                            <span className="flex items-center gap-1 text-[11px] font-bold text-danger bg-danger/10 px-2 py-0.5 rounded-full"><XCircle className="w-3 h-3"/> Échoué</span>
+                            <span className="flex items-center gap-1 text-[11px] font-bold text-danger bg-danger/10 px-2 py-0.5 rounded-full" title="Sera prélevé automatiquement au prochain versement"><XCircle className="w-3 h-3"/> Échoué (Reporté)</span>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -416,22 +406,8 @@ export default function AdminCommissionsPage() {
                         </button>
                       </td>
 
-                      {/* Actions */}
                       <td className="p-4 align-middle text-right">
-                        {item.status === "echoue" && (
-                          <button
-                            onClick={() => handleRetry(item.id)}
-                            disabled={retryingId === item.id}
-                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-bold transition-all bg-black hover:bg-black/80 text-white disabled:opacity-50"
-                          >
-                            {retryingId === item.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <RefreshCw className="w-3.5 h-3.5" />
-                            )}
-                            Relancer
-                          </button>
-                        )}
+                        {/* Les commissions sont relancées automatiquement par le balayeur */}
                       </td>
 
                     </tr>
