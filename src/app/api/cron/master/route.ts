@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
 import { createClient } from '@supabase/supabase-js';
 import { processPayoutsForUser } from '@/lib/payout-engine';
 
@@ -13,13 +14,17 @@ export async function GET(req: Request) {
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      global: {
+        fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' })
+      }
+    });
 
     // Charger toutes les règles planifiées avec le fuseau horaire de l'utilisateur
     const { data: rules, error } = await supabaseAdmin
       .from('regles')
       .select('user_id, id, declencheur, declencheur_config')
-      .in('declencheur', ['quotidien', 'hebdomadaire', 'mensuel'])
+      .in('declencheur', ['quotidien', 'hebdomadaire', 'hebdo', 'mensuel'])
       .eq('actif', true);
 
     if (error) throw error;
@@ -31,8 +36,9 @@ export async function GET(req: Request) {
     // Heure courante (serveur) - Repère UTC
     const now = new Date();
     
-    // Obtenir la date du jour du serveur pour le contrôle d'idempotence
-    const todayStr = now.toISOString().split('T')[0];
+    // Contrôle d'idempotence : On vérifie si la règle a été exécutée dans les dernières 18 heures
+    // Cela permet d'éviter les redondances de changement de date (minuit) ou les décalages de fuseau horaire
+    const idempotencyWindow = new Date(now.getTime() - 18 * 60 * 60 * 1000).toISOString();
 
     const rulesToExecute = [];
 
@@ -84,7 +90,7 @@ export async function GET(req: Request) {
       if (diff >= 0 && diff <= 45) {
         
         // Vérifier les jours selon le déclencheur
-        if (rule.declencheur === "hebdomadaire") {
+        if (rule.declencheur === "hebdomadaire" || rule.declencheur === "hebdo") {
           // config.dayOfWeek (1 = Lundi, 0 = Dimanche)
           if (config.dayOfWeek !== undefined && Number(config.dayOfWeek) !== currentDayOfWeek) {
             continue;
@@ -112,16 +118,16 @@ export async function GET(req: Request) {
     let processedCount = 0;
     
     for (const rule of rulesToExecute) {
-      // Vérification Idempotence : est-ce que cette règle a déjà été exécutée AUJOURD'HUI ?
+      // Vérification Idempotence : est-ce que cette règle a déjà été exécutée dans les 18 dernières heures ?
       const { data: pastExec } = await supabaseAdmin
         .from('executions')
         .select('id')
         .eq('regle_id', rule.id)
-        .gte('date_execution', todayStr + 'T00:00:00Z')
+        .gte('date_execution', idempotencyWindow)
         .limit(1);
         
       if (pastExec && pastExec.length > 0) {
-        console.log(`Règle ${rule.id} déjà exécutée aujourd'hui. On ignore.`);
+        console.log(`Règle ${rule.id} déjà exécutée dans les dernières 18h. On ignore.`);
         continue;
       }
 

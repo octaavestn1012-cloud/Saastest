@@ -150,15 +150,19 @@ export async function getDashboardMetrics() {
         const now = new Date();
         
         activeRules.forEach(rule => {
-          let nextDate = new Date();
+          let nextDate: Date | null = null;
+          const nowRef = new Date();
+          
           if (rule.declencheur === "quotidien") {
+            nextDate = new Date();
             const time = rule.declencheur_config?.time || "00:00";
             const [hours, minutes] = time.split(':');
             nextDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
             if (nextDate <= now) {
               nextDate.setDate(nextDate.getDate() + 1);
             }
-          } else if (rule.declencheur === "hebdo") {
+          } else if (rule.declencheur === "hebdo" || rule.declencheur === "hebdomadaire") {
+            nextDate = new Date();
             const dayOfWeek = parseInt(rule.declencheur_config?.dayOfWeek || "1");
             const time = rule.declencheur_config?.time || "00:00";
             const [hours, minutes] = time.split(':');
@@ -170,20 +174,38 @@ export async function getDashboardMetrics() {
             }
             nextDate.setDate(nextDate.getDate() + distance);
           } else if (rule.declencheur === "mensuel") {
-            const dayOfMonth = parseInt(rule.declencheur_config?.dayOfMonth || "1");
+            nextDate = new Date();
             const time = rule.declencheur_config?.time || "00:00";
             const [hours, minutes] = time.split(':');
-            // Gérer les mois courts
-            const tempDate = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0);
-            const actualDay = Math.min(dayOfMonth, tempDate.getDate());
+            
+            const tempDate = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0); // Dernier jour du mois courant
+            
+            let actualDay = 1;
+            if (rule.declencheur_config?.dayOfMonth === "last") {
+              actualDay = tempDate.getDate();
+            } else {
+              const dayOfMonth = parseInt(rule.declencheur_config?.dayOfMonth || "1");
+              actualDay = Math.min(dayOfMonth, tempDate.getDate());
+            }
+            
             nextDate.setDate(actualDay);
             nextDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-            if (nextDate <= now) {
+            
+            if (nextDate <= nowRef) {
+              // Si c'est déjà passé ce mois-ci, on passe au mois suivant
               nextDate.setMonth(nextDate.getMonth() + 1);
+              // Recalculer le dernier jour pour le mois suivant
+              const nextTempDate = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0);
+              if (rule.declencheur_config?.dayOfMonth === "last") {
+                nextDate.setDate(nextTempDate.getDate());
+              } else {
+                const dayOfMonth = parseInt(rule.declencheur_config?.dayOfMonth || "1");
+                nextDate.setDate(Math.min(dayOfMonth, nextTempDate.getDate()));
+              }
             }
           }
           
-          if (rule.declencheur !== "manuel") {
+          if (nextDate && rule.declencheur !== "manuel") {
             if (!closestDate || nextDate < closestDate) {
               closestDate = nextDate;
               closestRuleName = rule.nom;
