@@ -147,60 +147,63 @@ export async function getDashboardMetrics() {
       } else {
         let closestDate: Date | null = null;
         let closestRuleName = "";
-        const now = new Date();
+        
+        // --- GESTION DU FUSEAU HORAIRE (Bénin UTC+1) ---
+        // On crée une date "fake UTC" qui représente l'heure exacte au Bénin.
+        // Cela évite les bugs entre localhost (UTC+1) et Netlify (UTC).
+        const nowUTC = new Date();
+        const now = new Date(nowUTC.getTime() + 1 * 3600 * 1000); 
         
         activeRules.forEach(rule => {
           let nextDate: Date | null = null;
-          const nowRef = new Date();
+          const nowRef = new Date(now.getTime());
           
           if (rule.declencheur === "quotidien") {
-            nextDate = new Date();
+            nextDate = new Date(now.getTime());
             const time = rule.declencheur_config?.time || "00:00";
             const [hours, minutes] = time.split(':');
-            nextDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+            nextDate.setUTCHours(parseInt(hours), parseInt(minutes), 0, 0);
             if (nextDate <= now) {
-              nextDate.setDate(nextDate.getDate() + 1);
+              nextDate.setUTCDate(nextDate.getUTCDate() + 1);
             }
           } else if (rule.declencheur === "hebdo" || rule.declencheur === "hebdomadaire") {
-            nextDate = new Date();
+            nextDate = new Date(now.getTime());
             const dayOfWeek = parseInt(rule.declencheur_config?.dayOfWeek || "1");
             const time = rule.declencheur_config?.time || "00:00";
             const [hours, minutes] = time.split(':');
-            nextDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-            const currentDay = nextDate.getDay() || 7; // Dimanche = 7
+            nextDate.setUTCHours(parseInt(hours), parseInt(minutes), 0, 0);
+            const currentDay = nextDate.getUTCDay() || 7; // Dimanche = 7
             let distance = dayOfWeek - currentDay;
             if (distance < 0 || (distance === 0 && nextDate <= now)) {
               distance += 7;
             }
-            nextDate.setDate(nextDate.getDate() + distance);
+            nextDate.setUTCDate(nextDate.getUTCDate() + distance);
           } else if (rule.declencheur === "mensuel") {
-            nextDate = new Date();
+            nextDate = new Date(now.getTime());
             const time = rule.declencheur_config?.time || "00:00";
             const [hours, minutes] = time.split(':');
             
-            const tempDate = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0); // Dernier jour du mois courant
+            const tempDate = new Date(Date.UTC(nextDate.getUTCFullYear(), nextDate.getUTCMonth() + 1, 0)); // Dernier jour du mois
             
             let actualDay = 1;
             if (rule.declencheur_config?.dayOfMonth === "last") {
-              actualDay = tempDate.getDate();
+              actualDay = tempDate.getUTCDate();
             } else {
               const dayOfMonth = parseInt(rule.declencheur_config?.dayOfMonth || "1");
-              actualDay = Math.min(dayOfMonth, tempDate.getDate());
+              actualDay = Math.min(dayOfMonth, tempDate.getUTCDate());
             }
             
-            nextDate.setDate(actualDay);
-            nextDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+            nextDate.setUTCDate(actualDay);
+            nextDate.setUTCHours(parseInt(hours), parseInt(minutes), 0, 0);
             
             if (nextDate <= nowRef) {
-              // Si c'est déjà passé ce mois-ci, on passe au mois suivant
-              nextDate.setMonth(nextDate.getMonth() + 1);
-              // Recalculer le dernier jour pour le mois suivant
-              const nextTempDate = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0);
+              nextDate.setUTCMonth(nextDate.getUTCMonth() + 1);
+              const nextTempDate = new Date(Date.UTC(nextDate.getUTCFullYear(), nextDate.getUTCMonth() + 1, 0));
               if (rule.declencheur_config?.dayOfMonth === "last") {
-                nextDate.setDate(nextTempDate.getDate());
+                nextDate.setUTCDate(nextTempDate.getUTCDate());
               } else {
                 const dayOfMonth = parseInt(rule.declencheur_config?.dayOfMonth || "1");
-                nextDate.setDate(Math.min(dayOfMonth, nextTempDate.getDate()));
+                nextDate.setUTCDate(Math.min(dayOfMonth, nextTempDate.getUTCDate()));
               }
             }
           }
@@ -214,19 +217,26 @@ export async function getDashboardMetrics() {
         });
         
         if (closestDate) {
-          const isTomorrow = new Date(now);
-          isTomorrow.setDate(now.getDate() + 1);
+          const isTomorrow = new Date(now.getTime());
+          isTomorrow.setUTCDate(now.getUTCDate() + 1);
           
           let dateText = "";
-          if (closestDate.toDateString() === now.toDateString()) {
+          const closestDateStr = closestDate.toISOString().split('T')[0];
+          const nowStr = now.toISOString().split('T')[0];
+          const tomorrowStr = isTomorrow.toISOString().split('T')[0];
+          
+          if (closestDateStr === nowStr) {
             dateText = "Aujourd'hui";
-          } else if (closestDate.toDateString() === isTomorrow.toDateString()) {
+          } else if (closestDateStr === tomorrowStr) {
             dateText = "Demain";
           } else {
-            dateText = `Le ${closestDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}`;
+            dateText = `Le ${closestDate.getUTCDate().toString().padStart(2, '0')}/${(closestDate.getUTCMonth() + 1).toString().padStart(2, '0')}`;
           }
           
-          const timeText = closestDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          const h = closestDate.getUTCHours().toString().padStart(2, '0');
+          const m = closestDate.getUTCMinutes().toString().padStart(2, '0');
+          const timeText = `${h}:${m}`;
+          
           nextRepartition = { text: `${dateText} à ${timeText}`, ruleName: "Répartition automatique" };
         } else {
           nextRepartition = { text: "Aucune auto", ruleName: "Règles manuelles uniquement" };
