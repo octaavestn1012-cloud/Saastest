@@ -55,9 +55,10 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
     // 1. Gestion des DEPOSITS (Entrées d'argent)
     const isDeposit = payload.action === "DEPOSIT" || payload.depositId !== undefined;
     const isDepositSuccess = payload.status === "COMPLETED" || payload.status === "SUCCESS";
+    const payloadAmount = payload.amount || payload.depositedAmount || payload.requestedAmount;
     
-    if (isDeposit && isDepositSuccess && payload.amount) {
-      const amount = Number(payload.amount);
+    if (isDeposit && isDepositSuccess && payloadAmount) {
+      const amount = Number(payloadAmount);
       console.log(`[PawaPay Webhook] Paiement entrant de ${amount} détecté pour l'utilisateur ${userId}`);
 
       // Sauvegarder la transaction
