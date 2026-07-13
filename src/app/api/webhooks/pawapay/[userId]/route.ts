@@ -65,7 +65,8 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
         user_id: userId,
         montant: amount,
         source: "PawaPay",
-        statut: "reussi"
+        statut: "reussi",
+        date_reception: new Date().toISOString()
       });
 
       if (txError) {
@@ -84,7 +85,8 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
         user_id: userId,
         montant: 0,
         source: `Debug: ${JSON.stringify(payload).substring(0, 150)}`,
-        statut: "echoue"
+        statut: "echoue",
+        date_reception: new Date().toISOString()
       });
     }
 
