@@ -156,19 +156,23 @@ export default function BillingPage() {
                 </li>
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  3 règles automatiques
+                </li>
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                   Max 3 destinataires/répartition
                 </li>
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                   Répartition manuelle
                 </li>
-                <li className="flex items-center gap-2 text-sm text-black font-medium">
-                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-                  Jusqu'à 3 règles automatiques
-                </li>
                 <li className="flex items-center gap-2 text-sm text-muted-foreground line-through">
                   <X className="w-4 h-4 text-muted-foreground/50 shrink-0" />
                   Conditions avancées (SI...)
+                </li>
+                <li className="flex items-center gap-2 text-sm text-muted-foreground line-through">
+                  <X className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+                  Ordre de priorité + ligne "reste"
                 </li>
                 <li className="flex items-center gap-2 text-sm text-muted-foreground line-through">
                   <X className="w-4 h-4 text-muted-foreground/50 shrink-0" />

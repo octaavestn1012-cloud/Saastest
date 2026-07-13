@@ -16,7 +16,7 @@ const plans = [
       "20 répartitions / mois maximum",
       "Plafond 500 000 FCFA / mois",
       "Jusqu'à 6 règles actives",
-      "Jusqu'à 3 règles automatiques",
+      "3 règles automatiques",
       "Max 3 destinataires/répartition",
       "Répartition manuelle"
     ],
@@ -123,6 +123,28 @@ export function PricingSection() {
                       <span className="font-medium text-[15px] text-[#444] leading-tight mt-0.5">{feature}</span>
                     </div>
                   ))}
+                  {plan.name === "Gratuit" && (
+                    <>
+                      <div className="flex items-start gap-3 opacity-50">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-muted-foreground">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </div>
+                        <span className="font-medium text-[15px] text-muted-foreground line-through leading-tight mt-0.5">Conditions avancées (SI...)</span>
+                      </div>
+                      <div className="flex items-start gap-3 opacity-50">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-muted-foreground">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </div>
+                        <span className="font-medium text-[15px] text-muted-foreground line-through leading-tight mt-0.5">Ordre de priorité + ligne "reste"</span>
+                      </div>
+                      <div className="flex items-start gap-3 opacity-50">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-muted-foreground">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </div>
+                        <span className="font-medium text-[15px] text-muted-foreground line-through leading-tight mt-0.5">Rapports avancés</span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <Link href="/signup" className="w-full mt-auto">
