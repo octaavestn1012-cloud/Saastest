@@ -94,14 +94,10 @@ export async function saveRegle(payload: any) {
     const currentPlan = await getValidUserPlan(user.id);
     
     if (currentPlan === "gratuit") {
-      if (declencheur !== "manuel") {
-        return { error: "Les règles automatiques nécessitent le plan Pro ou Business." };
-      }
       if (recipients.length > 3) {
         return { error: "Le plan Gratuit est limité à 3 destinataires maximum par répartition." };
       }
       
-      // Vérifier le nombre de règles existantes si c'est une création
       if (!id || id.startsWith("temp_")) {
         const { count, error: countError } = await supabase
           .from("regles")
@@ -109,8 +105,33 @@ export async function saveRegle(payload: any) {
           .eq("user_id", user.id);
           
         if (countError) return { error: "Erreur lors de la vérification des limites." };
-        if (count && count >= 3) {
-          return { error: "Vous avez atteint la limite de 3 règles pour le plan Gratuit." };
+        if (count && count >= 6) {
+          return { error: "Vous avez atteint la limite de 6 règles pour le plan Gratuit." };
+        }
+
+        if (declencheur !== "manuel") {
+           const { count: autoCount } = await supabase
+             .from("regles")
+             .select("id", { count: "exact", head: true })
+             .eq("user_id", user.id)
+             .neq("declencheur", "manuel");
+           if (autoCount && autoCount >= 3) {
+             return { error: "Le plan Gratuit est limité à 3 règles automatiques maximum." };
+           }
+        }
+      } else {
+        if (declencheur !== "manuel") {
+           const { data: existingRule } = await supabase.from("regles").select("declencheur").eq("id", id).single();
+           if (existingRule && existingRule.declencheur === "manuel") {
+               const { count: autoCount } = await supabase
+                 .from("regles")
+                 .select("id", { count: "exact", head: true })
+                 .eq("user_id", user.id)
+                 .neq("declencheur", "manuel");
+               if (autoCount && autoCount >= 3) {
+                 return { error: "Le plan Gratuit est limité à 3 règles automatiques maximum." };
+               }
+           }
         }
       }
     }

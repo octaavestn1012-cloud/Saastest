@@ -152,7 +152,7 @@ export default function BillingPage() {
                 </li>
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-                  Jusqu'à 3 règles actives
+                  Jusqu'à 6 règles actives
                 </li>
                 <li className="flex items-center gap-2 text-sm text-black font-medium">
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
@@ -162,9 +162,9 @@ export default function BillingPage() {
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                   Répartition manuelle
                 </li>
-                <li className="flex items-center gap-2 text-sm text-muted-foreground line-through">
-                  <X className="w-4 h-4 text-muted-foreground/50 shrink-0" />
-                  Règles automatiques
+                <li className="flex items-center gap-2 text-sm text-black font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  Jusqu'à 3 règles automatiques
                 </li>
                 <li className="flex items-center gap-2 text-sm text-muted-foreground line-through">
                   <X className="w-4 h-4 text-muted-foreground/50 shrink-0" />
