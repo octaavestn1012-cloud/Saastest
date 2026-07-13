@@ -33,6 +33,7 @@ export type TransactionHistory = {
   totalAmount: number;
   totalAvailable: number;
   commissionAmount: number;
+  hasPendingCommission?: boolean;
   recipientCount: number;
   status: Status;
   details: TransactionDetail[];
@@ -218,8 +219,11 @@ export function TransactionDetailModal({
                  <div className="flex justify-between items-center text-[#B9811C]">
                     <span className="font-semibold text-[14px]">
                       Frais Réparto ({commissionRateStr}%)
+                      {selectedTx.hasPendingCommission && (
+                        <span className="ml-2 text-[11px] italic text-[#B9811C]/80 bg-[#B9811C]/10 px-2 py-0.5 rounded-full inline-block mt-1 sm:mt-0">(En attente de prélèvement)</span>
+                      )}
                     </span>
-                    <span className="font-bold tabular-nums text-[15px]">
+                    <span className="font-bold tabular-nums text-[15px] shrink-0">
                       − <Amount value={selectedTx.commissionAmount} />
                     </span>
                  </div>

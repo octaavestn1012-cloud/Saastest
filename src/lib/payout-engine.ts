@@ -9,7 +9,7 @@ import { getValidUserPlan, getCommissionRate } from "./billing";
 /**
  * Fonction unifiée pour préparer le pool de passerelles
  */
-async function buildGatewayPool(supabaseAdmin: any, userId: string) {
+export async function buildGatewayPool(supabaseAdmin: any, userId: string) {
   const { data: conns, error: connError } = await supabaseAdmin
     .from("connexions")
     .select("*")

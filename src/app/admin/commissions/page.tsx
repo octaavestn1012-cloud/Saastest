@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCommissionSettings, updateCommissionSettings, getCommissionHistory, toggleUserBlock, retryCommission } from "@/app/actions/commissions";
+import { getCommissionSettings, updateCommissionSettings, getCommissionHistory, toggleUserBlock, retryCommission, getPendingDebtsSum } from "@/app/actions/commissions";
 import { Loader2, ArrowLeft, Save, ShieldAlert, ShieldCheck, XCircle, CheckCircle2, Clock, RefreshCw, Search, Filter, CalendarDays } from "lucide-react";
 import { COUNTRIES_NETWORKS, COUNTRY_CODES } from "@/components/features/destinataires/RecipientModal";
 import Link from "next/link";
@@ -18,6 +18,7 @@ export default function AdminCommissionsPage() {
   ]);
   const [history, setHistory] = useState<any[]>([]);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [pendingTotal, setPendingTotal] = useState<number>(0);
 
   // Filtres
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,6 +42,9 @@ export default function AdminCommissionsPage() {
     }
     const historyRes = await getCommissionHistory(start, end);
     if (historyRes.success) setHistory(historyRes.history || []);
+    
+    const pendingRes = await getPendingDebtsSum();
+    if (pendingRes.success) setPendingTotal(pendingRes.total || 0);
   };
 
   useEffect(() => {
@@ -115,49 +119,21 @@ export default function AdminCommissionsPage() {
     }
   };
 
-  const handleRetry = async (ligneId: string) => {
-    if (!confirm("Voulez-vous vraiment relancer l'envoi de cette commission ?")) return;
+  const [sweeping, setSweeping] = useState(false);
+  const handleForceSweep = async () => {
+    if (!confirm("Voulez-vous lancer le balayeur pour recouvrer toutes les dettes en attente chez tous vos clients ?")) return;
     
-    setRetryingId(ligneId);
-    const res = await retryCommission(ligneId);
+    setSweeping(true);
+    const { forceSweepDebts } = await import("@/app/actions/commissions");
+    const res = await forceSweepDebts();
+    setSweeping(false);
     
     if (res.success) {
-      alert("Relance effectuée avec succès ! Le statut a été mis à jour.");
-      // Refresh history
+      alert(res.message);
       fetchHistory();
     } else {
-      alert("Erreur lors de la relance : " + res.error);
+      alert("Erreur lors du recouvrement : " + res.error);
     }
-    setRetryingId(null);
-  };
-
-  const [retryingAll, setRetryingAll] = useState(false);
-
-  const handleRetryAll = async () => {
-    const failedItems = filteredHistory.filter(item => item.status === "echoue");
-    if (failedItems.length === 0) return;
-    
-    if (!confirm(`Voulez-vous vraiment relancer ${failedItems.length} commissions échouées d'un coup ?`)) return;
-
-    setRetryingAll(true);
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const item of failedItems) {
-      setRetryingId(item.id);
-      const res = await retryCommission(item.id);
-      if (res.success) {
-        successCount++;
-      } else {
-        failCount++;
-      }
-    }
-
-    setRetryingId(null);
-    setRetryingAll(false);
-    
-    alert(`Relance groupée terminée !\nSuccès : ${successCount}\nÉchecs : ${failCount}`);
-    fetchHistory();
   };
 
   if (loading) {
@@ -182,6 +158,7 @@ export default function AdminCommissionsPage() {
 
       <div className="flex flex-col gap-8">
         
+
         {/* Paramètres des numéros */}
         <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-black/5">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -271,13 +248,57 @@ export default function AdminCommissionsPage() {
           </div>
         </div>
 
+        {/* KPI Dettes en attente - Light Styled */}
+        <div className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-black/5 relative overflow-hidden">
+          {/* Subtle light background decoration */}
+          <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-transparent to-primary/[0.02] pointer-events-none"></div>
+          
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+            <div className="flex-1">
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <RefreshCw className="w-5 h-5 text-primary" />
+                </div>
+                <h2 className="text-sm font-extrabold text-muted-foreground uppercase tracking-widest">Recouvrement des Dettes</h2>
+              </div>
+              
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className="text-4xl sm:text-5xl font-black tracking-tight text-black">{pendingTotal}</span>
+                <span className="text-xl font-bold text-black/40">FCFA</span>
+              </div>
+              <p className="text-sm text-muted-foreground max-w-lg font-medium leading-relaxed">
+                Ce montant représente les commissions en attente. Un simple clic permet de lancer l'agent de recouvrement qui ira vérifier et prélever automatiquement les fonds disponibles chez vos clients.
+              </p>
+            </div>
+            
+            <div className="shrink-0">
+              <button
+                onClick={handleForceSweep}
+                disabled={sweeping || pendingTotal === 0}
+                className="group relative bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-2xl text-[15px] font-bold flex items-center justify-center gap-3 transition-all disabled:opacity-50 shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 w-full md:w-auto overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out rounded-2xl"></div>
+                <span className="relative z-10 flex items-center gap-3">
+                  {sweeping ? (
+                    <><Loader2 className="w-5 h-5 animate-spin" /> Recouvrement en cours...</>
+                  ) : (
+                    <><RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" /> Forcer le prélèvement</>
+                  )}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+
         {/* Historique et Blocage */}
         <div className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-sm border border-black/5">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <h2 className="text-lg font-bold">Historique des rentrées</h2>
             
-            {/* Filtres */}
-            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -306,9 +327,9 @@ export default function AdminCommissionsPage() {
                   </select>
                 </div>
               </div>
-
             </div>
           </div>
+        </div>
 
           {dateFilter === "custom" && (
             <div className="flex items-center gap-3 p-4 bg-[#F5F5F7] rounded-xl mb-6">
@@ -344,11 +365,6 @@ export default function AdminCommissionsPage() {
                     <th className="p-4 font-bold whitespace-nowrap">Client</th>
                     <th className="p-4 font-bold whitespace-nowrap text-right">Montant</th>
                     <th className="p-4 font-bold whitespace-nowrap text-center">Sécurité</th>
-                    <th className="p-4 font-bold whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <span>Actions</span>
-                      </div>
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black/5 text-sm">
@@ -363,7 +379,9 @@ export default function AdminCommissionsPage() {
                           ) : item.status === "en_cours" ? (
                             <span className="flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full"><Clock className="w-3 h-3"/> En cours</span>
                           ) : (
-                            <span className="flex items-center gap-1 text-[11px] font-bold text-danger bg-danger/10 px-2 py-0.5 rounded-full" title="Sera prélevé automatiquement au prochain versement"><XCircle className="w-3 h-3"/> Échoué (Reporté)</span>
+                            <span className="flex items-center gap-1 text-[11px] font-bold text-danger bg-danger/10 px-2 py-0.5 rounded-full" title="Sera prélevé automatiquement au prochain versement">
+                              <XCircle className="w-3 h-3"/> Échoué (En attente)
+                            </span>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -406,9 +424,7 @@ export default function AdminCommissionsPage() {
                         </button>
                       </td>
 
-                      <td className="p-4 align-middle text-right">
-                        {/* Les commissions sont relancées automatiquement par le balayeur */}
-                      </td>
+                      {/* Actions supprimées pour les commissions car gérées par le recouvrement */}
 
                     </tr>
                   ))}

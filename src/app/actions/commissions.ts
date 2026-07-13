@@ -174,7 +174,7 @@ export async function toggleUserBlock(userId: string, currentStatus: boolean) {
   }
 }
 
-export async function retryCommission(ligneId: string) {
+export async function forceSweepDebts() {
   try {
     const supabase = createClient();
     
@@ -190,34 +190,92 @@ export async function retryCommission(ligneId: string) {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const supabaseAdmin = createSupabaseClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the execution line
-    const { data: ligne } = await supabaseAdmin.from("execution_lignes").select("*").eq("id", ligneId).single();
-    if (!ligne || !ligne.est_commission) {
-      return { success: false, error: "Ligne introuvable ou n'est pas une commission" };
+    // Fetch all due commissions
+    const { data: dueLines } = await supabaseAdmin
+      .from("execution_lignes")
+      .select("*, executions!inner(user_id)")
+      .eq("commission_statut", "due")
+      .in("statut", ["reussi", "partiel"]);
+
+    if (!dueLines || dueLines.length === 0) {
+      return { success: true, message: "Aucune dette en attente." };
     }
 
-    if (ligne.statut === "reussi") {
-      return { success: false, error: "Cette commission a déjà réussi" };
-    }
+    const usersWithDebts = [...new Set(dueLines.map((l: any) => l.executions?.user_id))];
 
-    // Récupérer le user_id original depuis execution
-    const { data: exec } = await supabaseAdmin.from("executions").select("user_id").eq("id", ligne.execution_id).single();
-    if (!exec) return { success: false, error: "Exécution introuvable" };
+    const { data: mappingsData } = await supabaseAdmin.from("gateway_mappings").select("*").eq("actif", true);
+    const mappings = mappingsData || [];
 
-    // Update statut to en_cours
-    await supabaseAdmin.from("execution_lignes").update({ statut: "en_cours", erreur_message: null }).eq("id", ligneId);
+    const { data: statusMappingsData } = await supabaseAdmin.from("gateway_status_mappings").select("*");
+    const statusMappings = statusMappingsData || [];
 
-    const { retryExecutionLigne } = await import("@/lib/payout-engine");
-    const result = await retryExecutionLigne(ligneId);
+    let commissionFallbacks: any[] = [];
+    try {
+      const { data: adminSettings } = await supabaseAdmin.from("admin_settings").select("config_value").eq("config_key", "commission_numbers").single();
+      if (adminSettings?.config_value && Array.isArray(adminSettings.config_value)) {
+        commissionFallbacks = adminSettings.config_value.filter((n: any) => n.phone && n.network);
+      }
+    } catch(e) {}
     
-    if (!result.success) {
-      return { success: false, error: result.error || "Échec de la relance" };
+    if (commissionFallbacks.length === 0) {
+      if (process.env.REPARTO_COMMISSION_MSISDN && process.env.REPARTO_COMMISSION_OPERATEUR) {
+        commissionFallbacks.push({ phone: process.env.REPARTO_COMMISSION_MSISDN, network: process.env.REPARTO_COMMISSION_OPERATEUR });
+      }
     }
 
-    return { success: true };
-    
+    if (commissionFallbacks.length === 0) {
+      return { success: false, error: "Aucun numéro de réception de commission configuré." };
+    }
+
+    const { collectPendingCommissions, buildGatewayPool } = await import("@/lib/payout-engine");
+
+    let processedCount = 0;
+    for (const uId of usersWithDebts) {
+      if (!uId) continue;
+      const poolRes = await buildGatewayPool(supabaseAdmin, uId as string);
+      if (poolRes.success && poolRes.gatewayPool && poolRes.gatewayPool.length > 0) {
+        await collectPendingCommissions(
+          supabaseAdmin,
+          uId as string,
+          commissionFallbacks,
+          poolRes.gatewayPool,
+          mappings,
+          statusMappings
+        ).catch(e => console.error("Erreur forceSweepDebts pour " + uId, e));
+        processedCount++;
+      }
+    }
+
+    return { success: true, message: `Recouvrement lancé pour ${processedCount} client(s).` };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
 
+export async function getPendingDebtsSum() {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: "Non autorisé" };
+    
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+    if (profile?.role !== "admin") return { success: false, error: "Accès refusé" };
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = createSupabaseClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: dueLines } = await supabaseAdmin
+      .from("execution_lignes")
+      .select("commission_associee")
+      .eq("commission_statut", "due")
+      .in("statut", ["reussi", "partiel"]);
+
+    if (!dueLines) return { success: true, total: 0 };
+
+    const total = dueLines.reduce((sum: number, line: any) => sum + Number(line.commission_associee || 0), 0);
+    return { success: true, total };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
