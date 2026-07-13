@@ -65,8 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
         user_id: userId,
         montant: amount,
         source: "PawaPay",
-        statut: "reussi",
-        type_transaction: "entree"
+        statut: "reussi"
       });
 
       if (txError) {
@@ -78,7 +77,15 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
         .then(result => console.log("[PawaPay Webhook] Répartition terminée:", result))
         .catch(err => console.error("[PawaPay Webhook] Erreur de répartition:", err));
         
-      return NextResponse.json({ received: true });
+    } else {
+      // 2. LOG DE DÉBOGAGE : Si le format ne correspond pas à une entrée d'argent classique
+      console.warn(`[PawaPay Webhook] Format non reconnu ou statut non complété:`, payload);
+      await supabaseAdmin.from("transactions").insert({
+        user_id: userId,
+        montant: 0,
+        source: `Debug: ${JSON.stringify(payload).substring(0, 150)}`,
+        statut: "echoue"
+      });
     }
 
     // 2. Gestion des PAYOUTS (Sorties d'argent / Mises à jour de statut)
