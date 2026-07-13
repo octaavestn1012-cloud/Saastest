@@ -84,7 +84,7 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
       await supabaseAdmin.from("transactions").insert({
         user_id: userId,
         montant: 0,
-        source: `Debug: ${JSON.stringify(payload).substring(0, 150)}`,
+        source: `Debug: ${JSON.stringify(payload)}`,
         statut: "echoue",
         date_reception: new Date().toISOString()
       });
