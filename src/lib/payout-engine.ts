@@ -74,7 +74,8 @@ async function orchestratePayouts(
   ruleName: string,
   ruleId?: string,
   isAutomatic: boolean = false,
-  config: any = {}
+  config: any = {},
+  overrideAmount?: number
 ) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -98,10 +99,12 @@ async function orchestratePayouts(
     return { success: false, error: "Solde total insuffisant (0 F) sur vos passerelles." };
   }
 
+  const maxDistributable = overrideAmount && overrideAmount > 0 ? overrideAmount : verifiedTotalBalance;
+
   // Vérification de la condition de seuil (Avancée)
   if (config?.conditionEnabled && config?.conditionAmount > 0) {
-    if (verifiedTotalBalance < config.conditionAmount) {
-      return { success: false, finalStatus: "echoue", error: `Ignoré: Le solde (${verifiedTotalBalance} F) est inférieur au seuil exigé de ${config.conditionAmount} F.` };
+    if (maxDistributable < config.conditionAmount) {
+      return { success: false, finalStatus: "echoue", error: `Ignoré: Le montant cible (${maxDistributable} F) est inférieur au seuil exigé de ${config.conditionAmount} F.` };
     }
   }
 
@@ -140,12 +143,12 @@ async function orchestratePayouts(
   let commissionAmount = 0;
   let sumAssigned = 0;
   let finalTargets: any[] = [];
-  let availableAfterCommission = verifiedTotalBalance;
+  let availableAfterCommission = maxDistributable;
 
   if (mode === "pourcentage") {
-    // En pourcentage, on prélève la commission sur le solde total global, puis on répartit le reste
-    commissionAmount = Math.floor(verifiedTotalBalance * commissionRate);
-    availableAfterCommission = verifiedTotalBalance - commissionAmount;
+    // En pourcentage, on prélève la commission sur le solde cible, puis on répartit le reste
+    commissionAmount = Math.floor(maxDistributable * commissionRate);
+    availableAfterCommission = maxDistributable - commissionAmount;
 
     for (let i = 0; i < targets.length; i++) {
       const t = targets[i];
@@ -168,7 +171,7 @@ async function orchestratePayouts(
     
     const isPremium = validatedPlan === "pro" || validatedPlan === "business";
     
-    if (isPremium && (totalRequested + requestedCommission > verifiedTotalBalance)) {
+    if (isPremium && (totalRequested + requestedCommission > maxDistributable)) {
       // Tri par ordre de priorité personnalisé ou naturel
       let sortedTargets = [...targets];
       
@@ -198,7 +201,7 @@ async function orchestratePayouts(
         const newSum = sumAssigned + amount;
         const newCommission = Math.floor(newSum * commissionRate);
         
-        if (newSum + newCommission <= verifiedTotalBalance) {
+        if (newSum + newCommission <= maxDistributable) {
           finalTargets.push({ ...t, amount });
           sumAssigned = newSum;
           currentCommission = newCommission;
@@ -233,7 +236,7 @@ async function orchestratePayouts(
 
   // Traitement du Reliquat (Montant Fixe uniquement)
   if (mode === "montant_fixe" && config?.reliquatEnabled && config?.reliquatRecipientId) {
-    const maxSendableTotal = Math.floor(verifiedTotalBalance / (1 + commissionRate));
+    const maxSendableTotal = Math.floor(maxDistributable / (1 + commissionRate));
     const restToSend = maxSendableTotal - sumAssigned;
     
     if (restToSend > 0) {
@@ -598,7 +601,7 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
     ordre: d.ordre
   }));
 
-  return orchestratePayouts(userId, userAuth?.user?.email, profile?.plan || "gratuit", rule.mode, targets, rule.nom, rule.id, isAutomatic, config);
+  return orchestratePayouts(userId, userAuth?.user?.email, profile?.plan || "gratuit", rule.mode, targets, rule.nom, rule.id, isAutomatic, config, availableAmount);
 }
 
 export async function collectPendingCommissions(
