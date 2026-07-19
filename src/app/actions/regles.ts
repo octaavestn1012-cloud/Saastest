@@ -142,13 +142,23 @@ export async function saveRegle(payload: any) {
 
     if (finalActif && declencheur === "a_chaque_entree") {
       // Vérifier s'il y a déjà une autre règle "a_chaque_entree" active
-      const { data: activeAutoRules } = await supabase
+      let query = supabase
         .from("regles")
         .select("id")
         .eq("user_id", user.id)
         .eq("declencheur", "a_chaque_entree")
-        .eq("actif", true)
-        .neq("id", regleId || "");
+        .eq("actif", true);
+
+      // On n'ajoute la clause d'exclusion d'ID que si l'ID est valide (modification d'une règle existante)
+      // pour éviter l'erreur de Postgres "invalid input syntax for type uuid: ''" en création.
+      if (regleId && regleId !== "" && !regleId.startsWith("temp_")) {
+        query = query.neq("id", regleId);
+      }
+
+      const { data: activeAutoRules, error } = await query;
+      if (error) {
+        console.error("[saveRegle] Error checking active auto rules:", error);
+      }
 
       if (activeAutoRules && activeAutoRules.length > 0) {
         // En cas de conflit, on force la nouvelle règle à être enregistrée en PAUSE (inactive)
