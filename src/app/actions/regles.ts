@@ -142,16 +142,15 @@ export async function saveRegle(payload: any) {
 
     if (finalActif && declencheur === "a_chaque_entree") {
       // Vérifier s'il y a déjà une autre règle "a_chaque_entree" active
-      const { data: activeAutoRule } = await supabase
+      const { data: activeAutoRules } = await supabase
         .from("regles")
         .select("id")
         .eq("user_id", user.id)
         .eq("declencheur", "a_chaque_entree")
         .eq("actif", true)
-        .neq("id", regleId || "")
-        .maybeSingle();
+        .neq("id", regleId || "");
 
-      if (activeAutoRule) {
+      if (activeAutoRules && activeAutoRules.length > 0) {
         // En cas de conflit, on force la nouvelle règle à être enregistrée en PAUSE (inactive)
         finalActif = false;
       }
