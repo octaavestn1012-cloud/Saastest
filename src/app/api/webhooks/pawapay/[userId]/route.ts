@@ -98,18 +98,42 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
       }
 
       if (finalStatus !== "en_cours") {
-        const { error } = await supabaseAdmin
+        const { data: updatedLigne, error } = await supabaseAdmin
           .from("execution_lignes")
           .update({ 
             statut: finalStatus,
             erreur_message: payload.failureReason || payload.message || null
           })
           .eq("reference_transaction", payoutId)
-          .eq("statut", "en_cours");
+          .eq("statut", "en_cours")
+          .select()
+          .single();
 
         if (error) {
           console.error("Erreur mise à jour BDD (PawaPay Webhook):", error);
-        } else {
+        } else if (updatedLigne) {
+          // Si c'est un échec et que c'était une commission, on doit recréer la dette !
+          if (finalStatus === "echoue" && updatedLigne.est_commission === true) {
+            console.log(`[PawaPay Webhook] Échec de la commission détecté, recréation de la dette (IOU) pour la ligne ID ${updatedLigne.id}`);
+            const { error: insertError } = await supabaseAdmin.from("execution_lignes").insert({
+              execution_id: updatedLigne.execution_id,
+              destinataire_libelle: "Dette Commission Restante (Suite échec)",
+              destinataire_numero: updatedLigne.destinataire_numero,
+              destinataire_reseau: updatedLigne.destinataire_reseau,
+              montant: 0,
+              statut: "reussi",
+              est_commission: false,
+              passerelle: updatedLigne.passerelle,
+              commission_associee: updatedLigne.montant,
+              commission_statut: 'due'
+            });
+            if (insertError) {
+               console.error("[PawaPay Webhook] Erreur lors de l'insertion de l'IOU:", insertError);
+            } else {
+               console.log("[PawaPay Webhook] Dette recréée avec succès !");
+            }
+          }
+
           // Mettre à jour l'exécution parente
           const { data: ligne } = await supabaseAdmin.from("execution_lignes").select("execution_id").eq("reference_transaction", payoutId).single();
           if (ligne) {
