@@ -17,6 +17,11 @@ export default function RulesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
 
+  // États pour la modale de confirmation
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [ruleToActivate, setRuleToActivate] = useState<any>(null);
+  const [ruleToDeactivate, setRuleToDeactivate] = useState<any>(null);
+
   const fetchRules = async () => {
     setIsLoading(true);
     const { data } = await getRegles();
@@ -24,6 +29,7 @@ export default function RulesPage() {
       setRules(data.map((r: any) => ({
         id: r.id,
         name: r.nom,
+        declencheur: r.declencheur,
         trigger: r.declencheur === "manuel" ? "Manuel" : 
                  r.declencheur === "a_chaque_entree" ? "À chaque entrée" : 
                  r.declencheur === "quotidien" ? `Quotidien à ${r.declencheur_config?.time}` : 
@@ -42,9 +48,44 @@ export default function RulesPage() {
   }, []);
 
   const handleToggleRule = async (id: string, currentActive: boolean) => {
-    const updated = rules.map(rule => rule.id === id ? { ...rule, active: !currentActive } : rule);
+    const rule = rules.find(r => r.id === id);
+    if (!rule) return;
+
+    const willBeActive = !currentActive;
+
+    // Si on tente d'activer une règle "À chaque entrée"
+    if (willBeActive && rule.declencheur === "a_chaque_entree") {
+      // Chercher s'il y a déjà une autre règle "À chaque entrée" active
+      const activeAutoRule = rules.find(r => r.declencheur === "a_chaque_entree" && r.active && r.id !== id);
+      if (activeAutoRule) {
+        setRuleToActivate(rule);
+        setRuleToDeactivate(activeAutoRule);
+        setShowConfirmModal(true);
+        return;
+      }
+    }
+
+    const updated = rules.map(r => r.id === id ? { ...r, active: willBeActive } : r);
     setRules(updated);
-    await toggleRegle(id, !currentActive);
+    await toggleRegle(id, willBeActive);
+  };
+
+  const handleConfirmToggle = async () => {
+    if (!ruleToActivate || !ruleToDeactivate) return;
+
+    const updated = rules.map(r => {
+      if (r.id === ruleToActivate.id) return { ...r, active: true };
+      if (r.id === ruleToDeactivate.id) return { ...r, active: false };
+      return r;
+    });
+
+    setRules(updated);
+    setShowConfirmModal(false);
+
+    await toggleRegle(ruleToActivate.id, true);
+
+    setRuleToActivate(null);
+    setRuleToDeactivate(null);
   };
 
   const handleDeleteRule = async (id: string) => {
@@ -53,6 +94,7 @@ export default function RulesPage() {
       await fetchRules();
     }
   };
+
 
   return (
     <div className="space-y-8 pb-20 sm:pb-8">
@@ -185,6 +227,72 @@ export default function RulesPage() {
           ))}
         </div>
       )}
+
+      {/* Modale de confirmation de changement de règle automatique */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop flouté */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowConfirmModal(false);
+                setRuleToActivate(null);
+                setRuleToDeactivate(null);
+              }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-xs"
+            />
+
+            {/* Contenu de la modale */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[2rem] border border-black/5 shadow-2xl p-6 sm:p-8 relative z-50 overflow-hidden"
+            >
+              <div className="flex flex-col items-center text-center">
+                {/* Icône d'alerte jaune */}
+                <div className="w-16 h-16 bg-yellow-500/10 text-yellow-600 rounded-3xl flex items-center justify-center mb-6">
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+
+                <h3 className="text-xl font-bold tracking-tight text-black mb-3">
+                  Changer de règle automatique ?
+                </h3>
+                
+                <p className="text-[14px] text-muted-foreground leading-relaxed mb-6">
+                  Vous ne pouvez avoir qu'une seule règle automatique active sur le déclencheur <span className="font-semibold text-black">À chaque entrée</span>.<br /><br />
+                  Activer <span className="font-semibold text-primary">"{ruleToActivate?.name}"</span> va mettre automatiquement en pause la règle <span className="font-semibold text-black">"{ruleToDeactivate?.name}"</span>.
+                </p>
+
+                <div className="flex gap-3 w-full">
+                  <Button
+                    onClick={() => {
+                      setShowConfirmModal(false);
+                      setRuleToActivate(null);
+                      setRuleToDeactivate(null);
+                    }}
+                    variant="outline"
+                    className="flex-1 h-12 rounded-xl font-bold border-black/10 hover:bg-black/5 transition-colors"
+                  >
+                    Annuler
+                  </Button>
+                  <Button
+                    onClick={handleConfirmToggle}
+                    className="flex-1 h-12 rounded-xl font-bold bg-primary text-white hover:bg-primary/90 shadow-md shadow-primary/10 transition-colors"
+                  >
+                    Oui, activer
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -139,6 +139,16 @@ export async function saveRegle(payload: any) {
 
     let regleId = id;
 
+    if ((actif ?? true) && declencheur === "a_chaque_entree") {
+      // Désactiver toutes les autres règles "a_chaque_entree" de cet utilisateur
+      await supabase
+        .from("regles")
+        .update({ actif: false })
+        .eq("user_id", user.id)
+        .eq("declencheur", "a_chaque_entree")
+        .neq("id", regleId || "");
+    }
+
     // 1. Sauvegarder la règle
     const regleData = {
       user_id: user.id,
@@ -241,6 +251,26 @@ export async function toggleRegle(id: string, actif: boolean) {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: "Non autorisé" };
+
+    if (actif) {
+      // Récupérer le déclencheur de la règle courante
+      const { data: currentRule } = await supabase
+        .from("regles")
+        .select("declencheur")
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .single();
+        
+      if (currentRule && currentRule.declencheur === "a_chaque_entree") {
+        // Désactiver toutes les autres règles "a_chaque_entree" de cet utilisateur
+        await supabase
+          .from("regles")
+          .update({ actif: false })
+          .eq("user_id", user.id)
+          .eq("declencheur", "a_chaque_entree")
+          .neq("id", id);
+      }
+    }
 
     const { error } = await supabase.from("regles").update({ actif }).eq("id", id).eq("user_id", user.id);
     if (error) return { error: error.message };

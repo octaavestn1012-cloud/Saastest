@@ -11,7 +11,7 @@ import { useRepartition, PreviewRule } from "@/context/RepartitionContext";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
 import { RecipientModal, Recipient as Contact, COUNTRIES_NETWORKS, COUNTRY_CODES, COUNTRY_PHONE_LENGTHS } from "@/components/features/destinataires/RecipientModal";
-import { saveRegle } from "@/app/actions/regles";
+import { saveRegle, getRegles } from "@/app/actions/regles";
 import { getDestinataires, saveDestinataire } from "@/app/actions/destinataires";
 
 type RecipientRow = {
@@ -41,6 +41,10 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetRowToUpdate, setTargetRowToUpdate] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // États pour la modale de confirmation
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [ruleToDeactivate, setRuleToDeactivate] = useState<any>(null);
 
   const getCountryFromNetwork = (network: string) => {
     for (const [country, networks] of Object.entries(COUNTRIES_NETWORKS)) {
@@ -271,12 +275,38 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
 
   const handleSave = async () => {
     if (!canSave) return;
+
+    // Si la règle est active (ou par défaut) et qu'on choisit le déclencheur "À chaque entrée"
+    const ruleIsActive = initialData ? initialData.actif : true;
+    if (ruleIsActive && trigger === "a_chaque_entree") {
+      setIsSaving(true);
+      const { data: existingRules } = await getRegles();
+      setIsSaving(false);
+
+      const activeAutoRule = existingRules?.find(
+        (r: any) => r.declencheur === "a_chaque_entree" && r.actif && r.id !== initialData?.id
+      );
+
+      if (activeAutoRule) {
+        setRuleToDeactivate(activeAutoRule);
+        setShowConfirmModal(true);
+        return;
+      }
+    }
+
+    await executeSave(ruleIsActive);
+  };
+
+  const executeSave = async (forceActiveStatus?: boolean) => {
     setIsSaving(true);
     
+    // Déterminer le statut actif final (forcé par l'action ou d'origine)
+    const finalActive = forceActiveStatus !== undefined ? forceActiveStatus : (initialData?.actif ?? true);
+
     const payload = {
       id: initialData?.id,
       nom: ruleName,
-      actif: initialData?.actif ?? true,
+      actif: finalActive,
       declencheur: trigger,
       declencheur_config: {
         time: trigger !== "manuel" && trigger !== "a_chaque_entree" ? triggerTime : undefined,
@@ -913,6 +943,83 @@ export function RuleBuilder({ initialData }: RuleBuilderProps) {
           </Button>
         </div>
       </div>
+
+      {/* Modale de confirmation de changement de règle automatique lors de l'enregistrement */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop flouté */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowConfirmModal(false);
+                setRuleToDeactivate(null);
+              }}
+              className="absolute inset-0 bg-black/40 backdrop-blur-xs"
+            />
+
+            {/* Contenu de la modale */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-md rounded-[2rem] border border-black/5 shadow-2xl p-6 sm:p-8 relative z-50 overflow-hidden"
+            >
+              <div className="flex flex-col items-center text-center">
+                {/* Icône d'alerte jaune */}
+                <div className="w-16 h-16 bg-yellow-500/10 text-yellow-600 rounded-3xl flex items-center justify-center mb-6">
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+
+                <h3 className="text-xl font-bold tracking-tight text-black mb-3">
+                  Activer cette règle automatique ?
+                </h3>
+                
+                <p className="text-[14px] text-muted-foreground leading-relaxed mb-6">
+                  Vous ne pouvez avoir qu'une seule règle automatique active sur le déclencheur <span className="font-semibold text-black">À chaque entrée</span>.<br /><br />
+                  Enregistrer <span className="font-semibold text-primary">"{ruleName}"</span> va mettre automatiquement en pause la règle <span className="font-semibold text-black">"{ruleToDeactivate?.name}"</span>.
+                </p>
+
+                <div className="flex gap-3 w-full mb-4">
+                  <Button
+                    onClick={() => {
+                      setShowConfirmModal(false);
+                      executeSave(false);
+                    }}
+                    variant="outline"
+                    className="flex-1 h-12 rounded-xl font-bold border-black/10 hover:bg-black/5 transition-colors text-xs"
+                  >
+                    Enregistrer en pause
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowConfirmModal(false);
+                      executeSave(true);
+                    }}
+                    className="flex-1 h-12 rounded-xl font-bold bg-primary text-white hover:bg-primary/90 shadow-md shadow-primary/10 transition-colors text-xs"
+                  >
+                    Oui, activer
+                  </Button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowConfirmModal(false);
+                    setRuleToDeactivate(null);
+                  }}
+                  className="text-xs font-bold text-muted-foreground hover:text-black transition-colors underline"
+                >
+                  Retour à l'édition
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
