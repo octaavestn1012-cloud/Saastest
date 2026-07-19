@@ -138,22 +138,30 @@ export async function saveRegle(payload: any) {
     // ---------------------------------------
 
     let regleId = id;
+    let finalActif = actif ?? true;
 
-    if ((actif ?? true) && declencheur === "a_chaque_entree") {
-      // Désactiver toutes les autres règles "a_chaque_entree" de cet utilisateur
-      await supabase
+    if (finalActif && declencheur === "a_chaque_entree") {
+      // Vérifier s'il y a déjà une autre règle "a_chaque_entree" active
+      const { data: activeAutoRule } = await supabase
         .from("regles")
-        .update({ actif: false })
+        .select("id")
         .eq("user_id", user.id)
         .eq("declencheur", "a_chaque_entree")
-        .neq("id", regleId || "");
+        .eq("actif", true)
+        .neq("id", regleId || "")
+        .maybeSingle();
+
+      if (activeAutoRule) {
+        // En cas de conflit, on force la nouvelle règle à être enregistrée en PAUSE (inactive)
+        finalActif = false;
+      }
     }
 
     // 1. Sauvegarder la règle
     const regleData = {
       user_id: user.id,
       nom,
-      actif: actif ?? true,
+      actif: finalActif,
       declencheur,
       declencheur_config: declencheur_config || null,
       mode
