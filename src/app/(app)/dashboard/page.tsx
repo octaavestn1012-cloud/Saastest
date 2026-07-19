@@ -32,6 +32,27 @@ const GATEWAYS_COLORS: Record<string, string> = {
   "lengo pay": "bg-rose-500",
 };
 
+const GATEWAYS_LOGOS: Record<string, string> = {
+  "kkiapay": "kkiapay.svg",
+  "fedapay": "fedapay.svg",
+  "cinetpay": "cinetpay.svg",
+  "pawapay": "pawapay.svg",
+  "feexpay": "feexpay.svg",
+  "ipay financial": "ipayfinancial.svg",
+  "paytech": "paytech.svg",
+  "monetbill": "monetbill.svg",
+  "flutterwave": "flutterwave.svg",
+  "payplus": "payplus.svg",
+  "magma onepay": "magmaonepay.svg",
+  "paystack": "paystack.svg",
+  "stripe": "stripe.svg",
+  "paypal": "paypal.svg",
+  "paydunya": "paydunya.svg",
+  "notchpay": "notchpay.svg",
+  "lengo pay": "lengopay.svg",
+};
+
+
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
@@ -188,14 +209,25 @@ export default async function DashboardPage() {
                     const sourceName = tx.source || "FedaPay";
                     const normalizedName = sourceName.toLowerCase();
                     const bgColor = GATEWAYS_COLORS[normalizedName] || 'bg-primary';
+                    const logoName = GATEWAYS_LOGOS[normalizedName];
                     const initial = sourceName.charAt(0).toUpperCase();
 
                     return (
                       <div key={tx.id} className="flex justify-between items-center p-3 hover:bg-black/[0.02] rounded-xl transition-colors">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl ${bgColor} flex items-center justify-center text-white font-bold shadow-sm`}>
-                            {initial}
-                          </div>
+                          {logoName ? (
+                            <div className="w-10 h-10 rounded-xl bg-white border border-black/[0.05] p-1.5 flex items-center justify-center shadow-sm overflow-hidden shrink-0">
+                              <img 
+                                src={`/gateways/${logoName}`} 
+                                alt={sourceName} 
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
+                          ) : (
+                            <div className={`w-10 h-10 rounded-xl ${bgColor} flex items-center justify-center text-white font-bold shadow-sm shrink-0`}>
+                              {initial}
+                            </div>
+                          )}
                           <div>
                             <p className="font-semibold text-sm">{sourceName}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">

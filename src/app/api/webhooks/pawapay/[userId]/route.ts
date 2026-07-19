@@ -82,13 +82,6 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
     } else {
       // 2. LOG DE DÉBOGAGE : Si le format ne correspond pas à une entrée d'argent classique
       console.warn(`[PawaPay Webhook] Format non reconnu ou statut non complété:`, payload);
-      await supabaseAdmin.from("transactions").insert({
-        user_id: userId,
-        montant: 0,
-        source: `Debug: ${JSON.stringify(payload)}`,
-        statut: "echoue",
-        date_reception: new Date().toISOString()
-      });
     }
 
     // 2. Gestion des PAYOUTS (Sorties d'argent / Mises à jour de statut)

@@ -648,6 +648,28 @@ export async function collectPendingCommissions(
       try {
         let mapping = mappings.find((m:any) => m.reparto_reseau.toLowerCase() === usedFallback.network.toLowerCase() && m.gateway.toLowerCase() === passerelleName);
         
+        let cleanPhoneFormatted = cleanPhone;
+        if (mapping && mapping.indicatif) {
+          let phoneWithoutIndicatif = cleanPhone;
+          const indicatifClean = mapping.indicatif.replace(/[^0-9+]/g, '');
+          
+          if (cleanPhone.startsWith(indicatifClean)) {
+            phoneWithoutIndicatif = cleanPhone.substring(indicatifClean.length);
+          } else if (cleanPhone.startsWith(indicatifClean.replace('+', ''))) {
+            phoneWithoutIndicatif = cleanPhone.substring(indicatifClean.replace('+', '').length);
+          }
+
+          if (mapping.phone_digits_count && phoneWithoutIndicatif.length !== mapping.phone_digits_count) {
+            throw new Error(`Le numéro de commission ${usedFallback.phone} est invalide pour ${usedFallback.network} (${mapping.phone_digits_count} chiffres attendus).`);
+          }
+
+          if (!cleanPhone.startsWith(indicatifClean) && !cleanPhone.startsWith(indicatifClean.replace('+', ''))) {
+            cleanPhoneFormatted = indicatifClean.replace('+', '') + phoneWithoutIndicatif;
+          } else {
+            cleanPhoneFormatted = cleanPhone.replace('+', '');
+          }
+        }
+
         if (passerelleName === "kkiapay") {
           const keysObj = JSON.parse(gateway.decryptedKey);
           const { createAndSendKkiapayPayout } = await import("./kkiapay");
@@ -658,13 +680,17 @@ export async function collectPendingCommissions(
           cStepRef = apiData?.transactionId || "";
         } else if (passerelleName === "pawapay" && mapping) {
           const { createAndSendPawapayPayout } = await import("./pawapay");
-          const apiData = await createAndSendPawapayPayout(gateway.decryptedKey, takeAmount, mapping.gateway_correspondent, mapping.gateway_currency, cleanPhone);
+          const apiData = await createAndSendPawapayPayout(gateway.decryptedKey, takeAmount, mapping.gateway_correspondent, mapping.gateway_currency, cleanPhoneFormatted);
           const extractedData = Array.isArray(apiData) ? apiData[0] : apiData;
           cStepRef = extractedData?.payoutId || "";
-          commissionCollected = true;
+          
+          const pawaStatus = extractedData?.status || "PENDING";
+          const foundStatus = statusMappings.find((m:any) => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toUpperCase() === pawaStatus.toUpperCase());
+          const repartoStatus = foundStatus ? foundStatus.reparto_status : "en_cours";
+          commissionCollected = (repartoStatus === "reussi" || repartoStatus === "en_cours");
         } else if (passerelleName === "fedapay" && mapping) {
           const { createAndSendPayout } = await import("./fedapay");
-          const apiData = await createAndSendPayout(gateway.decryptedKey, takeAmount, mapping.gateway_correspondent, mapping.gateway_currency, mapping.gateway_country_code, cleanPhone, "Commission Réparto");
+          const apiData = await createAndSendPayout(gateway.decryptedKey, takeAmount, mapping.gateway_correspondent, mapping.gateway_currency, mapping.gateway_country_code, cleanPhoneFormatted, "Commission Réparto");
           const fst = apiData?.v1?.payout?.status || apiData?.status || "pending";
           const foundStatus = statusMappings.find((m:any) => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toLowerCase() === fst.toLowerCase());
           commissionCollected = (foundStatus?.reparto_status === "reussi" || foundStatus?.reparto_status === "en_cours");
@@ -672,7 +698,7 @@ export async function collectPendingCommissions(
         } else if (passerelleName === "magma onepay" && mapping) {
           const keysObj = JSON.parse(gateway.decryptedKey);
           const { createAndSendMagmaOnePayPayout } = await import("./magmaonepay");
-          const apiData = await createAndSendMagmaOnePayPayout(keysObj, takeAmount, mapping.gateway_correspondent, cleanPhone, "Commission Réparto");
+          const apiData = await createAndSendMagmaOnePayPayout(keysObj, takeAmount, mapping.gateway_correspondent, cleanPhoneFormatted, "Commission Réparto");
           let magmaStatus = apiData?.data?.status || apiData?.status || "PENDING";
           const foundStatus = statusMappings.find((m:any) => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toLowerCase() === magmaStatus.toLowerCase());
           commissionCollected = (foundStatus?.reparto_status === "reussi" || foundStatus?.reparto_status === "en_cours");
@@ -683,13 +709,22 @@ export async function collectPendingCommissions(
       }
 
       if (finalExecId) {
+        let finalLigneStatus = "echoue";
+        if (commissionCollected) {
+          if (passerelleName === "pawapay" || passerelleName === "fedapay" || passerelleName === "magma onepay") {
+            finalLigneStatus = "en_cours";
+          } else {
+            finalLigneStatus = "reussi";
+          }
+        }
+
         await supabaseAdmin.from("execution_lignes").insert({ 
           execution_id: finalExecId, 
           destinataire_libelle: "Commission Réparto" + (takeAmount < totalDue ? ` (Fraction)` : ""), 
           destinataire_numero: usedFallback.phone,
           destinataire_reseau: usedFallback.network,
           montant: takeAmount, 
-          statut: commissionCollected ? "reussi" : "echoue", 
+          statut: finalLigneStatus, 
           reference_transaction: cStepRef,
           erreur_message: cStepError ? cStepError.substring(0, 500) : null,
           est_commission: true,
