@@ -44,6 +44,22 @@ export default function DestinatairesPage() {
 
   const handleSaveRecipient = async (recipient: Recipient) => {
     setIsSaving(true);
+    const optimisticRecipient: Recipient = {
+      id: recipient.id || "temp_" + Date.now(),
+      name: recipient.name,
+      country: recipient.country || "Bénin",
+      network: recipient.network,
+      phone: recipient.phone
+    };
+
+    // Mettre à jour l'UI instantanément à 0ms !
+    if (recipient.id && !recipient.id.startsWith("temp_")) {
+      setRecipients(prev => prev.map(r => r.id === recipient.id ? optimisticRecipient : r));
+    } else {
+      setRecipients(prev => [optimisticRecipient, ...prev]);
+    }
+    setIsModalOpen(false);
+
     const formData = new FormData();
     if (recipient.id && !recipient.id.startsWith("temp_")) {
       formData.append("id", recipient.id);
@@ -56,11 +72,11 @@ export default function DestinatairesPage() {
     const res = await saveDestinataire(formData);
     if (!res.error) {
       await fetchRecipients();
-      setIsModalOpen(false);
       setEditingRecipient(undefined);
       showToast("Destinataire enregistré avec succès", "success");
     } else {
       console.error(res.error);
+      await fetchRecipients();
       showToast(res.error || "Erreur lors de l'enregistrement", "error");
     }
     setIsSaving(false);
@@ -68,8 +84,11 @@ export default function DestinatairesPage() {
 
   const handleDeleteRecipient = async (id: string) => {
     if (confirm("Voulez-vous vraiment supprimer ce destinataire ?")) {
-      await deleteDestinataire(id);
-      await fetchRecipients();
+      setRecipients(prev => prev.filter(r => r.id !== id));
+      const res = await deleteDestinataire(id);
+      if (res?.error) {
+        await fetchRecipients();
+      }
     }
   };
 

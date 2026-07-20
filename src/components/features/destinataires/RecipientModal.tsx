@@ -141,12 +141,13 @@ export function RecipientModal({ recipient, onClose, onSave, isSaving = false }:
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
       />
       <motion.div 
+        data-modal-content
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="relative w-full max-w-md bg-white rounded-[2rem] shadow-2xl p-6 md:p-8"
+        className="relative w-full max-w-md bg-white rounded-[2rem] shadow-2xl p-6 md:p-8 max-h-[85dvh] overflow-hidden flex flex-col"
       >
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-4 shrink-0">
           <h2 className="text-xl font-bold tracking-tight">
             {recipient ? "Modifier le destinataire" : "Nouveau destinataire"}
           </h2>
@@ -155,7 +156,7 @@ export function RecipientModal({ recipient, onClose, onSave, isSaving = false }:
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-2 space-y-6 overflow-y-auto overscroll-contain pb-12">
           <div>
             <label className="block text-sm font-semibold text-muted-foreground mb-1.5 ml-1">Nom / Libellé</label>
             <input 

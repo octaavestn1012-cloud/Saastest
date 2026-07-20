@@ -22,7 +22,7 @@ type ModalMode = "rule" | "quick";
 
 export function RepartitionModal({ onClose, customData }: { onClose: () => void, customData?: PreviewRule }) {
   const [step, setStep] = useState<Step>("PREVIEW");
-  const [results, setResults] = useState<Record<string, "PENDING" | "SUCCESS" | "FAILED">>({});
+  const [results, setResults] = useState<Record<string, "PENDING" | "SUCCESS" | "FAILED" | "EN_COURS">>({});
   const [totalAvailable, setTotalAvailable] = useState<number>(0);
   const [isLoadingData, setIsLoadingData] = useState(true);
   
@@ -294,16 +294,16 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
       return;
     }
 
-    const initialResults: Record<string, "PENDING" | "SUCCESS" | "FAILED"> = {};
+    const initialResults: Record<string, "PENDING" | "SUCCESS" | "FAILED" | "EN_COURS"> = {};
     currentTargets.forEach((t: any) => initialResults[t.id] = "PENDING");
     setResults(initialResults);
 
     try {
       // Exécuter via le vrai moteur FedaPay !
-      let res;
+      let res: any;
       if (modalMode === "quick" || (modalMode === "rule" && isAdjusting)) {
         // Mode rapide ou règle ajustée à la volée : on envoie les targets calculés manuellement
-        res = await executeQuickRepartitionAction(computedGross, currentTargets, isPercentageMode ? "percentage" : "fixed");
+        res = await executeQuickRepartitionAction(computedGross, currentTargets, isPercentageMode ? "pourcentage" : "montant_fixe");
       } else {
         // Mode règle stricte : on utilise le Rule ID de la BDD pour qu'il le re-calcule de façon sécurisée
         res = await executeRepartitionAction(computedGross, activeRuleSource?.id);
@@ -514,11 +514,12 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
         />
 
         <motion.div 
+          data-modal-content
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
           transition={{ type: "spring", damping: 28, stiffness: 300 }}
-          className="relative w-full h-[92dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-[34rem] bg-[#FAFAFA] sm:rounded-[2.5rem] rounded-t-[2rem] shadow-2xl flex flex-col overflow-hidden"
+          className="relative w-full h-[92dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-[34rem] bg-[#FAFAFA] sm:rounded-[2.5rem] rounded-t-[2rem] shadow-2xl flex flex-col overflow-hidden overscroll-contain"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 bg-white z-20 shrink-0 shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
@@ -551,7 +552,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           )}
 
           {/* Body Scrollable */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 overscroll-y-contain">
             
             {/* Résultat création de règle (Sans exécution) */}
             {(step === "RESULT_RULE_ONLY" || (isRuleOnly && step === "EXECUTING")) && (
@@ -1012,8 +1013,12 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
                     <span className={`font-bold tabular-nums text-[16px] ${!isExact && isPercentageMode ? 'text-danger' : 'text-black'}`}>
                       <Amount value={totalDistributedTargets} />
                     </span>
-                    {!isExact && isPercentageMode && (
-                      <span className="text-[13px] text-danger font-bold mt-1">La somme doit faire 100%</span>
+                    {!isExact && isPercentageMode && totalPercent !== 100 && (
+                      <span className="text-[13px] text-danger font-bold mt-1">
+                        {totalPercent < 100 
+                          ? `Il reste ${100 - totalPercent}% pour atteindre 100%` 
+                          : `Le total dépasse de ${totalPercent - 100}% les 100%`}
+                      </span>
                     )}
                   </div>
                 </div>

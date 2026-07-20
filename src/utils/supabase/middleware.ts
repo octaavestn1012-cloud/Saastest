@@ -43,7 +43,8 @@ export async function updateSession(request: NextRequest) {
                     request.nextUrl.pathname.startsWith('/historique') ||
                     request.nextUrl.pathname.startsWith('/rapports') ||
                     request.nextUrl.pathname.startsWith('/connexions') ||
-                    request.nextUrl.pathname.startsWith('/parametres')
+                    request.nextUrl.pathname.startsWith('/parametres') ||
+                    request.nextUrl.pathname.startsWith('/admin')
 
   // Redirection : Utilisateur non connecté essaie d'accéder à l'app
   if (!user && isAppPage) {

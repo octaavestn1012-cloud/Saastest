@@ -7,15 +7,7 @@ import { revalidatePath } from "next/cache";
 export async function executeQuickRepartitionAction(amountFcfa: number, targets: any[], mode: string) {
   try {
     const supabase = createClient();
-    let { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError && userError.name === 'AuthRetryableFetchError') {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        user = session.user;
-        userError = null;
-      }
-    }
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (!user) {
       console.error("Auth error in action:", userError);
@@ -24,7 +16,7 @@ export async function executeQuickRepartitionAction(amountFcfa: number, targets:
 
     const result = await processQuickPayouts(user.id, amountFcfa, targets, mode);
     if (!result.success) {
-      require('fs').appendFileSync('error_log.txt', new Date().toISOString() + ' - Quick Error: ' + result.error + '\n');
+      console.error("[Quick Repartition Error]", new Date().toISOString(), result.error);
       throw new Error(result.error);
     }
 
@@ -32,8 +24,7 @@ export async function executeQuickRepartitionAction(amountFcfa: number, targets:
     revalidatePath("/historique");
     return result;
   } catch (error: any) {
-    require('fs').appendFileSync('error_log.txt', new Date().toISOString() + ' - Catch Error: ' + error.message + '\n');
-    console.error("Execute error:", error);
+    console.error("[Quick Repartition Catch Error]", new Date().toISOString(), error);
     throw new Error(error.message || "Erreur lors de l'exécution");
   }
 }
@@ -41,15 +32,7 @@ export async function executeQuickRepartitionAction(amountFcfa: number, targets:
 export async function executeRepartitionAction(amountFcfa: number, ruleId?: string) {
   try {
     const supabase = createClient();
-    let { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError && userError.name === 'AuthRetryableFetchError') {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        user = session.user;
-        userError = null;
-      }
-    }
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (!user) {
       console.error("Auth error in rule action:", userError);

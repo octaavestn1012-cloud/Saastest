@@ -28,19 +28,20 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
       return NextResponse.json({ error: "Connexion PawaPay introuvable ou inactive" }, { status: 404 });
     }
 
-    // PawaPay utilise généralement HMAC SHA512
-    if (conn.webhook_secret_chiffre && signature) {
-      const secret = decryptKey(conn.webhook_secret_chiffre);
-      const expectedSignature = crypto.createHmac("sha512", secret).update(bodyText).digest("hex");
+    if (!conn.webhook_secret_chiffre) {
+      return NextResponse.json({ error: "Secret Webhook non configuré pour cet utilisateur" }, { status: 400 });
+    }
 
-      // Tolérer une petite variation si PawaPay envoie en base64 ou hex, on compare simplement
-      if (signature !== expectedSignature) {
-         console.error(`[PawaPay Webhook] Signature invalide pour l'utilisateur ${userId}`);
-         // En mode test on peut laisser passer ou juste logger :
-         // return NextResponse.json({ error: "Signature invalide" }, { status: 401 });
-      }
-    } else {
-      console.warn(`[PawaPay Webhook] Aucun webhook_secret ou signature trouvé pour ${userId}. Poursuite sans vérification de signature.`);
+    if (!signature) {
+      return NextResponse.json({ error: "Signature manquante" }, { status: 401 });
+    }
+
+    const secret = decryptKey(conn.webhook_secret_chiffre);
+    const expectedSignature = crypto.createHmac("sha512", secret).update(bodyText).digest("hex");
+
+    if (signature !== expectedSignature) {
+      console.error(`[PawaPay Webhook] Signature invalide pour l'utilisateur ${userId}`);
+      return NextResponse.json({ error: "Signature invalide" }, { status: 401 });
     }
 
     let payload;

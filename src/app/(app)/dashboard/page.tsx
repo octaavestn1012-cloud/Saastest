@@ -61,8 +61,13 @@ export default async function DashboardPage() {
   const { data: profile } = await supabase.from('profiles').select('nom').eq('id', user?.id).single();
   const userName = profile?.nom && profile.nom !== "Utilisateur" ? profile.nom : user?.email?.split('@')[0] || "Utilisateur";
 
-  const { data: metrics } = await getDashboardMetrics();
-  const { data: historique } = await getHistorique();
+  const [metricsRes, historiqueRes] = await Promise.all([
+    getDashboardMetrics(),
+    getHistorique()
+  ]);
+  
+  const metrics = metricsRes.data;
+  const historique = historiqueRes.data;
   
   const balance = metrics?.balance || 0;
   const totalReparti = metrics?.totalDistributed || 0;

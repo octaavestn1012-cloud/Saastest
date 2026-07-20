@@ -6,16 +6,16 @@ import { PlanId } from "@/lib/types/domain";
 // Vérification de sécurité réutilisable
 async function verifyAdminAccess() {
   const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
   
-  if (!session?.user) {
+  if (!user) {
     throw new Error("Non autorisé");
   }
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", session.user.id)
+    .eq("id", user.id)
     .single();
 
   if (!profile || profile.role !== "admin") {
@@ -268,12 +268,9 @@ export async function getAdminFailedLogs() {
 
 export async function forceGodModePlan(newPlan: "gratuit" | "pro" | "business") {
   try {
-    const supabase = createClient();
+    const supabase = await verifyAdminAccess();
     const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user || !user.email || user.email.toLowerCase() !== "octaavestn1012@gmail.com") {
-      return { success: false, error: "Non autorisé. God Mode réservé au fondateur." };
-    }
+    if (!user) throw new Error("Utilisateur non trouvé");
 
     let expiresAt = null;
     if (newPlan !== "gratuit") {

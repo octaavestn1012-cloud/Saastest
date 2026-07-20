@@ -34,17 +34,24 @@ export async function getLiveTotalBalance() {
 
         const decryptedKey = decryptKey(conn.cle_chiffree);
         try {
-          if (conn.passerelle.toLowerCase() === "fedapay") {
-            return await getFedaPayBalance(decryptedKey);
-          } else if (conn.passerelle.toLowerCase() === "kkiapay") {
-            const keysObj = JSON.parse(decryptedKey);
-            return await getKkiapayBalance(keysObj);
-          } else if (conn.passerelle.toLowerCase() === "pawapay") {
-            return await getPawapayBalance(decryptedKey);
-          } else if (conn.passerelle.toLowerCase() === "magma onepay") {
-            const keysObj = JSON.parse(decryptedKey);
-            return await getMagmaOnePayBalance(keysObj);
-          }
+          const fetchBalance = async () => {
+            if (conn.passerelle.toLowerCase() === "fedapay") {
+              return await getFedaPayBalance(decryptedKey);
+            } else if (conn.passerelle.toLowerCase() === "kkiapay") {
+              const keysObj = JSON.parse(decryptedKey);
+              return await getKkiapayBalance(keysObj);
+            } else if (conn.passerelle.toLowerCase() === "pawapay") {
+              return await getPawapayBalance(decryptedKey);
+            } else if (conn.passerelle.toLowerCase() === "magma onepay") {
+              const keysObj = JSON.parse(decryptedKey);
+              return await getMagmaOnePayBalance(keysObj);
+            }
+            return 0;
+          };
+
+          // Race avec un timeout de 1500ms max pour éviter tout blocage de page
+          const timeout = new Promise<number>((resolve) => setTimeout(() => resolve(0), 1500));
+          return await Promise.race([fetchBalance(), timeout]);
         } catch (e) {
           console.error(`Impossible de récupérer le solde pour ${conn.passerelle}:`, e);
         }
@@ -67,22 +74,28 @@ export async function getDashboardMetrics() {
 
     if (!user) return { error: "Non autorisé" };
 
-    // 1. Récupérer le solde de toutes les passerelles connectées
-    const balRes = await getLiveTotalBalance();
-    let balance = balRes.balance || 0;
+    const currentMonthStart = new Date();
+    currentMonthStart.setDate(1);
+    currentMonthStart.setHours(0, 0, 0, 0);
 
+    // Exécution parallélisée de toutes les requêtes en une seule passe concourante
+    const [
+      balRes,
+      { data: executions },
+      { data: transactions },
+      { data: profile },
+      { data: monthExecutions },
+      { data: activeRules }
+    ] = await Promise.all([
+      getLiveTotalBalance(),
+      supabase.from("executions").select("id, execution_lignes (montant, statut)").eq("user_id", user.id),
+      supabase.from("transactions").select("id, source, date_reception, montant").eq("user_id", user.id).order("date_reception", { ascending: false }).limit(5),
+      supabase.from("profiles").select("plan").eq("id", user.id).single(),
+      supabase.from("executions").select("montant_total").eq("user_id", user.id).gte("date_execution", currentMonthStart.toISOString()),
+      supabase.from("regles").select("nom, declencheur, declencheur_config").eq("user_id", user.id).eq("actif", true)
+    ]);
 
-    // 2. Calculer le total réparti (uniquement les distributions vraiment réussies)
-    const { data: executions } = await supabase
-      .from("executions")
-      .select(`
-        id,
-        execution_lignes (
-          montant,
-          statut
-        )
-      `)
-      .eq("user_id", user.id);
+    let balance = balRes?.balance || 0;
 
     let totalDistributed = 0;
     if (executions) {
@@ -97,32 +110,8 @@ export async function getDashboardMetrics() {
       });
     }
 
-    // 3. Récupérer les dernières transactions (entrées)
-    const { data: transactions } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("date_reception", { ascending: false })
-      .limit(5);
-
-    // On calcule la réserve (c'est une valeur illustrative basée sur les distributions, ou juste la balance actuelle)
-    // Pour l'instant on peut dire que la réserve c'est le solde actuel sur FedaPay
     const reserve = balance;
-
-    // 4. Récupérer le plan de l'utilisateur
-    const { data: profile } = await supabase.from("profiles").select("plan").eq("id", user.id).single();
     
-    // 5. Statistiques du mois courant (pour les limites du plan gratuit)
-    const currentMonthStart = new Date();
-    currentMonthStart.setDate(1);
-    currentMonthStart.setHours(0, 0, 0, 0);
-    
-    const { data: monthExecutions } = await supabase
-      .from("executions")
-      .select("montant_total")
-      .eq("user_id", user.id)
-      .gte("date_execution", currentMonthStart.toISOString());
-      
     let monthlyVolume = 0;
     let monthlyExecutionsCount = 0;
     
@@ -132,12 +121,6 @@ export async function getDashboardMetrics() {
     }
 
     // 6. Prochaine répartition
-    const { data: activeRules } = await supabase
-      .from("regles")
-      .select("nom, declencheur, declencheur_config")
-      .eq("user_id", user.id)
-      .eq("actif", true);
-
     let nextRepartition = { text: "Aucune règle", ruleName: "Ajoutez une règle d'automatisation" };
 
     if (activeRules && activeRules.length > 0) {

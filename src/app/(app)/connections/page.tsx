@@ -15,6 +15,7 @@ import {
 import { connectFedaPay, connectKkiapay, connectPawapay, connectMagmaOnePay, connectFeexPay, deleteConnection, toggleConnectionStatus } from "@/app/actions/connections";
 import { getGlobalGatewaysStatus } from "@/app/actions/admin";
 import { formatDateToBenin } from "@/lib/utils/format";
+import { useScrollLock } from "@/hooks/useScrollLock";
 
 const AVAILABLE_GATEWAYS = [
   { name: "Kkiapay", desc: "Passerelle locale très populaire au Bénin.", color: "bg-blue-500", logo: "kkiapay.svg" },
@@ -38,6 +39,8 @@ const AVAILABLE_GATEWAYS = [
 export default function ConnectionsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedGateway, setSelectedGateway] = useState<string | null>(null);
+  
+  useScrollLock(isModalOpen);
   
   // États de données
   const [connections, setConnections] = useState<any[]>([]);
@@ -349,7 +352,7 @@ export default function ConnectionsPage() {
       {/* MODALE DE CONNEXION */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -358,10 +361,11 @@ export default function ConnectionsPage() {
               onClick={() => !isSubmitting && setIsModalOpen(false)}
             />
             <motion.div 
+              data-modal-content
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-[2rem] p-6 sm:p-8 w-full max-w-md shadow-2xl relative z-10 max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-[2rem] p-6 sm:p-8 w-full max-w-md shadow-2xl relative z-10 max-h-[85dvh] sm:max-h-[90vh] overflow-y-auto overscroll-contain pb-12 sm:pb-8"
             >
               <button 
                 onClick={() => !isSubmitting && setIsModalOpen(false)} 
@@ -375,7 +379,7 @@ export default function ConnectionsPage() {
                 Connecter {selectedGateway || "une passerelle"}
               </h3>
               
-              <div className="space-y-5">
+              <div className="space-y-5 pb-6">
                 {error && (
                   <div className="p-4 bg-danger/10 text-danger rounded-xl text-sm font-medium flex gap-3 items-start">
                     <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />

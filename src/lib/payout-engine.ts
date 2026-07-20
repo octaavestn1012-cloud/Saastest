@@ -558,7 +558,9 @@ export async function processQuickPayouts(userId: string, availableAmount: numbe
     value: Number(t.percent ?? t.value ?? t.amount ?? 0)
   }));
 
-  return orchestratePayouts(userId, userAuth?.user?.email, profile?.plan || "gratuit", mode, targets, "Répartition Rapide");
+  const normalizedMode = (mode === "percentage" || mode === "pourcentage") ? "pourcentage" : "montant_fixe";
+
+  return orchestratePayouts(userId, userAuth?.user?.email, profile?.plan || "gratuit", normalizedMode, targets, "Répartition Rapide");
 }
 
 export async function processPayoutsForUser(userId: string, availableAmount: number, triggerOrRuleId: string = "a_chaque_entree", isRuleId: boolean = false, isAutomatic: boolean = false) {

@@ -90,8 +90,11 @@ export default function RulesPage() {
 
   const handleDeleteRule = async (id: string) => {
     if (confirm("Voulez-vous vraiment supprimer cette règle ?")) {
-      await deleteRegle(id);
-      await fetchRules();
+      setRules(prev => prev.filter(r => r.id !== id));
+      const res = await deleteRegle(id);
+      if (res?.error) {
+        await fetchRules();
+      }
     }
   };
 

@@ -116,3 +116,35 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.25);
 }
+
+/* Background Scroll Lock when Modal/Sheet/Dialog is Open */
+body.scroll-locked,
+body:has([data-slot="dialog-overlay"]),
+body:has([data-slot="sheet-overlay"]) {
+  overflow: hidden !important;
+  touch-action: none;
+}
+
+body.scroll-locked [data-app-scroll-container],
+body:has([data-slot="dialog-overlay"]) [data-app-scroll-container],
+body:has([data-slot="sheet-overlay"]) [data-app-scroll-container] {
+  overflow: hidden !important;
+  touch-action: none;
+}
+
+/* Ensure Modal contents are scrollable & isolated */
+[data-slot="dialog-content"],
+[data-slot="sheet-content"],
+[data-modal-content] {
+  pointer-events: auto !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hardware Acceleration & Rendering Performance */
+.will-change-scroll {
+  will-change: scroll-position;
+}
+.will-change-transform {
+  will-change: transform;
+}

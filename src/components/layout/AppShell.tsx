@@ -16,9 +16,12 @@ export function AppShell({ children, userName, userEmail }: AppShellProps) {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
-      <div className="flex-1 overflow-y-auto pb-16 lg:pb-0 flex flex-col">
+      <div 
+        data-app-scroll-container 
+        className="flex-1 overflow-y-auto pb-16 lg:pb-0 flex flex-col overscroll-y-contain"
+      >
         {/* Mobile Header */}
-        <header className="md:hidden flex justify-between items-center px-4 py-3 bg-white border-b border-black/[0.05] sticky top-0 z-40">
+        <header className="md:hidden flex justify-between items-center px-4 py-3 bg-white/95 backdrop-blur-md border-b border-black/[0.05] sticky top-0 z-40 transform-gpu will-change-transform">
           <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-xl bg-black flex items-center justify-center text-white font-bold text-sm shadow-sm">
               R
@@ -44,3 +47,4 @@ export function AppShell({ children, userName, userEmail }: AppShellProps) {
     </div>
   );
 }
+

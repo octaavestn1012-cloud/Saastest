@@ -12,7 +12,7 @@ interface StatCardProps {
   deltaLabel?: string;
   icon: ReactNode;
   iconBgColorClass?: string;
-  amountVariant?: "default" | "in" | "out" | "commission";
+  amountVariant?: "neutral" | "in" | "out" | "commission";
   className?: string;
 }
 
@@ -24,7 +24,7 @@ export function StatCard({
   deltaLabel,
   icon,
   iconBgColorClass = "bg-primary/10 text-primary",
-  amountVariant = "default",
+  amountVariant = "neutral",
   className = "",
 }: StatCardProps) {
   return (

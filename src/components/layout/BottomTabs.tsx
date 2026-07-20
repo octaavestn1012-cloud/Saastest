@@ -25,12 +25,12 @@ export function BottomTabs() {
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-black/[0.05] pb-safe z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-black/[0.05] pb-safe z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] transform-gpu will-change-transform">
       <div className="flex items-center justify-around h-16 relative px-2">
         {leftTabs.map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (
-            <Link key={tab.name} href={tab.href} className="flex-1 flex flex-col items-center justify-center gap-1 relative h-full">
+            <Link key={tab.name} href={tab.href} prefetch={true} className="flex-1 flex flex-col items-center justify-center gap-1 relative h-full">
               {active && (
                 <motion.div
                   layoutId="bottom-tab-active"
@@ -69,7 +69,7 @@ export function BottomTabs() {
 
           const active = pathname.startsWith(tab.href);
           return (
-            <Link key={tab.name} href={tab.href} className="flex-1 flex flex-col items-center justify-center gap-1 relative h-full">
+            <Link key={tab.name} href={tab.href} prefetch={true} className="flex-1 flex flex-col items-center justify-center gap-1 relative h-full">
               {active && (
                 <motion.div
                   layoutId="bottom-tab-active"
@@ -102,6 +102,7 @@ export function BottomTabs() {
               <Link 
                 key={item.name} 
                 href={item.href}
+                prefetch={true}
                 onClick={() => setIsMenuOpen(false)}
                 className={`flex items-center gap-4 px-4 py-4 rounded-2xl font-semibold transition-colors ${
                   (item.href === "/dashboard" && pathname === "/dashboard") || (item.href !== "/dashboard" && pathname.startsWith(item.href))

@@ -57,7 +57,7 @@ export function Sidebar() {
           }
 
           return (
-            <Link key={item.name} href={item.href!} className="relative block group">
+            <Link key={item.name} href={item.href!} prefetch={true} className="relative block group">
               {active && (
                 <motion.div
                   layoutId="sidebar-active-indicator"
@@ -75,11 +75,11 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto space-y-2 pt-6">
-        <Link href="/settings" className="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-muted-foreground hover:text-black hover:bg-black/[0.02] transition-colors tracking-tight text-[15px]">
+        <Link href="/settings" prefetch={true} className="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-muted-foreground hover:text-black hover:bg-black/[0.02] transition-colors tracking-tight text-[15px]">
           <Settings className="w-5 h-5" />
           Paramètres
         </Link>
-        <Link href="/support" className="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-muted-foreground hover:text-black hover:bg-black/[0.02] transition-colors tracking-tight text-[15px]">
+        <Link href="/support" prefetch={true} className="flex items-center gap-3 px-4 py-3.5 rounded-2xl text-muted-foreground hover:text-black hover:bg-black/[0.02] transition-colors tracking-tight text-[15px]">
           <LifeBuoy className="w-5 h-5" />
           Support
         </Link>
