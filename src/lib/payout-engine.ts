@@ -712,12 +712,47 @@ export async function collectPendingCommissions(
 
       if (finalExecId) {
         let finalLigneStatus = "echoue";
-        if (commissionCollected) {
-          if (passerelleName === "pawapay" || passerelleName === "fedapay" || passerelleName === "magma onepay") {
-            finalLigneStatus = "en_cours";
-          } else {
-            finalLigneStatus = "reussi";
+        
+        if (cStepError) {
+          finalLigneStatus = "echoue";
+        } else if (cStepRef && (passerelleName === "pawapay" || passerelleName === "fedapay")) {
+          // Boucle de polling de 10 secondes (5 x 2s) pour valider le statut réel de la commission
+          let currentStatus = "en_cours";
+          for (let i = 0; i < 5; i++) {
+            await new Promise((r) => setTimeout(r, 2000));
+            try {
+              if (passerelleName === "pawapay") {
+                const { getPawapayPayoutStatus } = await import("./pawapay");
+                const stRes = await getPawapayPayoutStatus(gateway.decryptedKey, cStepRef);
+                const st = Array.isArray(stRes) ? stRes[0]?.status : (stRes?.data?.status || stRes?.status);
+                if (st === "COMPLETED" || st === "SUCCESS") {
+                  currentStatus = "reussi";
+                  break;
+                } else if (st === "FAILED" || st === "REJECTED" || st === "PAWAPAY_WALLET_OUT_OF_FUNDS" || st === "DUPLICATE_PAYOUT_ID") {
+                  currentStatus = "echoue";
+                  if (!cStepError && stRes?.failureReason) cStepError = stRes.failureReason;
+                  break;
+                }
+              } else if (passerelleName === "fedapay") {
+                const { getFedaPayPayoutStatus } = await import("./fedapay");
+                const stRes = await getFedaPayPayoutStatus(gateway.decryptedKey, cStepRef);
+                const fst = stRes?.v1?.payout?.status || stRes?.status;
+                if (fst === "approved" || fst === "sent" || fst === "transferred") {
+                  currentStatus = "reussi";
+                  break;
+                } else if (fst === "failed" || fst === "canceled" || fst === "declined") {
+                  currentStatus = "echoue";
+                  break;
+                }
+              }
+            } catch (e: any) {
+              console.error("[Commission Polling Error]", e.message);
+            }
           }
+          finalLigneStatus = currentStatus;
+          commissionCollected = (currentStatus === "reussi" || currentStatus === "en_cours");
+        } else if (commissionCollected) {
+          finalLigneStatus = "reussi";
         }
 
         await supabaseAdmin.from("execution_lignes").insert({ 
@@ -745,43 +780,38 @@ export async function collectPendingCommissions(
 
     if (totalCollectedAmount > 0 && userDueCommissions) {
       let amountToMarkAsCollected = totalCollectedAmount;
-      const idsToUpdate = [];
+      const idsToMarkCollectee = [];
+      const updates = []; // For partial updates
 
       for (const line of userDueCommissions) {
+        if (amountToMarkAsCollected <= 0) break;
+        
         const lineCom = Number(line.commission_associee);
-        if (amountToMarkAsCollected >= lineCom && lineCom > 0) {
-          idsToUpdate.push(line.id);
+        if (lineCom <= 0) continue;
+
+        if (amountToMarkAsCollected >= lineCom) {
+          idsToMarkCollectee.push(line.id);
           amountToMarkAsCollected -= lineCom;
-        } else if (amountToMarkAsCollected > 0 && lineCom > 0) {
-          // On marque la ligne entière comme collectée
-          idsToUpdate.push(line.id);
-          
-          // Mais on calcule ce qu'il reste à payer sur cette ligne
+        } else {
+          // Paiement partiel de cette dette
           const remainder = lineCom - amountToMarkAsCollected;
-          
-          // On crée une nouvelle ligne de dette (IOU) pour le reliquat non payé
-          await supabaseAdmin.from("execution_lignes").insert({
-            execution_id: line.execution_id,
-            destinataire_libelle: "Dette Commission Restante",
-            destinataire_numero: line.destinataire_numero,
-            destinataire_reseau: line.destinataire_reseau,
-            montant: 0,
-            statut: "reussi",
-            est_commission: false,
-            passerelle: line.passerelle,
-            commission_associee: remainder,
-            commission_statut: 'due'
-          });
-          
+          updates.push({ id: line.id, remainder });
           amountToMarkAsCollected = 0;
         }
       }
 
-      if (idsToUpdate.length > 0) {
+      if (idsToMarkCollectee.length > 0) {
         await supabaseAdmin
           .from("execution_lignes")
           .update({ commission_statut: 'collectee' })
-          .in("id", idsToUpdate);
+          .in("id", idsToMarkCollectee);
+      }
+      
+      for (const update of updates) {
+        await supabaseAdmin
+          .from("execution_lignes")
+          .update({ commission_associee: update.remainder })
+          .eq("id", update.id);
       }
     }
   }

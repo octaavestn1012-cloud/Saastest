@@ -64,8 +64,13 @@ export async function getCommissionHistory(startDate?: string, endDate?: string)
     const { data: adminProfile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
     if (adminProfile?.role !== "admin") return { success: false, error: "Accès refusé" };
 
-    // Get all commission lines
-    let query = supabase
+    // Use service role to bypass RLS for super admin dashboard
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseAdmin = createSupabaseClient(supabaseUrl, supabaseServiceKey);
+
+    // Get all commission lines across all clients
+    let query = supabaseAdmin
       .from("execution_lignes")
       .select(`
         id,
@@ -97,19 +102,77 @@ export async function getCommissionHistory(startDate?: string, endDate?: string)
 
     if (!lines || lines.length === 0) return { success: true, history: [] };
 
+    // Auto-résolution en direct des commissions "en_cours" auprès des API passerelles (PawaPay / FedaPay)
+    const pendingLines = lines.filter((l: any) => l.statut === "en_cours" && l.reference_transaction);
+    if (pendingLines.length > 0) {
+      try {
+        const { data: userConns } = await supabaseAdmin.from("connexions").select("*").eq("statut", "actif");
+        const { decryptKey } = await import("@/lib/encryption");
+        const { getPawapayPayoutStatus } = await import("@/lib/pawapay");
+        const { getFedaPayPayoutStatus } = await import("@/lib/fedapay");
+
+        for (const line of pendingLines) {
+          const uid = line.executions?.user_id;
+          let pass = (line.passerelle || "").toLowerCase();
+          if (!pass && line.erreur_message) {
+            const errLower = line.erreur_message.toLowerCase();
+            if (errLower.includes("pawapay")) pass = "pawapay";
+            else if (errLower.includes("fedapay")) pass = "fedapay";
+          }
+          if (!uid || !pass) continue;
+
+          const userConn = userConns?.find((c: any) => c.user_id === uid && c.passerelle.toLowerCase() === pass);
+          if (!userConn || !userConn.cle_chiffree) continue;
+
+          try {
+            const decKey = decryptKey(userConn.cle_chiffree);
+            let newStatut = "en_cours";
+            let newErrMsg = line.erreur_message;
+
+            if (pass === "pawapay") {
+              const stRes = await getPawapayPayoutStatus(decKey, line.reference_transaction);
+              const st = Array.isArray(stRes) ? stRes[0]?.status : (stRes?.data?.status || stRes?.status);
+              if (st === "COMPLETED" || st === "SUCCESS") {
+                newStatut = "reussi";
+              } else if (st === "FAILED" || st === "REJECTED" || st === "PAWAPAY_WALLET_OUT_OF_FUNDS" || st === "DUPLICATE_PAYOUT_ID") {
+                newStatut = "echoue";
+                if (stRes?.failureReason) newErrMsg = stRes.failureReason;
+              }
+            } else if (pass === "fedapay") {
+              const stRes = await getFedaPayPayoutStatus(decKey, line.reference_transaction);
+              const fst = stRes?.v1?.payout?.status || stRes?.status;
+              if (fst === "approved" || fst === "sent" || fst === "transferred") {
+                newStatut = "reussi";
+              } else if (fst === "failed" || fst === "canceled" || fst === "declined") {
+                newStatut = "echoue";
+              }
+            }
+
+            if (newStatut !== "en_cours") {
+              line.statut = newStatut;
+              line.erreur_message = newErrMsg;
+              await supabaseAdmin
+                .from("execution_lignes")
+                .update({ statut: newStatut, erreur_message: newErrMsg })
+                .eq("id", line.id);
+            }
+          } catch (e: any) {
+            console.error(`[Admin History Resolve Error] line ${line.id}:`, e.message);
+          }
+        }
+      } catch (e: any) {
+        console.error("[Auto-Resolve Pending Commissions Error]", e.message);
+      }
+    }
+
     // Group users to fetch profiles
     const userIds = [...new Set(lines.map((l: any) => l.executions?.user_id).filter(Boolean))];
     
     // Fetch profiles to get email, name, is_blocked
-    const { data: profiles } = await supabase
+    const { data: profiles } = await supabaseAdmin
       .from("profiles")
       .select("id, nom, is_blocked, role");
 
-    // Let's use supabase service role to fetch users emails for admin
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabaseAdmin = createSupabaseClient(supabaseUrl, supabaseServiceKey);
-    
     const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
     const authUsers = usersData?.users || [];
 
