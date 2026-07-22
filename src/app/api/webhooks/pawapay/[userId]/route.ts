@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { decryptKey } from "@/lib/encryption";
 import { processPayoutsForUser } from "@/lib/payout-engine";
 
-export const maxDuration = 60; // Autorise Netlify Pro à maintenir l'exécution jusqu'à 60 secondes
+export const maxDuration = 26; // Autorise Netlify Pro à maintenir l'exécution jusqu'à 26 secondes (limite max)
 
 export async function POST(req: NextRequest, { params }: { params: { userId: string } }) {
   try {
