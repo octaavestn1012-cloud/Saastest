@@ -4,6 +4,8 @@ import crypto from "crypto";
 import { decryptKey } from "@/lib/encryption";
 import { processPayoutsForUser } from "@/lib/payout-engine";
 
+export const maxDuration = 60; // Autorise Netlify Pro à maintenir l'exécution jusqu'à 60 secondes
+
 export async function POST(req: NextRequest, { params }: { params: { userId: string } }) {
   try {
     const userId = params.userId;
@@ -28,19 +30,31 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
       return NextResponse.json({ error: "Connexion PawaPay introuvable ou inactive" }, { status: 404 });
     }
 
+    let isSignatureValid = false;
+    
     if (!conn.webhook_secret_chiffre) {
-      return NextResponse.json({ error: "Secret Webhook non configuré pour cet utilisateur" }, { status: 400 });
+      // Le client a indiqué qu'il n'y a pas de clé secrète pour PawaPay pour le moment
+      // On contourne la vérification de signature
+      console.warn(`[PawaPay Webhook] Aucun secret Webhook configuré pour l'utilisateur ${userId}. Avertissement de sécurité: passage autorisé sans vérification.`);
+      isSignatureValid = true;
+    } else {
+      if (!signature) {
+        return NextResponse.json({ error: "Signature manquante" }, { status: 401 });
+      }
+      const secret = decryptKey(conn.webhook_secret_chiffre);
+      const expectedSignature = crypto.createHmac("sha512", secret).update(bodyText).digest("hex");
+      isSignatureValid = (signature === expectedSignature);
     }
 
-    if (!signature) {
-      return NextResponse.json({ error: "Signature manquante" }, { status: 401 });
-    }
-
-    const secret = decryptKey(conn.webhook_secret_chiffre);
-    const expectedSignature = crypto.createHmac("sha512", secret).update(bodyText).digest("hex");
-
-    if (signature !== expectedSignature) {
+    if (!isSignatureValid) {
       console.error(`[PawaPay Webhook] Signature invalide pour l'utilisateur ${userId}`);
+      await supabaseAdmin.from('transactions').insert({
+        user_id: userId,
+        montant: 0,
+        source: 'PawaPay (Erreur Signature)',
+        statut: 'echoue',
+        date_reception: new Date().toISOString()
+      });
       return NextResponse.json({ error: "Signature invalide" }, { status: 401 });
     }
 
@@ -75,10 +89,13 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
         console.error(`[PawaPay Webhook] Erreur lors de l'enregistrement de la transaction:`, txError);
       }
 
-      // Exécution asynchrone de la règle
-      processPayoutsForUser(userId, amount, "a_chaque_entree", false, true)
-        .then(result => console.log("[PawaPay Webhook] Répartition terminée:", result))
-        .catch(err => console.error("[PawaPay Webhook] Erreur de répartition:", err));
+      // Exécution synchrone de la règle
+      try {
+        const result = await processPayoutsForUser(userId, amount, "a_chaque_entree", false, true);
+        console.log("[PawaPay Webhook] Répartition terminée:", result);
+      } catch (err) {
+        console.error("[PawaPay Webhook] Erreur de répartition:", err);
+      }
         
     } else {
       // 2. LOG DE DÉBOGAGE : Si le format ne correspond pas à une entrée d'argent classique

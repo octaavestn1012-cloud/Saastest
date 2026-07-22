@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 export const revalidate = 0;
+export const maxDuration = 60; // Autorise Netlify Pro à maintenir l'exécution jusqu'à 60 secondes
+
 import { createClient } from '@supabase/supabase-js';
 import { processPayoutsForUser } from '@/lib/payout-engine';
 

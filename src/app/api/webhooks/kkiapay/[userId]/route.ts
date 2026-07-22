@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import { decryptKey } from '@/lib/encryption';
 import { processPayoutsForUser } from '@/lib/payout-engine';
 
+export const maxDuration = 60; // Autorise Netlify Pro à maintenir l'exécution jusqu'à 60 secondes
+
 export async function POST(req: Request, { params }: { params: { userId: string } }) {
   try {
     const userId = params.userId;
@@ -44,6 +46,13 @@ export async function POST(req: Request, { params }: { params: { userId: string 
 
     if (signature !== expectedSignature) {
       console.error(`[Kkiapay Webhook] Signature invalide pour l'utilisateur ${userId}`);
+      await supabaseAdmin.from('transactions').insert({
+        user_id: userId,
+        montant: 0,
+        source: 'Kkiapay (Erreur Signature)',
+        statut: 'echoue',
+        date_reception: new Date().toISOString()
+      });
       return NextResponse.json({ error: 'Signature invalide' }, { status: 401 });
     }
 
@@ -75,10 +84,13 @@ export async function POST(req: Request, { params }: { params: { userId: string 
         console.error(`[Kkiapay Webhook] Erreur lors de l'enregistrement de la transaction:`, txError);
       }
       
-      // Exécution asynchrone pour répondre rapidement à Kkiapay
-      processPayoutsForUser(userId, amount, "a_chaque_entree", false, true)
-        .then(result => console.log("[Kkiapay Webhook] Répartition terminée:", result))
-        .catch(err => console.error("[Kkiapay Webhook] Erreur de répartition:", err));
+      // Exécution synchrone pour éviter que Netlify/Vercel ne coupe l'exécution
+      try {
+        const result = await processPayoutsForUser(userId, amount, "a_chaque_entree", false, true);
+        console.log("[Kkiapay Webhook] Répartition terminée:", result);
+      } catch (err) {
+        console.error("[Kkiapay Webhook] Erreur de répartition:", err);
+      }
     }
 
     return NextResponse.json({ received: true }, { status: 200 });
