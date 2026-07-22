@@ -113,7 +113,7 @@ export async function checkExecutionStatusesAction(executionId: string, pendingT
 
     if (!passerelles || passerelles.length === 0) return { success: true, updates: [] };
 
-    const { decryptApiKey } = await import('@/lib/encryption');
+    const { decryptKey: decryptApiKey } = await import('@/lib/encryption');
     const { getPawapayPayoutStatus } = await import('@/lib/pawapay');
     const { getFedaPayPayoutStatus } = await import('@/lib/fedapay');
 

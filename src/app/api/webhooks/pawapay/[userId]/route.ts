@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
       .from("connexions")
       .select("webhook_secret_chiffre")
       .eq("user_id", userId)
-      .eq("passerelle", "pawapay")
+      .ilike("passerelle", "pawapay")
       .eq("statut", "actif")
       .single();
 

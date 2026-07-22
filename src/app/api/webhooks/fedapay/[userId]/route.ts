@@ -22,7 +22,7 @@ export async function POST(req: Request, { params }: { params: { userId: string 
       .from('connexions')
       .select('webhook_secret_chiffre')
       .eq('user_id', userId)
-      .eq('passerelle', 'fedapay')
+      .ilike('passerelle', 'fedapay')
       .eq('statut', 'actif')
       .single();
 
@@ -59,7 +59,8 @@ export async function POST(req: Request, { params }: { params: { userId: string 
     // entity: { amount: 5000, status: "approved" }
     
     const isApproved = data?.entity?.status === 'approved' || data?.name === 'transaction.approved';
-    const amount = data?.entity?.amount;
+    const rawAmount = data?.entity?.amount;
+    const amount = Number(rawAmount);
 
     if (isApproved && amount && amount > 0) {
       console.log(`[FedaPay Webhook] Paiement entrant de ${amount} FCFA détecté pour l'utilisateur ${userId}`);
@@ -69,6 +70,8 @@ export async function POST(req: Request, { params }: { params: { userId: string 
         user_id: userId,
         montant: amount,
         source: 'FedaPay',
+        statut: 'reussi',
+        date_reception: new Date().toISOString()
       });
 
       if (txError) {

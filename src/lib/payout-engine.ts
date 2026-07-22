@@ -369,11 +369,23 @@ async function orchestratePayouts(
         
         stepRef = apiData?.transactionId || apiData?.id?.toString() || "";
       } else if (passerelleName === "pawapay" && mapping) {
+        let currency = mapping.gateway_currency || "XOF";
+        const correspondent = (mapping.gateway_correspondent || "").toUpperCase();
+        const centralAfricaCountries = ["CMR", "GAB", "COG", "TCD", "CAF", "GNQ"];
+        if (centralAfricaCountries.some(c => correspondent.endsWith(`_${c}`))) {
+          currency = "XAF";
+        } else {
+          const westAfricaCountries = ["BEN", "CIV", "SEN", "TGO", "BFA", "MLI", "NER", "GNB"];
+          if (westAfricaCountries.some(c => correspondent.endsWith(`_${c}`))) {
+            currency = "XOF";
+          }
+        }
+
         apiData = await createAndSendPawapayPayout(
           gateway.decryptedKey, 
           amount, 
           mapping.gateway_correspondent, 
-          mapping.gateway_currency, 
+          currency, 
           cleanPhone
         );
         const extractedData = Array.isArray(apiData) ? apiData[0] : apiData;
@@ -400,11 +412,24 @@ async function orchestratePayouts(
         stepStatus = foundStatus ? foundStatus.reparto_status : "en_cours";
 
       } else if (passerelleName === "fedapay" && mapping) {
+        let currency = mapping.gateway_currency || "XOF";
+        const correspondent = (mapping.gateway_correspondent || "").toUpperCase();
+        const countryCode = (mapping.gateway_country_code || "").toUpperCase();
+        const centralAfricaCountries = ["CMR", "GAB", "COG", "TCD", "CAF", "GNQ"];
+        if (centralAfricaCountries.some(c => correspondent.endsWith(`_${c}`) || countryCode === c)) {
+          currency = "XAF";
+        } else {
+          const westAfricaCountries = ["BEN", "CIV", "SEN", "TGO", "BFA", "MLI", "NER", "GNB"];
+          if (westAfricaCountries.some(c => correspondent.endsWith(`_${c}`) || countryCode === c)) {
+            currency = "XOF";
+          }
+        }
+
         apiData = await createAndSendPayout(
           gateway.decryptedKey, 
           amount, 
           mapping.gateway_correspondent, 
-          mapping.gateway_currency, 
+          currency, 
           mapping.gateway_country_code, 
           cleanPhone, 
           target.label
@@ -531,7 +556,7 @@ async function orchestratePayouts(
         supabaseAdmin,
         userId,
         commissionFallbacks,
-        gatewayPool,
+        gatewayPool || [],
         mappings,
         statusMappings
       ).catch(e => console.error("Erreur background collecte commissions:", e));
@@ -592,13 +617,16 @@ export async function processPayoutsForUser(userId: string, availableAmount: num
   const rule = rules[0];
   const config = rule.declencheur_config || {};
 
-  const targets = rule.distributions.filter((d:any) => d.destinataires).map((d:any) => ({
-    label: d.libelle,
-    method: d.destinataires.methode_mobile_money,
-    phone: d.destinataires.numero,
-    value: d.valeur,
-    ordre: d.ordre
-  }));
+  const targets = (rule.distributions || []).filter((d:any) => d.destinataires).map((d:any) => {
+    const dest = Array.isArray(d.destinataires) ? d.destinataires[0] : d.destinataires;
+    return {
+      label: d.libelle,
+      method: dest?.methode_mobile_money,
+      phone: dest?.numero,
+      value: d.valeur,
+      ordre: d.ordre
+    };
+  });
 
   return orchestratePayouts(userId, userAuth?.user?.email, profile?.plan || "gratuit", rule.mode, targets, rule.nom, rule.id, isAutomatic, config);
 }

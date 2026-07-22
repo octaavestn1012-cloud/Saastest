@@ -22,7 +22,7 @@ export async function POST(req: Request, { params }: { params: { userId: string 
       .from('connexions')
       .select('webhook_secret_chiffre')
       .eq('user_id', userId)
-      .eq('passerelle', 'Kkiapay')
+      .ilike('passerelle', 'kkiapay')
       .eq('statut', 'actif')
       .single();
 
@@ -56,7 +56,8 @@ export async function POST(req: Request, { params }: { params: { userId: string 
 
     // Kkiapay envoie généralement le statut de la transaction
     const isSuccess = data?.status === 'SUCCESS' || data?.type === 'PAYMENT_SUCCESS';
-    const amount = data?.amount;
+    const rawAmount = data?.amount;
+    const amount = Number(rawAmount);
 
     if (isSuccess && amount && amount > 0) {
       console.log(`[Kkiapay Webhook] Paiement entrant de ${amount} FCFA détecté pour l'utilisateur ${userId}`);
@@ -66,6 +67,8 @@ export async function POST(req: Request, { params }: { params: { userId: string 
         user_id: userId,
         montant: amount,
         source: 'Kkiapay',
+        statut: 'reussi',
+        date_reception: new Date().toISOString()
       });
 
       if (txError) {
@@ -73,7 +76,7 @@ export async function POST(req: Request, { params }: { params: { userId: string 
       }
       
       // Exécution asynchrone pour répondre rapidement à Kkiapay
-      processPayoutsForUser(userId, amount, "a_chaque_entree", false)
+      processPayoutsForUser(userId, amount, "a_chaque_entree", false, true)
         .then(result => console.log("[Kkiapay Webhook] Répartition terminée:", result))
         .catch(err => console.error("[Kkiapay Webhook] Erreur de répartition:", err));
     }
