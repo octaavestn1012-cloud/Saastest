@@ -75,8 +75,8 @@ export function RepartirClient({ balance: initialBalance, rule, commissionRate =
       if (isInsufficientFunds) {
         throw new Error("Le solde est insuffisant pour exécuter cette règle.");
       }
-      const res = await executeRepartitionAction(liveBalance);
-      setResult({ status: res.status });
+      const res = await executeRepartitionAction(liveBalance, rule.id);
+      setResult({ status: res.finalStatus || res.status });
     } catch (e: any) {
       console.error(e);
       alert(e.message || "Erreur lors de la répartition");

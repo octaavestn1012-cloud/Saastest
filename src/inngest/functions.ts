@@ -7,7 +7,7 @@ import { sendPayoutReceiptEmail, sendAutomationReport } from "@/lib/email";
 import { collectPendingCommissions } from "@/lib/payout-engine";
 
 export const processPayoutsFunction = inngest.createFunction(
-  { id: "process-payouts", concurrency: 1, event: "app/payout.requested" },
+  { id: "process-payouts", concurrency: 1, triggers: [{ event: "app/payout.requested" }] },
   async ({ event, step }) => {
     const { 
       userId, userEmail, executionPlan, executionId, ruleName, 
@@ -99,6 +99,10 @@ export const processPayoutsFunction = inngest.createFunction(
             stepRef = extractedData?.payoutId || extractedData?.id || "";
             
             let pawaStatus = extractedData?.status || "PENDING";
+            if (extractedData?.failureReason) {
+               stepError = extractedData.failureReason;
+            }
+
             if ((pawaStatus === "PENDING" || pawaStatus === "ACCEPTED") && stepRef) {
               for (let i = 0; i < 5; i++) {
                 await new Promise(resolve => setTimeout(resolve, 2000));
@@ -107,6 +111,12 @@ export const processPayoutsFunction = inngest.createFunction(
                   const trueStatus = statusData?.data?.status || statusData?.status;
                   const extractedStatus = Array.isArray(statusData) ? statusData[0]?.status : trueStatus;
                   pawaStatus = extractedStatus || pawaStatus;
+                  
+                  const extractedFailureReason = Array.isArray(statusData) ? statusData[0]?.failureReason : (statusData?.data?.failureReason || statusData?.failureReason);
+                  if (extractedFailureReason) {
+                    stepError = extractedFailureReason;
+                  }
+
                   const currentMapping = statusMappings.find((m: any) => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toUpperCase() === pawaStatus.toUpperCase());
                   if (currentMapping && (currentMapping.reparto_status === "reussi" || currentMapping.reparto_status === "echoue")) break;
                 } catch(e) {}

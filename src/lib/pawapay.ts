@@ -13,13 +13,28 @@ export async function createAndSendPawapayPayout(
   // Pour le Payout, si on se trompe, ça va échouer. L'idéal est de déterminer l'URL dynamiquement.
   let baseUrl = "https://api.sandbox.pawapay.io/v2";
   
-  // On peut essayer de décoder le JWT pour voir s'il y a un indice, mais par défaut on teste Sandbox.
-  // Si le token vient de la prod, le getPawapayBalance suivant échouera aussi.
-  // Faisons une fonction utilitaire pour trouver la bonne URL.
+  // Cache en mémoire pour éviter les appels répétés qui causent des "fetch failed"
   const getBaseUrl = async (token: string) => {
-    const res = await fetch("https://api.sandbox.pawapay.io/v2/wallet-balances?country=BEN", { headers: { "Authorization": `Bearer ${token}` } });
-    if (res.status !== 401) return "https://api.sandbox.pawapay.io/v2";
-    return "https://api.pawapay.io/v2";
+    if ((global as any).__pawapayBaseUrl) return (global as any).__pawapayBaseUrl;
+    
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch("https://api.sandbox.pawapay.io/v2/wallet-balances?country=BEN", { 
+          headers: { "Authorization": `Bearer ${token}` },
+          cache: "no-store"
+        });
+        const url = res.status !== 401 ? "https://api.sandbox.pawapay.io/v2" : "https://api.pawapay.io/v2";
+        (global as any).__pawapayBaseUrl = url;
+        return url;
+      } catch (e) {
+        if (attempt === 2) {
+          console.warn("PawaPay getBaseUrl fallback to sandbox after 3 fetch failed");
+          return "https://api.sandbox.pawapay.io/v2";
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+    return "https://api.sandbox.pawapay.io/v2";
   };
 
   baseUrl = await getBaseUrl(apiToken);
@@ -67,9 +82,23 @@ export async function createAndSendPawapayPayout(
 
 export async function getPawapayPayoutStatus(apiToken: string, payoutId: string) {
   const getBaseUrl = async (token: string) => {
-    const res = await fetch("https://api.sandbox.pawapay.io/v2/wallet-balances?country=BEN", { headers: { "Authorization": `Bearer ${token}` } });
-    if (res.status !== 401) return "https://api.sandbox.pawapay.io/v2";
-    return "https://api.pawapay.io/v2";
+    if ((global as any).__pawapayBaseUrl) return (global as any).__pawapayBaseUrl;
+    
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch("https://api.sandbox.pawapay.io/v2/wallet-balances?country=BEN", { 
+          headers: { "Authorization": `Bearer ${token}` },
+          cache: "no-store"
+        });
+        const url = res.status !== 401 ? "https://api.sandbox.pawapay.io/v2" : "https://api.pawapay.io/v2";
+        (global as any).__pawapayBaseUrl = url;
+        return url;
+      } catch (e) {
+        if (attempt === 2) return "https://api.sandbox.pawapay.io/v2";
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+    return "https://api.sandbox.pawapay.io/v2";
   };
   const baseUrl = await getBaseUrl(apiToken);
 
@@ -95,9 +124,23 @@ export async function getPawapayPayoutStatus(apiToken: string, payoutId: string)
 
 export async function getPawapayBalance(apiToken: string) {
   const getBaseUrl = async (token: string) => {
-    const res = await fetch("https://api.sandbox.pawapay.io/v2/wallet-balances?country=BEN", { headers: { "Authorization": `Bearer ${token}` } });
-    if (res.status !== 401) return "https://api.sandbox.pawapay.io/v2";
-    return "https://api.pawapay.io/v2";
+    if ((global as any).__pawapayBaseUrl) return (global as any).__pawapayBaseUrl;
+    
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch("https://api.sandbox.pawapay.io/v2/wallet-balances?country=BEN", { 
+          headers: { "Authorization": `Bearer ${token}` },
+          cache: "no-store"
+        });
+        const url = res.status !== 401 ? "https://api.sandbox.pawapay.io/v2" : "https://api.pawapay.io/v2";
+        (global as any).__pawapayBaseUrl = url;
+        return url;
+      } catch (e) {
+        if (attempt === 2) return "https://api.sandbox.pawapay.io/v2";
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+    return "https://api.sandbox.pawapay.io/v2";
   };
   const baseUrl = await getBaseUrl(apiToken);
 

@@ -299,7 +299,7 @@ async function orchestratePayouts(
   }
 
   // 5. Création de l'exécution en base
-  const { data: execution } = await supabaseAdmin.from("executions").insert({
+  const { data: execution, error: execError } = await supabaseAdmin.from("executions").insert({
     user_id: userId,
     regle_id: ruleId || null,
     montant_total: totalNeededWithCommission,
@@ -307,25 +307,36 @@ async function orchestratePayouts(
     date_execution: new Date().toISOString()
   }).select().single();
 
-  if (!execution) throw new Error("Impossible de créer l'historique d'exécution");
+  if (execError || !execution) {
+    console.error("Supabase insert error:", execError);
+    throw new Error("Impossible de créer l'historique d'exécution: " + JSON.stringify(execError));
+  }
 
   // 6. Exécution asynchrone via Inngest
-  await inngest.send({
-    name: "app/payout.requested",
-    data: {
-      userId,
-      userEmail,
-      executionPlan,
-      executionId: execution.id,
-      ruleName,
-      verifiedTotalBalance,
-      commissionAmount,
-      availableAfterCommission,
-      isAutomatic,
-      config,
-      commissionRate,
-    },
-  });
+  try {
+    await inngest.send({
+      name: "app/payout.requested",
+      data: {
+        userId,
+        userEmail,
+        executionPlan,
+        executionId: execution.id,
+        ruleName,
+        verifiedTotalBalance,
+        commissionAmount,
+        availableAfterCommission,
+        isAutomatic,
+        config,
+        commissionRate,
+      },
+    });
+  } catch (err: any) {
+    console.error("Inngest send error:", err);
+    return { 
+      success: false, 
+      error: "Impossible de joindre le serveur de traitement asynchrone. Si vous êtes en local, redémarrez votre serveur avec `npm run dev` pour lancer Inngest." 
+    };
+  }
 
   return { success: true, finalStatus: "en_cours", results: [], executionId: execution.id };
 }
