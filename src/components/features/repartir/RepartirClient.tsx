@@ -88,15 +88,17 @@ export function RepartirClient({ balance: initialBalance, rule, commissionRate =
   if (result) {
     return (
       <div className="max-w-3xl mx-auto space-y-8 text-center pt-12">
-        <div className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-6 ${result.status === 'completed' ? 'bg-money-in/10 text-money-in' : 'bg-accent-decorative/10 text-accent-decorative'}`}>
-          {result.status === 'completed' ? <CheckCircle2 className="w-10 h-10" /> : <AlertCircle className="w-10 h-10" />}
+        <div className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-6 ${['completed', 'reussi', 'en_cours'].includes(result.status) ? 'bg-money-in/10 text-money-in' : 'bg-accent-decorative/10 text-accent-decorative'}`}>
+          {['completed', 'reussi', 'en_cours'].includes(result.status) ? <CheckCircle2 className="w-10 h-10" /> : <AlertCircle className="w-10 h-10" />}
         </div>
         <h2 className="text-3xl font-bold">
-          {result.status === 'completed' ? 'Répartition réussie !' : 'Répartition partielle/échouée'}
+          {['completed', 'reussi'].includes(result.status) ? 'Répartition réussie !' : result.status === 'en_cours' ? 'Répartition lancée !' : 'Répartition partielle/échouée'}
         </h2>
         <p className="text-muted-foreground mt-2 max-w-md mx-auto">
-          {result.status === 'completed' 
+          {['completed', 'reussi'].includes(result.status) 
             ? "Les virements ont été envoyés avec succès à tous vos destinataires."
+            : result.status === 'en_cours'
+            ? "Les virements sont en cours de traitement en arrière-plan. Vous pouvez suivre leur avancement dans l'historique."
             : "Certains virements ont échoué ou le solde était insuffisant. Veuillez vérifier l'historique pour plus de détails."}
         </p>
         <div className="pt-8 flex justify-center gap-4">

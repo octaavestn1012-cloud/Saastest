@@ -49,8 +49,8 @@ export async function getLiveTotalBalance() {
             return 0;
           };
 
-          // Race avec un timeout de 1500ms max pour éviter tout blocage de page
-          const timeout = new Promise<number>((resolve) => setTimeout(() => resolve(0), 1500));
+          // Race avec un timeout de 4500ms max pour éviter tout blocage, tout en laissant le temps au local de répondre
+          const timeout = new Promise<number>((resolve) => setTimeout(() => resolve(0), 4500));
           return await Promise.race([fetchBalance(), timeout]);
         } catch (e) {
           console.error(`Impossible de récupérer le solde pour ${conn.passerelle}:`, e);

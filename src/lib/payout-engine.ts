@@ -5,6 +5,7 @@ import { createAndSendKkiapayPayout, getKkiapayBalance } from "./kkiapay";
 import { getPawapayBalance, createAndSendPawapayPayout } from "./pawapay";
 import { sendPayoutReceiptEmail, sendAutomationReport, sendPlanLimitReachedEmail } from "./email";
 import { getValidUserPlan, getCommissionRate } from "./billing";
+import { inngest } from "@/inngest/client";
 
 /**
  * Fonction unifiée pour préparer le pool de passerelles
@@ -308,262 +309,25 @@ async function orchestratePayouts(
 
   if (!execution) throw new Error("Impossible de créer l'historique d'exécution");
 
-  // 6. Exécution réelle des paiements (Séquentiel, un par un, pour respecter l'algorithme de base)
-  const results: any[] = [];
+  // 6. Exécution asynchrone via Inngest
+  await inngest.send({
+    name: "app/payout.requested",
+    data: {
+      userId,
+      userEmail,
+      executionPlan,
+      executionId: execution.id,
+      ruleName,
+      verifiedTotalBalance,
+      commissionAmount,
+      availableAfterCommission,
+      isAutomatic,
+      config,
+      commissionRate,
+    },
+  });
 
-  for (const step of executionPlan) {
-    const { target, amount, gateway } = step;
-    let stepStatus = "en_cours";
-    let stepRef = "";
-    let stepError = null;
-    let apiData = null;
-
-    try {
-      // 1. Chercher le mapping pour ce réseau et cette passerelle
-      let cleanPhone = target.phone.replace(/[^0-9+]/g, '');
-      const passerelleName = gateway.conn.passerelle.toLowerCase();
-      
-      let mapping = mappings.find(m => 
-        m.reparto_reseau.toLowerCase() === target.method.toLowerCase() && 
-        m.gateway.toLowerCase() === passerelleName
-      );
-
-      // Si PawaPay ou FedaPay, le mapping est OBLIGATOIRE (Kkiapay a sa propre logique)
-      if (!mapping && (passerelleName === "pawapay" || passerelleName === "fedapay")) {
-         throw new Error(`Réseau non supporté par ${passerelleName} : ${target.method}`);
-      }
-
-      // 2. Validation de la longueur du numéro (sans l'indicatif)
-      if (mapping && mapping.indicatif) {
-        let phoneWithoutIndicatif = cleanPhone;
-        const indicatifClean = mapping.indicatif.replace(/[^0-9+]/g, '');
-        
-        // Si le numéro inclut l'indicatif (ex: +22997... ou 22997...) on l'enlève pour vérifier la longueur
-        if (cleanPhone.startsWith(indicatifClean)) {
-          phoneWithoutIndicatif = cleanPhone.substring(indicatifClean.length);
-        } else if (cleanPhone.startsWith(indicatifClean.replace('+', ''))) {
-          phoneWithoutIndicatif = cleanPhone.substring(indicatifClean.replace('+', '').length);
-        }
-
-        if (mapping.phone_digits_count && phoneWithoutIndicatif.length !== mapping.phone_digits_count) {
-          throw new Error(`Le numéro ${target.phone} est invalide pour le pays cible (${mapping.phone_digits_count} chiffres attendus après l'indicatif).`);
-        }
-
-        // FedaPay et PawaPay demandent le numéro avec l'indicatif complet (ex: 22997...)
-        // On s'assure qu'il l'a bien
-        if (!cleanPhone.startsWith(indicatifClean) && !cleanPhone.startsWith(indicatifClean.replace('+', ''))) {
-           cleanPhone = indicatifClean.replace('+', '') + phoneWithoutIndicatif; // On force l'indicatif sans +
-        } else {
-           cleanPhone = cleanPhone.replace('+', ''); // On retire juste le +
-        }
-      }
-
-      // 3. Exécution
-      if (passerelleName === "kkiapay") {
-        const keysObj = JSON.parse(gateway.decryptedKey);
-        apiData = await createAndSendKkiapayPayout(keysObj, amount, target.method, target.phone, target.label);
-        
-        const currentKkiapayStatus = apiData?.status || "PENDING";
-        const foundStatus = statusMappings.find(m => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toUpperCase() === currentKkiapayStatus.toUpperCase());
-        stepStatus = foundStatus ? foundStatus.reparto_status : "en_cours";
-        
-        stepRef = apiData?.transactionId || apiData?.id?.toString() || "";
-      } else if (passerelleName === "pawapay" && mapping) {
-        let currency = mapping.gateway_currency || "XOF";
-        const correspondent = (mapping.gateway_correspondent || "").toUpperCase();
-        const centralAfricaCountries = ["CMR", "GAB", "COG", "TCD", "CAF", "GNQ"];
-        if (centralAfricaCountries.some(c => correspondent.endsWith(`_${c}`))) {
-          currency = "XAF";
-        } else {
-          const westAfricaCountries = ["BEN", "CIV", "SEN", "TGO", "BFA", "MLI", "NER", "GNB"];
-          if (westAfricaCountries.some(c => correspondent.endsWith(`_${c}`))) {
-            currency = "XOF";
-          }
-        }
-
-        apiData = await createAndSendPawapayPayout(
-          gateway.decryptedKey, 
-          amount, 
-          mapping.gateway_correspondent, 
-          currency, 
-          cleanPhone
-        );
-        const extractedData = Array.isArray(apiData) ? apiData[0] : apiData;
-        stepRef = extractedData?.payoutId || extractedData?.id || "";
-        
-        let pawaStatus = extractedData?.status || "PENDING";
-        // Polling up to 10 seconds (5 x 2s)
-        if ((pawaStatus === "PENDING" || pawaStatus === "ACCEPTED") && stepRef) {
-          const { getPawapayPayoutStatus } = await import("./pawapay");
-          for (let i = 0; i < 5; i++) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            try {
-              const statusData = await getPawapayPayoutStatus(gateway.decryptedKey, stepRef);
-              const trueStatus = statusData?.data?.status || statusData?.status;
-              const extractedStatus = Array.isArray(statusData) ? statusData[0]?.status : trueStatus;
-              pawaStatus = extractedStatus || pawaStatus;
-              
-              const currentMapping = statusMappings.find(m => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toUpperCase() === pawaStatus.toUpperCase());
-              if (currentMapping && (currentMapping.reparto_status === "reussi" || currentMapping.reparto_status === "echoue")) break;
-            } catch(e) {}
-          }
-        }
-        const foundStatus = statusMappings.find(m => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toUpperCase() === pawaStatus.toUpperCase());
-        stepStatus = foundStatus ? foundStatus.reparto_status : "en_cours";
-
-      } else if (passerelleName === "fedapay" && mapping) {
-        let currency = mapping.gateway_currency || "XOF";
-        const correspondent = (mapping.gateway_correspondent || "").toUpperCase();
-        const countryCode = (mapping.gateway_country_code || "").toUpperCase();
-        const centralAfricaCountries = ["CMR", "GAB", "COG", "TCD", "CAF", "GNQ"];
-        if (centralAfricaCountries.some(c => correspondent.endsWith(`_${c}`) || countryCode === c)) {
-          currency = "XAF";
-        } else {
-          const westAfricaCountries = ["BEN", "CIV", "SEN", "TGO", "BFA", "MLI", "NER", "GNB"];
-          if (westAfricaCountries.some(c => correspondent.endsWith(`_${c}`) || countryCode === c)) {
-            currency = "XOF";
-          }
-        }
-
-        apiData = await createAndSendPayout(
-          gateway.decryptedKey, 
-          amount, 
-          mapping.gateway_correspondent, 
-          currency, 
-          mapping.gateway_country_code, 
-          cleanPhone, 
-          target.label
-        );
-        stepRef = apiData?.v1?.payout?.reference || apiData?.v1?.payout?.id?.toString() || apiData?.id?.toString() || "";
-        
-        let fedapayStatus = apiData?.v1?.payout?.status || apiData?.status || "pending";
-        // Polling up to 10 seconds (5 x 2s)
-        if ((fedapayStatus === "pending" || fedapayStatus === "approved" || fedapayStatus === "processing") && stepRef) {
-          const { getFedaPayPayoutStatus } = await import("./fedapay");
-          for (let i = 0; i < 5; i++) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            try {
-              const statusData = await getFedaPayPayoutStatus(gateway.decryptedKey, stepRef);
-              fedapayStatus = statusData?.v1?.payout?.status || statusData?.status || fedapayStatus;
-              
-              const currentMapping = statusMappings.find(m => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toLowerCase() === fedapayStatus.toLowerCase());
-              if (currentMapping && (currentMapping.reparto_status === "reussi" || currentMapping.reparto_status === "echoue")) break;
-            } catch(e) {}
-          }
-        }
-        const foundStatus = statusMappings.find(m => m.gateway.toLowerCase() === passerelleName && m.gateway_status.toLowerCase() === fedapayStatus.toLowerCase());
-        stepStatus = foundStatus ? foundStatus.reparto_status : "en_cours";
-      }
-    } catch (e: any) {
-      stepStatus = "echoue";
-      stepError = e.message;
-    }
-
-    results.push({
-      target,
-      dest: target.label,
-      amount: amount,
-      status: stepStatus,
-      error: stepError,
-      passerelle: gateway.conn.passerelle
-    });
-
-    const ligneCommission = Math.floor(amount * commissionRate);
-    const ligneCommissionStatut = stepStatus === "reussi" ? "due" : "en_attente";
-
-    await supabaseAdmin.from("execution_lignes").insert({ 
-      execution_id: execution.id, 
-      destinataire_libelle: target.label + (amount < target.amount ? ` (Fraction)` : ""), 
-      destinataire_numero: target.phone || "INCONNU",
-      destinataire_reseau: target.method || "INCONNU",
-      montant: amount, 
-      statut: stepStatus, 
-      reference_transaction: stepRef,
-      erreur_message: stepError ? stepError.substring(0, 500) : null,
-      est_commission: false,
-      passerelle: gateway.conn.passerelle || "INCONNU",
-      commission_associee: ligneCommission,
-      commission_statut: ligneCommissionStatut
-    });
-  }
-
-  // 7. Statut final
-  const clientResults = results.filter(r => !r.target?.isCommission);
-  
-  const hasFailed = clientResults.some(r => r.status === "echoue");
-  const hasSuccess = clientResults.some(r => r.status === "reussi" || r.status === "en_cours");
-  const isAllSuccess = clientResults.every(r => r.status === "reussi");
-
-  let finalStatus = "en_cours";
-  if (clientResults.length === 0) finalStatus = "reussi"; // Cas extrême
-  else if (isAllSuccess) finalStatus = "reussi";
-  else if (!hasSuccess) finalStatus = "echoue";
-  else if (hasFailed) finalStatus = "partiel";
-
-  await supabaseAdmin.from("executions").update({ statut: finalStatus }).eq("id", execution.id);
-
-  // 8. Envoi email
-  if (userEmail) {
-    const emailDetails = results.map(r => ({
-      name: r.dest + ` (via ${r.passerelle})`,
-      network: "Mobile Money",
-      amount: r.amount,
-      status: r.status === "reussi" ? "SUCCESS" : r.status === "echoue" ? "FAILED" : "PENDING",
-      errorReason: r.error
-    }));
-
-    const reportData = {
-      ruleName: ruleName,
-      totalAvailable: verifiedTotalBalance,
-      commissionAmount: commissionAmount,
-      totalAmount: availableAfterCommission,
-      status: finalStatus === "reussi" ? "SUCCESS" : finalStatus === "partiel" ? "PARTIAL" : "FAILED",
-      details: emailDetails
-    };
-
-    if (isAutomatic) {
-      if (config?.notifyEmail !== false) {
-        await sendAutomationReport(userEmail, reportData);
-      }
-      if (config?.notifySms) {
-        // TODO: Implémenter l'envoi SMS (ex: via Twilio ou FedaPay SMS)
-        console.log("Alerte SMS activée mais non implémentée.");
-      }
-    } else {
-      await sendPayoutReceiptEmail(userEmail, reportData);
-    }
-  }
-
-  // 9. Déclenchement Asynchrone de la collecte des commissions DUE
-  // Ne pas bloquer la réponse, on laisse tourner en arrière-plan
-  if (hasSuccess) {
-    let commissionFallbacks: any[] = [];
-    try {
-      const { data: adminSettings } = await supabaseAdmin.from("admin_settings").select("config_value").eq("config_key", "commission_numbers").single();
-      if (adminSettings?.config_value && Array.isArray(adminSettings.config_value)) {
-        commissionFallbacks = adminSettings.config_value.filter((n: any) => n.phone && n.network);
-      }
-    } catch(e) {}
-    
-    if (commissionFallbacks.length === 0) {
-      if (process.env.REPARTO_COMMISSION_MSISDN && process.env.REPARTO_COMMISSION_OPERATEUR) {
-        commissionFallbacks.push({ phone: process.env.REPARTO_COMMISSION_MSISDN, network: process.env.REPARTO_COMMISSION_OPERATEUR });
-      }
-    }
-
-    if (commissionFallbacks.length > 0) {
-      collectPendingCommissions(
-        supabaseAdmin,
-        userId,
-        commissionFallbacks,
-        gatewayPool || [],
-        mappings,
-        statusMappings
-      ).catch(e => console.error("Erreur background collecte commissions:", e));
-    }
-  }
-
-  return { success: true, finalStatus, results, executionId: execution.id };
+  return { success: true, finalStatus: "en_cours", results: [], executionId: execution.id };
 }
 
 // --- POINTS D'ENTRÉE EXPORTÉS ---

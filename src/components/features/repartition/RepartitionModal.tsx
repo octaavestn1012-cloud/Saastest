@@ -314,9 +314,9 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
       }
 
       let overallUiStatus = "FAILED";
-      if (res.finalStatus === "reussi" || res.finalStatus === "en_cours" || res.finalStatus === "partiel") {
-         overallUiStatus = "SUCCESS";
-      }
+      if (res.finalStatus === "reussi") overallUiStatus = "SUCCESS";
+      else if (res.finalStatus === "en_cours") overallUiStatus = "EN_COURS";
+      else if (res.finalStatus === "partiel") overallUiStatus = "SUCCESS";
       
       // Mettre à jour l'UI avec le statut
       const finalResultsToSave: Record<string, "SUCCESS" | "FAILED" | "PENDING" | "EN_COURS"> = {};
@@ -327,7 +327,7 @@ export function RepartitionModal({ onClose, customData }: { onClose: () => void,
           else if (apiResult.status === "en_cours") finalResultsToSave[t.id] = "EN_COURS";
           else finalResultsToSave[t.id] = "FAILED";
         } else {
-          finalResultsToSave[t.id] = overallUiStatus as "SUCCESS" | "FAILED";
+          finalResultsToSave[t.id] = overallUiStatus as "SUCCESS" | "FAILED" | "EN_COURS";
         }
       });
       setResults(finalResultsToSave);
